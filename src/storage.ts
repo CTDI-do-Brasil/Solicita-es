@@ -145,7 +145,24 @@ export const storage = {
     try {
       const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const requests: PurchaseRequest[] = JSON.parse(stored);
+        let updated = false;
+        const migrated = requests.map(r => {
+          const match = r.code.match(/^SOL-\d{4}-(\d+)$/i);
+          if (match) {
+            updated = true;
+            return {
+              ...r,
+              code: `S${match[1].padStart(5, '0')}`,
+            };
+          }
+          return r;
+        });
+        if (updated) {
+          localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(migrated));
+          return migrated;
+        }
+        return requests;
       }
     } catch (e) {
       console.error('Failed to load requests from localStorage', e);
@@ -177,8 +194,20 @@ export const storage = {
     currentUser: User
   ): PurchaseRequest {
     const all = this.getAllRequests();
-    const count = all.length + 1;
-    const code = `SOL-2026-${String(count).padStart(3, '0')}`;
+    
+    // Extract highest sequence number from existing codes formatted as S\d+
+    let nextNum = 1;
+    const numbers = all
+      .map(r => {
+        const match = r.code.match(/^S(\d+)$/i);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n) && n > 0);
+
+    if (numbers.length > 0) {
+      nextNum = Math.max(...numbers) + 1;
+    }
+    const code = `S${String(nextNum).padStart(5, '0')}`;
     
     // If manager submits, is it automatically approved or requires one-click approval?
     // As per user prompt: "Tanto o gestor quanto os novos usuários que eles criarão poderá fazer solicitações de compra... O gestor inicialmente terá que aprovar essa solicitação."

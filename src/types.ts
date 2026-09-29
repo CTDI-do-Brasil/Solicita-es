@@ -50,7 +50,7 @@ export type PurchaseOrderStatus =
 
 export interface PurchaseRequest {
   id: string;
-  code: string; // e.g., SOL-2026-001
+  code: string; // e.g., S00001
   title: string;
   description: string;
   reason: string;

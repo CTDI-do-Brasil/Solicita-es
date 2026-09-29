@@ -166,7 +166,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 1. TI - Pedido Realizado e com Valor Refletido
   {
     id: 'req-001',
-    code: 'SOL-2026-001',
+    code: 'S00001',
     title: 'Switch Gigabit 24 Portas PoE Gerenciável',
     description: 'Switch Switch Cisco Catalyst 1000 Series 24 portas Gigabit Ethernet PoE+ 195W para expansão do rack da sala técnica.',
     reason: 'Necessidade de conexão para 8 novas câmeras de segurança e 12 pontos de rede para os novos postos de trabalho.',
@@ -198,7 +198,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 2. TI - Aguardando Aprovação do Gerente de TI
   {
     id: 'req-002',
-    code: 'SOL-2026-002',
+    code: 'S00002',
     title: 'Memória RAM DDR5 32GB Kingston Fury',
     description: '2 módulos de memória RAM DDR5 32GB 5600MHz para upgrade do servidor local de compilação.',
     reason: 'O servidor atual está operando em 96% de memória durante a compilação noturna de relatórios.',
@@ -218,7 +218,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 3. Produção - Em Cotação pelo Setor de Compras
   {
     id: 'req-003',
-    code: 'SOL-2026-003',
+    code: 'S00003',
     title: 'Esteira Transportadora Modular de Roletes 3m',
     description: 'Esteira transportadora industrial com roletes livres de aço galvanizado para linha de montagem.',
     reason: 'Gargalo operacional no fluxo de saída de embalagens para expedição primária.',
@@ -248,7 +248,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 4. Produção - Entregue e Concluído
   {
     id: 'req-004',
-    code: 'SOL-2026-004',
+    code: 'S00004',
     title: 'Lubrificante Industrial Especial para Engrenagens ISO VG 220',
     description: 'Tambor de 200 litros de óleo mineral para redutores e engrenagens fechadas sob carga pesada.',
     reason: 'Manutenção preventiva programada dos redutores da linha 1 e 2.',
@@ -278,7 +278,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 5. EHS - Compra Realizada
   {
     id: 'req-005',
-    code: 'SOL-2026-005',
+    code: 'S00005',
     title: 'Lote de Protetores Auriculares tipo Concha e Abafadores 3M',
     description: 'Protetor auditivo circum-auricular atenuação 23dB NRRsf com haste acolchoada.',
     reason: 'Reposição trimestral de EPIs conforme norma NR-06 para trabalhadores de áreas ruidosas.',
@@ -308,7 +308,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 6. RH - Pedido Emitido
   {
     id: 'req-006',
-    code: 'SOL-2026-006',
+    code: 'S00006',
     title: 'Kits de Integração e Boas-Vindas para Novos Funcionários',
     description: 'Mochila corporativa com logo, garrafa térmica inox 500ml, caderno moleskine e caneta executiva.',
     reason: 'Entrada programada de 30 novos estagiários e técnicos no programa de trainee 2026/2.',
@@ -338,7 +338,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 7. Manutenção - Recebido em Compras (Aguardando Cotação)
   {
     id: 'req-007',
-    code: 'SOL-2026-007',
+    code: 'S00007',
     title: 'Kit Rolamentos Autocompensadores de Esferas SKF',
     description: 'Rolamentos industriais linha SKF 22218 EK com bucha de fixação H 318.',
     reason: 'Vibração excessiva detectada na bomba centrífuga principal do setor de utilidades.',
@@ -361,7 +361,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 8. Financeiro - Compra Concluída
   {
     id: 'req-008',
-    code: 'SOL-2026-008',
+    code: 'S00008',
     title: 'Licenças Anuais Software de Auditoria Fiscal e Contábil',
     description: 'Renovação anual de 3 licenças do sistema TaxContab Cloud com módulo SPED.',
     reason: 'Fechamento fiscal trimestral e envio obrigatório das declarações DCTF e EFD.',
@@ -390,7 +390,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 9. Engenharia - Compra Concluída
   {
     id: 'req-009',
-    code: 'SOL-2026-009',
+    code: 'S00009',
     title: 'Workstation Gráfica Dell Precision 3660 para AutoCAD/SolidWorks',
     description: 'Processador Intel Core i9, 64GB RAM, Placa de vídeo NVIDIA RTX A4000 16GB, SSD NVMe 1TB.',
     reason: 'Desenvolvimento do novo projeto mecânico da expansão da fábrica; os computadores atuais travam nas montagens 3D.',
@@ -420,7 +420,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 10. Administrativo - Compra Concluída
   {
     id: 'req-010',
-    code: 'SOL-2026-010',
+    code: 'S00010',
     title: 'Lote de Papel Sulfite A4 75g (Caixa com 10 resmas)',
     description: '25 caixas de papel sulfite alcalino branco formato A4 para impressoras departamentais.',
     reason: 'Consumo geral dos escritórios para o 3º trimestre.',
@@ -450,7 +450,7 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
   // 11. Fiscal - Recebido em Compras (Em Cotação)
   {
     id: 'req-011',
-    code: 'SOL-2026-011',
+    code: 'S00011',
     title: 'Certificados Digitais e-CNPJ A1 para Emissão de NF-e',
     description: 'Renovação de 2 certificados digitais e-CNPJ modelo A1 válidos por 1 ano com suporte de instalação.',
     reason: 'Certificados atuais expiram em 30 de setembro de 2026.',
