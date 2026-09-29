@@ -298,33 +298,22 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           </div>
 
           {/* Manager Approval Record */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                <CheckCircle2 className={`w-4 h-4 ${
+                  request.managerApprovalStatus === 'aprovado'
+                    ? 'text-emerald-600'
+                    : request.managerApprovalStatus === 'reprovado'
+                    ? 'text-rose-600'
+                    : 'text-amber-500'
+                }`} />
                 Aprovação do Gestor da Área ({request.sector})
               </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${approvalInfo.badgeClass}`}>
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${approvalInfo.badgeClass}`}>
                 {approvalInfo.label}
               </span>
             </div>
-
-            {request.managerApprovedBy ? (
-              <div className="text-xs text-slate-600 space-y-1 pt-1">
-                <div>
-                  <strong>Responsável:</strong> {request.managerApprovedBy} em {formatDateTime(request.managerApprovedAt)}
-                </div>
-                {request.managerNotes && (
-                  <div className="italic text-slate-700 bg-white p-2 rounded border border-slate-200">
-                    "{request.managerNotes}"
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 italic">
-                Aguardando avaliação do gerente responsável pelo setor de {request.sector}.
-              </p>
-            )}
           </div>
 
           {/* Purchasing Notes and Dates (if applicable) */}

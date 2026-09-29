@@ -140,18 +140,18 @@ export function getManagerApprovalInfo(status: ManagerApprovalStatus): {
   switch (status) {
     case 'aprovado':
       return {
-        label: 'Aprovado pelo Gestor',
+        label: 'Aprovado',
         badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       };
     case 'reprovado':
       return {
-        label: 'Reprovado pelo Gestor',
+        label: 'Reprovado',
         badgeClass: 'bg-rose-100 text-rose-800 border-rose-200',
       };
     case 'pendente':
     default:
       return {
-        label: 'Aprovação Pendente',
+        label: 'Pendente',
         badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
       };
   }
