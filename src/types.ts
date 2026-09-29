@@ -48,6 +48,15 @@ export type PurchaseOrderStatus =
   | 'entregue'                    // Delivered to sector
   | 'cancelado';                  // Cancelled
 
+export interface RequestItem {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  linkUrl?: string;
+}
+
 export interface PurchaseRequest {
   id: string;
   code: string; // e.g., S00001
@@ -58,6 +67,7 @@ export interface PurchaseRequest {
   quantity: number;
   unit: string;
   priority: 'baixa' | 'media' | 'alta' | 'urgente';
+  items?: RequestItem[];
   
   // Requester details
   requesterId: string;
