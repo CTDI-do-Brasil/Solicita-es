@@ -344,27 +344,29 @@ export const SectorView: React.FC<SectorViewProps> = ({
                 </span>
               </button>
 
-              {/* 4. Controle de Versões & Homologação */}
-              <button
-                id="sector-menu-controle-versoes"
-                onClick={() => {
-                  setActiveTab('versoes');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all ${
-                  activeTab === 'versoes'
-                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <GitBranch className={`w-4 h-4 ${activeTab === 'versoes' ? 'text-white' : 'text-indigo-600'}`} />
-                  <span>Controle de Versões</span>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-900 font-bold rounded">
-                  Revisores
-                </span>
-              </button>
+              {/* 4. Controle de Versões & Homologação (Exclusivo Master) */}
+              {currentUser.role === 'master' && (
+                <button
+                  id="sector-menu-controle-versoes"
+                  onClick={() => {
+                    setActiveTab('versoes');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all ${
+                    activeTab === 'versoes'
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <GitBranch className={`w-4 h-4 ${activeTab === 'versoes' ? 'text-white' : 'text-indigo-600'}`} />
+                    <span>Controle de Versões</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-900 font-bold rounded">
+                    Revisores
+                  </span>
+                </button>
+              )}
 
             </div>
 
@@ -659,8 +661,8 @@ export const SectorView: React.FC<SectorViewProps> = ({
         </div>
       )}
 
-      {/* View 4: Controle de Versões & Homologação */}
-      {activeTab === 'versoes' && (
+      {/* View 4: Controle de Versões & Homologação (Exclusivo Master) */}
+      {currentUser.role === 'master' && activeTab === 'versoes' && (
         <VersionControlPanel 
           currentUser={currentUser}
         />

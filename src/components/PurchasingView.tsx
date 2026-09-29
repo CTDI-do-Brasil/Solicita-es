@@ -482,21 +482,23 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             <span>Dashboard Consolidado</span>
           </button>
 
-          <button
-            id="purchasing-tab-versoes"
-            onClick={() => setActiveTab('versoes')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
-              activeTab === 'versoes'
-                ? 'border-indigo-600 text-indigo-600 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <GitBranch className="w-4 h-4" />
-            <span>Controle de Versões</span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-900 font-bold rounded">
-              Revisores
-            </span>
-          </button>
+          {currentUser.role === 'master' && (
+            <button
+              id="purchasing-tab-versoes"
+              onClick={() => setActiveTab('versoes')}
+              className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
+                activeTab === 'versoes'
+                  ? 'border-indigo-600 text-indigo-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <GitBranch className="w-4 h-4" />
+              <span>Controle de Versões</span>
+              <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-900 font-bold rounded">
+                Revisores
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -731,8 +733,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
         </div>
       )}
 
-      {/* Tab 5: Controle de Versões & Homologação */}
-      {activeTab === 'versoes' && (
+      {/* Tab 5: Controle de Versões & Homologação (Exclusivo Master) */}
+      {currentUser.role === 'master' && activeTab === 'versoes' && (
         <VersionControlPanel 
           currentUser={currentUser}
         />
