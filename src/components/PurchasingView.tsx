@@ -49,6 +49,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   onSelectRequest,
   requestsVersion,
 }) => {
+  const isManagerOrMaster = currentUser.role === 'gestor' || currentUser.role === 'master';
   const [selectedSector, setSelectedSector] = useState<SectorType | 'Todos'>('Todos');
   const [mobileSectorMenuOpen, setMobileSectorMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'geral' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
@@ -158,15 +159,17 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className="px-4 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors"
-            >
-              <BarChart3 className="w-4 h-4 text-indigo-600" />
-              <span>Ver Dashboard Consolidado</span>
-            </button>
-          </div>
+          {isManagerOrMaster && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="px-4 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors"
+              >
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+                <span>Ver Dashboard Consolidado</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 4 Global Indicator Cards */}
@@ -470,17 +473,19 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             <span>Compra Realizada</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
-              activeTab === 'dashboard'
-                ? 'border-indigo-600 text-indigo-600 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>Dashboard Consolidado</span>
-          </button>
+          {isManagerOrMaster && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
+                activeTab === 'dashboard'
+                  ? 'border-indigo-600 text-indigo-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Dashboard Consolidado</span>
+            </button>
+          )}
 
           {currentUser.role === 'master' && (
             <button
@@ -716,8 +721,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
         </div>
       )}
 
-      {/* Tab 4: Consolidated Monthly Spend Dashboard across all 9 sectors */}
-      {activeTab === 'dashboard' && (
+      {/* Tab 4: Consolidated Monthly Spend Dashboard across all 9 sectors (Exclusivo Gestores e Master) */}
+      {isManagerOrMaster && activeTab === 'dashboard' && (
         <div className="space-y-6">
           <div className="p-4 bg-cyan-50/70 border border-cyan-200 rounded-xl text-xs text-cyan-950 flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-cyan-700 shrink-0" />

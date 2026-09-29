@@ -99,7 +99,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-compras-coord',
     name: 'Alexandre Fontes',
     email: 'alexandre.compras@empresa.com',
-    role: 'compras',
+    role: 'gestor',
     sector: 'Compras',
     position: 'Coordenador de Suprimentos e Compras',
     createdAt: '2026-01-05T08:00:00Z',

@@ -89,13 +89,22 @@ export const storage = {
       if (stored) {
         const users: User[] = JSON.parse(stored);
         // Ensure master dev user is always present
+        let needsSave = false;
         if (!users.some(u => u.role === 'master' || u.id === 'user-master-dev')) {
           const masterUser = INITIAL_USERS.find(u => u.role === 'master');
           if (masterUser) {
-            const merged = [masterUser, ...users];
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(merged));
-            return merged;
+            users.unshift(masterUser);
+            needsSave = true;
           }
+        }
+        // Ensure purchasing coordinator has gestor role
+        const coord = users.find(u => u.id === 'user-compras-coord');
+        if (coord && coord.role !== 'gestor') {
+          coord.role = 'gestor';
+          needsSave = true;
+        }
+        if (needsSave) {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
         }
         return users;
       }

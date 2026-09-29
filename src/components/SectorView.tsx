@@ -29,7 +29,8 @@ import {
   ChevronUp,
   Layers,
   Bell,
-  GitBranch
+  GitBranch,
+  BarChart3
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 
@@ -52,6 +53,7 @@ export const SectorView: React.FC<SectorViewProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [dashboardScope, setDashboardScope] = useState<'setor' | 'consolidado'>('setor');
 
   // STRICT ISOLATION: Get only requests belonging to this user's sector
   const sectorRequests = useMemo(() => {
@@ -64,7 +66,7 @@ export const SectorView: React.FC<SectorViewProps> = ({
   }, [currentUser.sector]);
 
   const sectorColor = getSectorColor(currentUser.sector);
-  const isManager = currentUser.role === 'gestor';
+  const isManager = currentUser.role === 'gestor' || currentUser.role === 'master';
 
   // Sector metrics
   const pendingManagerApprovals = useMemo(() => {
@@ -321,28 +323,31 @@ export const SectorView: React.FC<SectorViewProps> = ({
                 )}
               </button>
 
-              {/* 3. Dashboard de Gastos Mensais */}
-              <button
-                onClick={() => {
-                  setActiveTab('dashboard');
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <TrendingUp className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-white' : 'text-emerald-600'}`} />
-                  <span>Dashboard de Gastos</span>
-                </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold ${
-                  activeTab === 'dashboard' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {formatCurrency(totalSectorSpent)}
-                </span>
-              </button>
+              {/* 3. Dashboard Consolidado (Exclusivo Gestores e Master) */}
+              {isManager && (
+                <button
+                  id="sector-menu-dashboard-gastos"
+                  onClick={() => {
+                    setActiveTab('dashboard');
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all ${
+                    activeTab === 'dashboard'
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <BarChart3 className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-white' : 'text-emerald-600'}`} />
+                    <span>Dashboard Consolidado</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold ${
+                    activeTab === 'dashboard' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {formatCurrency(totalSectorSpent)}
+                  </span>
+                </button>
+              )}
 
               {/* 4. Controle de Versões & Homologação (Exclusivo Master) */}
               {currentUser.role === 'master' && (
@@ -644,19 +649,45 @@ export const SectorView: React.FC<SectorViewProps> = ({
         </div>
       )}
 
-      {/* View 3: Sector Specific Monthly Spend Dashboard */}
-      {activeTab === 'dashboard' && (
+      {/* View 3: Sector & Consolidated Monthly Spend Dashboard (Exclusivo Gestores e Master) */}
+      {isManager && activeTab === 'dashboard' && (
         <div className="space-y-6">
-          <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl text-xs text-indigo-950 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>
-              <strong>Dashboard de Custos de {currentUser.sector}:</strong> Este painel consolida os valores que o <strong>Setor de Compras</strong> registrou para as solicitações da sua área, permitindo auditar os gastos mensais e o histórico de compras.
-            </span>
+          <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl text-xs text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>
+                <strong>Painel de Custos {dashboardScope === 'consolidado' ? 'Consolidado Geral' : `do Setor de ${currentUser.sector}`}:</strong> Demonstrativo de gastos e valores faturados por Compras.
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-indigo-200 text-xs font-semibold self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setDashboardScope('setor')}
+                className={`px-2.5 py-1 rounded-md transition-all ${
+                  dashboardScope === 'setor'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Meu Setor ({currentUser.sector})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDashboardScope('consolidado')}
+                className={`px-2.5 py-1 rounded-md transition-all ${
+                  dashboardScope === 'consolidado'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Consolidado Geral
+              </button>
+            </div>
           </div>
 
           <MonthlySpendChart
-            requests={sectorRequests}
-            targetSector={currentUser.sector}
+            requests={dashboardScope === 'consolidado' ? storage.getAllRequests() : sectorRequests}
+            targetSector={dashboardScope === 'consolidado' ? 'Todos' : currentUser.sector}
           />
         </div>
       )}
