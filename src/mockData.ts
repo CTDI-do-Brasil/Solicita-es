@@ -302,7 +302,6 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
     purchaseDate: '2026-08-22',
     expectedDeliveryDate: '2026-08-30',
     purchasedBy: 'Juliana Paes Correia (Compras)',
-    purchasingNotes: 'Compra faturada em 28 dias sem juros.',
     updatedAt: '2026-08-22T11:10:00Z',
   },
 

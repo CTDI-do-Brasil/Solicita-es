@@ -328,7 +328,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           </div>
 
           {/* Purchasing Notes and Dates (if applicable) */}
-          {(request.purchasingNotes || request.purchaseDate || request.expectedDeliveryDate) && (
+          {(request.purchaseDate || request.expectedDeliveryDate) && (
             <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/40 space-y-2">
               <div className="text-xs font-bold text-cyan-950 uppercase tracking-wider flex items-center gap-1.5">
                 <Receipt className="w-4 h-4 text-cyan-700" />
@@ -346,11 +346,6 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   </div>
                 )}
               </div>
-              {request.purchasingNotes && (
-                <div className="text-xs text-slate-700 bg-white p-2.5 rounded border border-cyan-200/80">
-                  <strong className="text-cyan-900">Nota de Compras:</strong> {request.purchasingNotes}
-                </div>
-              )}
             </div>
           )}
 
