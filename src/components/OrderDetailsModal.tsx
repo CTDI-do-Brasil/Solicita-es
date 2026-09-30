@@ -131,7 +131,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
       date: statusInfo.step >= 3 ? 'Em análise' : '-' 
     },
     { 
-      label: 'Alçada Aprovadores', 
+      label: 'Aprovadores', 
       done: request.approvals?.currentApprover === 'concluido' || (request.approvals?.fernando?.status === 'aprovado' && request.approvals?.eduardo?.status === 'aprovado' && request.approvals?.luiz?.status === 'aprovado'),
       date: request.approvals?.currentApprover === 'concluido' 
         ? 'Aprovado 100%' 

@@ -32,7 +32,8 @@ import {
   BellRing,
   FileCheck2,
   Send,
-  GitBranch
+  GitBranch,
+  ShieldCheck
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 
@@ -439,7 +440,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             }`}
           >
             <ShieldCheck className="w-4 h-4 text-purple-600" />
-            <span>Alçada Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</span>
+            <span>Aprovadores</span>
             <span className="text-xs px-2 py-0.2 rounded-full bg-purple-100 text-purple-900 font-bold">
               {allRequests.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals).length}
             </span>

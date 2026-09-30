@@ -169,72 +169,120 @@ export function getSectorColor(sector: SectorType): {
   badge: string;
   tag: string;
   accent: string;
+  dot: string;
+  bg: string;
+  text: string;
+  border: string;
 } {
   switch (sector) {
     case 'Produção':
       return {
         badge: 'bg-orange-100 text-orange-800 border-orange-200',
         tag: 'bg-orange-500',
+        dot: 'bg-orange-500',
+        bg: 'bg-orange-100',
+        text: 'text-orange-800',
+        border: 'border-orange-200',
         accent: '#f97316',
       };
     case 'Fiscal':
       return {
         badge: 'bg-indigo-100 text-indigo-800 border-indigo-200',
         tag: 'bg-indigo-500',
+        dot: 'bg-indigo-500',
+        bg: 'bg-indigo-100',
+        text: 'text-indigo-800',
+        border: 'border-indigo-200',
         accent: '#6366f1',
       };
     case 'Financeiro':
       return {
         badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
         tag: 'bg-emerald-500',
+        dot: 'bg-emerald-500',
+        bg: 'bg-emerald-100',
+        text: 'text-emerald-800',
+        border: 'border-emerald-200',
         accent: '#10b981',
       };
     case 'RH':
       return {
         badge: 'bg-pink-100 text-pink-800 border-pink-200',
         tag: 'bg-pink-500',
+        dot: 'bg-pink-500',
+        bg: 'bg-pink-100',
+        text: 'text-pink-800',
+        border: 'border-pink-200',
         accent: '#ec4899',
       };
     case 'EHS':
       return {
         badge: 'bg-teal-100 text-teal-800 border-teal-200',
         tag: 'bg-teal-500',
+        dot: 'bg-teal-500',
+        bg: 'bg-teal-100',
+        text: 'text-teal-800',
+        border: 'border-teal-200',
         accent: '#14b8a6',
       };
     case 'Manutenção':
       return {
         badge: 'bg-amber-100 text-amber-800 border-amber-200',
         tag: 'bg-amber-500',
+        dot: 'bg-amber-500',
+        bg: 'bg-amber-100',
+        text: 'text-amber-800',
+        border: 'border-amber-200',
         accent: '#f59e0b',
       };
     case 'Engenharia':
       return {
         badge: 'bg-blue-100 text-blue-800 border-blue-200',
         tag: 'bg-blue-500',
+        dot: 'bg-blue-500',
+        bg: 'bg-blue-100',
+        text: 'text-blue-800',
+        border: 'border-blue-200',
         accent: '#3b82f6',
       };
     case 'TI':
       return {
         badge: 'bg-violet-100 text-violet-800 border-violet-200',
         tag: 'bg-violet-500',
+        dot: 'bg-violet-500',
+        bg: 'bg-violet-100',
+        text: 'text-violet-800',
+        border: 'border-violet-200',
         accent: '#8b5cf6',
       };
     case 'Administrativo':
       return {
         badge: 'bg-slate-100 text-slate-800 border-slate-200',
         tag: 'bg-slate-500',
+        dot: 'bg-slate-500',
+        bg: 'bg-slate-100',
+        text: 'text-slate-800',
+        border: 'border-slate-200',
         accent: '#64748b',
       };
     case 'Compras':
       return {
         badge: 'bg-cyan-100 text-cyan-800 border-cyan-200',
         tag: 'bg-cyan-600',
+        dot: 'bg-cyan-600',
+        bg: 'bg-cyan-100',
+        text: 'text-cyan-800',
+        border: 'border-cyan-200',
         accent: '#0891b2',
       };
     default:
       return {
         badge: 'bg-slate-100 text-slate-800 border-slate-200',
         tag: 'bg-slate-500',
+        dot: 'bg-slate-500',
+        bg: 'bg-slate-100',
+        text: 'text-slate-800',
+        border: 'border-slate-200',
         accent: '#64748b',
       };
   }
