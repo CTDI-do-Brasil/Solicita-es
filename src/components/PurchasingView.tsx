@@ -526,13 +526,10 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 <option value="em_atraso">Solicitação em atraso (+48h)</option>
                 <option value="recebido_em_compras">Recebido em Compras</option>
                 <option value="em_cotacao">Em Cotação com Fornecedores</option>
-                <option value="em_aprovacao">Em Aprovação de Orçamento</option>
                 <option value="pedido_emitido">Pedido de Compra Emitido</option>
                 <option value="compra_realizada">Compra Realizada</option>
                 <option value="em_transito">Em Trânsito / Transporte</option>
                 <option value="entregue">Entregue no Setor</option>
-                <option value="sem_valor">Sem Valor Cadastrado</option>
-                <option value="com_valor">Com Valor Cadastrado</option>
               </select>
             </div>
           </div>

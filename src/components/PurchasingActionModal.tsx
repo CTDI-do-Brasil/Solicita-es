@@ -261,7 +261,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
               >
                 <option value="em_cotacao">Em Cotação com Fornecedores</option>
-                <option value="em_aprovacao">Em Aprovação de Orçamento (Diretoria)</option>
                 <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
                 <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
                 <option value="em_transito">Em Trânsito / Em Transporte</option>
