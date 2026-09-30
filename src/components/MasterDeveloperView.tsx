@@ -6,7 +6,8 @@ import {
   formatDate, 
   getPurchaseStatusInfo, 
   getManagerApprovalInfo, 
-  getSectorColor 
+  getSectorColor,
+  getLatestRequestStatusInfo
 } from '../utils';
 import { 
   ShieldAlert, 
@@ -682,6 +683,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                 const sectorColor = getSectorColor(req.sector);
                 const statusInfo = getPurchaseStatusInfo(req.purchaseStatus);
                 const approvalInfo = getManagerApprovalInfo(req.managerApprovalStatus);
+                const latestStatus = getLatestRequestStatusInfo(req);
                 const hasPrice = req.totalPrice !== undefined && req.totalPrice > 0;
 
                 return (
@@ -700,11 +702,8 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                           <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${sectorColor.badge}`}>
                             Setor: {req.sector}
                           </span>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${approvalInfo.badgeClass}`}>
-                            {approvalInfo.label}
-                          </span>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.bgClass} ${statusInfo.colorClass} ${statusInfo.borderClass}`}>
-                            {statusInfo.label}
+                          <span className={`text-xs px-2.5 py-0.5 rounded-full border ${latestStatus.badgeClass}`}>
+                            {latestStatus.label}
                           </span>
                           <span className="text-[11px] text-slate-400">
                             • Solicitante: <strong>{req.requesterName}</strong> ({formatDate(req.createdAt)})
