@@ -1,4 +1,4 @@
-import { PurchaseOrderStatus, ManagerApprovalStatus, SectorType } from './types';
+import { PurchaseOrderStatus, ManagerApprovalStatus, SectorType, User, PurchaseRequest, ApproverName } from './types';
 
 export function formatCurrency(value?: number | null): string {
   if (value === undefined || value === null || isNaN(value)) {
@@ -76,11 +76,19 @@ export function getPurchaseStatusInfo(status: PurchaseOrderStatus): {
       };
     case 'em_aprovacao':
       return {
-        label: 'Em Aprovação de Orçamento',
+        label: 'Em Aprovação da Diretoria',
         colorClass: 'text-purple-800',
         bgClass: 'bg-purple-50',
         borderClass: 'border-purple-200',
         step: 3,
+      };
+    case 'reprovado_aprovadores':
+      return {
+        label: 'Reprovado por Aprovador',
+        colorClass: 'text-rose-800',
+        bgClass: 'bg-rose-50',
+        borderClass: 'border-rose-200',
+        step: 0,
       };
     case 'pedido_emitido':
       return {
@@ -319,6 +327,125 @@ export function getRequestDelayInfo(request?: {
     formattedTime: `${hoursElapsed}h`,
     message: '',
     badgeClass: '',
+  };
+}
+
+export function getApproverFromUser(user: User): ApproverName | null {
+  if (user.role === 'aprovador' || user.role === 'master') {
+    const nameLower = user.name.toLowerCase();
+    if (nameLower.includes('fernando') && !nameLower.includes('luiz')) return 'Fernando';
+    if (nameLower.includes('eduardo')) return 'Eduardo';
+    if (nameLower.includes('luiz')) return 'Luiz';
+  }
+  return null;
+}
+
+export function getApproversProgressInfo(request: PurchaseRequest): {
+  isWaitingApprovers: boolean;
+  isFullyApproved: boolean;
+  isReproved: boolean;
+  currentApprover: ApproverName | null;
+  progressPercent: number;
+  stepIndex: number; // 0: None, 1: Fernando, 2: Eduardo, 3: Luiz, 4: Done
+  badgeLabel: string;
+  badgeClass: string;
+  description: string;
+} {
+  const ap = request.approvals;
+  if (!ap) {
+    return {
+      isWaitingApprovers: false,
+      isFullyApproved: false,
+      isReproved: false,
+      currentApprover: null,
+      progressPercent: 0,
+      stepIndex: 0,
+      badgeLabel: 'Não Enviado',
+      badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+      description: 'Ainda não enviado para alçada de aprovadores',
+    };
+  }
+
+  if (ap.currentApprover === 'reprovado' || request.purchaseStatus === 'reprovado_aprovadores') {
+    return {
+      isWaitingApprovers: false,
+      isFullyApproved: false,
+      isReproved: true,
+      currentApprover: null,
+      progressPercent: 100,
+      stepIndex: 0,
+      badgeLabel: 'Reprovado na Alçada',
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
+      description: 'Reprovado durante a alçada de aprovação',
+    };
+  }
+
+  if (ap.currentApprover === 'concluido' || (ap.fernando?.status === 'aprovado' && ap.eduardo?.status === 'aprovado' && ap.luiz?.status === 'aprovado')) {
+    return {
+      isWaitingApprovers: false,
+      isFullyApproved: true,
+      isReproved: false,
+      currentApprover: null,
+      progressPercent: 100,
+      stepIndex: 4,
+      badgeLabel: 'Aprovado (3/3)',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
+      description: 'Aprovado por Fernando, Eduardo e Luiz',
+    };
+  }
+
+  if (ap.currentApprover === 'Fernando') {
+    return {
+      isWaitingApprovers: true,
+      isFullyApproved: false,
+      isReproved: false,
+      currentApprover: 'Fernando',
+      progressPercent: 15,
+      stepIndex: 1,
+      badgeLabel: 'Aguardando Fernando (1/3)',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-semibold',
+      description: 'Na vez do 1º Aprovador (Fernando)',
+    };
+  }
+
+  if (ap.currentApprover === 'Eduardo') {
+    return {
+      isWaitingApprovers: true,
+      isFullyApproved: false,
+      isReproved: false,
+      currentApprover: 'Eduardo',
+      progressPercent: 50,
+      stepIndex: 2,
+      badgeLabel: 'Aguardando Eduardo (2/3)',
+      badgeClass: 'bg-indigo-100 text-indigo-900 border-indigo-300 font-semibold',
+      description: 'Aprovado por Fernando. Na vez de Eduardo (2º)',
+    };
+  }
+
+  if (ap.currentApprover === 'Luiz') {
+    return {
+      isWaitingApprovers: true,
+      isFullyApproved: false,
+      isReproved: false,
+      currentApprover: 'Luiz',
+      progressPercent: 80,
+      stepIndex: 3,
+      badgeLabel: 'Aguardando Luiz (3/3)',
+      badgeClass: 'bg-purple-100 text-purple-900 border-purple-300 font-semibold',
+      description: 'Aprovado por Fernando e Eduardo. Na vez de Luiz (3º)',
+    };
+  }
+
+  return {
+    isWaitingApprovers: false,
+    isFullyApproved: false,
+    isReproved: false,
+    currentApprover: null,
+    progressPercent: 0,
+    stepIndex: 0,
+    badgeLabel: 'Em Análise',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+    description: 'Em análise pelos aprovadores',
   };
 }
 

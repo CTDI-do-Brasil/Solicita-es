@@ -22,7 +22,34 @@ export const ALL_SECTORS: SectorType[] = [
   'Administrativo'
 ];
 
-export type UserRole = 'gestor' | 'colaborador' | 'compras' | 'master';
+export type UserRole = 'gestor' | 'colaborador' | 'compras' | 'master' | 'aprovador';
+
+export type ApproverName = 'Fernando' | 'Eduardo' | 'Luiz';
+
+export const APPROVAL_CHAIN: ApproverName[] = ['Fernando', 'Eduardo', 'Luiz'];
+
+export interface ApproverStepState {
+  status: 'pendente' | 'aprovado' | 'reprovado' | 'bloqueado';
+  approvedAt?: string;
+  approvedBy?: string;
+  notes?: string;
+}
+
+export interface PurchaseApprovals {
+  currentApprover: ApproverName | 'concluido' | 'reprovado';
+  sentToApproversAt?: string;
+  sentByPurchasingUser?: string;
+  history?: Array<{
+    step: ApproverName;
+    action: 'aprovado' | 'reprovado';
+    by: string;
+    at: string;
+    notes?: string;
+  }>;
+  fernando: ApproverStepState;
+  eduardo: ApproverStepState;
+  luiz: ApproverStepState;
+}
 
 export interface User {
   id: string;
@@ -46,6 +73,7 @@ export type PurchaseOrderStatus =
   | 'compra_realizada'            // Purchase completed / paid
   | 'em_transito'                 // Shipped
   | 'entregue'                    // Delivered to sector
+  | 'reprovado_aprovadores'       // Reproved by an approver
   | 'cancelado';                  // Cancelled
 
 export interface RequestItem {
@@ -80,6 +108,9 @@ export interface PurchaseRequest {
   managerApprovedAt?: string;
   managerApprovedBy?: string;
   managerNotes?: string;
+
+  // Sequential Executive Approvals (Fernando -> Eduardo -> Luiz)
+  approvals?: PurchaseApprovals;
 
   // Purchasing Department (Setor de Compras) details
   purchaseStatus: PurchaseOrderStatus;

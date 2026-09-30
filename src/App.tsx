@@ -10,6 +10,7 @@ import { RequestModal } from './components/RequestModal';
 import { SectorUserManagementModal } from './components/SectorUserManagementModal';
 import { PurchasingActionModal } from './components/PurchasingActionModal';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
+import { ApproversView } from './components/ApproversView';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function App() {
@@ -17,7 +18,8 @@ export default function App() {
     return storage.getCurrentUser();
   });
 
-  const [masterViewMode, setMasterViewMode] = useState<'console' | 'compras' | 'setor'>('console');
+  const [masterViewMode, setMasterViewMode] = useState<'console' | 'compras' | 'setor' | 'aprovadores'>('console');
+  const [activeAppArea, setActiveAppArea] = useState<'setor' | 'compras' | 'aprovadores'>('setor');
   const [simulatedSector, setSimulatedSector] = useState<SectorType>('Produção');
   const [requestsVersion, setRequestsVersion] = useState(1);
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -38,7 +40,13 @@ export default function App() {
     };
 
     const handleAuthUpdate = () => {
-      setCurrentUser(storage.getCurrentUser());
+      const u = storage.getCurrentUser();
+      setCurrentUser(u);
+      if (u) {
+        if (u.role === 'aprovador') setActiveAppArea('aprovadores');
+        else if (u.role === 'compras' || u.sector === 'Compras') setActiveAppArea('compras');
+        else setActiveAppArea('setor');
+      }
     };
 
     window.addEventListener('storage-requests-updated', handleRequestsUpdate);
@@ -53,6 +61,13 @@ export default function App() {
   const handleLogin = (user: User) => {
     storage.setCurrentUser(user);
     setCurrentUser(user);
+    if (user.role === 'aprovador') {
+      setActiveAppArea('aprovadores');
+    } else if (user.role === 'compras' || user.sector === 'Compras') {
+      setActiveAppArea('compras');
+    } else {
+      setActiveAppArea('setor');
+    }
   };
 
   const handleLogout = () => {
@@ -65,6 +80,13 @@ export default function App() {
     setCurrentUser(user);
     setSelectedRequest(null);
     setPurchasingEditRequest(null);
+    if (user.role === 'aprovador') {
+      setActiveAppArea('aprovadores');
+    } else if (user.role === 'compras' || user.sector === 'Compras') {
+      setActiveAppArea('compras');
+    } else {
+      setActiveAppArea('setor');
+    }
   };
 
   const handleRequestCreated = (newReq: PurchaseRequest) => {
@@ -107,6 +129,8 @@ export default function App() {
         onSelectMasterViewMode={setMasterViewMode}
         simulatedSector={simulatedSector}
         onSelectSimulatedSector={setSimulatedSector}
+        activeAppArea={activeAppArea}
+        onSelectAppArea={setActiveAppArea}
       />
 
       {/* Main Content Area */}
@@ -133,7 +157,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setMasterViewMode('console')}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold flex items-center gap-1"
+                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Voltar ao Console Master</span>
@@ -142,6 +166,29 @@ export default function App() {
                 <PurchasingView
                   currentUser={currentUser}
                   onOpenManageOrder={(req) => setPurchasingEditRequest(req)}
+                  onSelectRequest={(req) => setSelectedRequest(req)}
+                  requestsVersion={requestsVersion}
+                />
+              </div>
+            )}
+
+            {masterViewMode === 'aprovadores' && (
+              <div>
+                <div className="mb-4 p-3 bg-purple-950 text-white rounded-xl shadow-xs flex items-center justify-between border border-purple-800">
+                  <div className="flex items-center gap-2 text-xs">
+                    <ShieldAlert className="w-4 h-4 text-purple-300" />
+                    <span>Modo de Visualização Master: <strong>Alçada Executiva de Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</strong></span>
+                  </div>
+                  <button
+                    onClick={() => setMasterViewMode('console')}
+                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Voltar ao Console Master</span>
+                  </button>
+                </div>
+                <ApproversView
+                  currentUser={currentUser}
                   onSelectRequest={(req) => setSelectedRequest(req)}
                   requestsVersion={requestsVersion}
                 />
@@ -157,7 +204,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setMasterViewMode('console')}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold flex items-center gap-1"
+                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Voltar ao Console Master</span>
@@ -173,6 +220,13 @@ export default function App() {
               </div>
             )}
           </div>
+        ) : currentUser.role === 'aprovador' || activeAppArea === 'aprovadores' ? (
+          /* Specialized Approvers Area View (Fernando -> Eduardo -> Luiz) */
+          <ApproversView
+            currentUser={currentUser}
+            onSelectRequest={(req) => setSelectedRequest(req)}
+            requestsVersion={requestsVersion}
+          />
         ) : isPurchasingSector ? (
           /* Third Screen: Specialized Purchasing Division View (Receives all sectors) */
           <PurchasingView

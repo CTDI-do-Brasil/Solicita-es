@@ -24,7 +24,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'master' | 'gestores' | 'compras' | 'colaboradores'>('master');
+  const [activeTab, setActiveTab] = useState<'master' | 'aprovadores' | 'compras' | 'gestores' | 'colaboradores'>('aprovadores');
 
   const masterUser = users.find(u => u.role === 'master') || {
     id: 'user-master-dev',
@@ -64,6 +64,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     onLogin(user);
   };
 
+  const aprovadoresUsers = users.filter(u => u.role === 'aprovador' || u.id.startsWith('user-aprovador-'));
   const comprasUsers = users.filter(u => u.role === 'compras');
   const gestoresUsers = users.filter(u => u.role === 'gestor');
   const colaboradoresUsers = users.filter(u => u.role === 'colaborador');
@@ -188,24 +189,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </div>
 
             {/* Quick Access Category Tabs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-slate-100 rounded-xl mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setActiveTab('aprovadores')}
+                className={`py-2 px-1 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  activeTab === 'aprovadores'
+                    ? 'bg-purple-800 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
+                <span>Aprovadores (3)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setActiveTab('master')}
-                className={`py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                className={`py-2 px-1 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   activeTab === 'master'
                     ? 'bg-slate-900 text-amber-300 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                <span>Nível Master</span>
+                <span>Master</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('compras')}
-                className={`py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                className={`py-2 px-1 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   activeTab === 'compras'
                     ? 'bg-white text-cyan-800 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -218,20 +232,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               <button
                 type="button"
                 onClick={() => setActiveTab('gestores')}
-                className={`py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                className={`py-2 px-1 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   activeTab === 'gestores'
                     ? 'bg-white text-indigo-800 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
+                <Building2 className="w-3.5 h-3.5" />
                 <span>9 Gestores</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('colaboradores')}
-                className={`py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                className={`py-2 px-1 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   activeTab === 'colaboradores'
                     ? 'bg-white text-slate-800 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -241,6 +255,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <span>Colaboradores</span>
               </button>
             </div>
+
+            {/* Tab: Aprovadores (Fernando -> Eduardo -> Luiz) */}
+            {activeTab === 'aprovadores' && (
+              <div className="space-y-2.5">
+                <div className="p-3.5 bg-gradient-to-r from-purple-900 to-indigo-950 border border-purple-800 text-purple-100 rounded-xl text-xs space-y-1 shadow-xs">
+                  <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-purple-300" />
+                    Alçada Executiva de Aprovação:
+                  </div>
+                  <p className="text-purple-200">
+                    O setor de compras estrutura o pedido e estes três aprovadores avaliam na seguinte ordem rigorosa:
+                    <strong className="text-white ml-1">Fernando (1º)</strong> ➔ 
+                    <strong className="text-white ml-1">Eduardo (2º)</strong> ➔ 
+                    <strong className="text-white ml-1">Luiz (3º)</strong>.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {aprovadoresUsers.map((user, idx) => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleQuickLogin(user)}
+                      className="w-full p-3.5 text-left rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100 hover:border-purple-400 transition-all flex items-center justify-between group cursor-pointer shadow-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-purple-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                          {idx + 1}º
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-purple-900 flex items-center gap-1.5">
+                            <span>{user.name}</span>
+                            <span className="text-[10px] bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded font-semibold">
+                              {idx === 0 ? '1º Aprovador' : idx === 1 ? '2º Aprovador' : '3º Aprovador'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500">{user.position}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-semibold text-purple-700 group-hover:translate-x-1 transition-transform">
+                        <span>Acessar</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tab 0: Master Dev */}
             {activeTab === 'master' && (

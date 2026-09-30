@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PurchaseRequest, User } from '../types';
+import { PurchaseRequest, User, ApproverName } from '../types';
 import { storage } from '../storage';
 import { 
   formatCurrency, 
@@ -8,7 +8,8 @@ import {
   getPurchaseStatusInfo, 
   getManagerApprovalInfo, 
   getSectorColor,
-  getRequestDelayInfo
+  getRequestDelayInfo,
+  getApproverFromUser
 } from '../utils';
 import { 
   X, 
@@ -27,7 +28,9 @@ import {
   FileCheck2,
   BellRing,
   AlertCircle,
-  Package
+  Package,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 
 interface OrderDetailsModalProps {
@@ -48,6 +51,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   const [managerNotes, setManagerNotes] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [approverNotes, setApproverNotes] = useState('');
 
   const statusInfo = getPurchaseStatusInfo(request.purchaseStatus);
   const approvalInfo = getManagerApprovalInfo(request.managerApprovalStatus);
@@ -57,6 +61,13 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   const isManagerOfSector = currentUser.role === 'master' || (currentUser.role === 'gestor' && currentUser.sector === request.sector);
   const isPurchasingUser = currentUser.role === 'compras' || currentUser.role === 'master';
   const canApprove = isManagerOfSector && request.managerApprovalStatus === 'pendente';
+
+  // Approvers logic
+  const detectedApprover = getApproverFromUser(currentUser);
+  const currentStep = request.approvals?.currentApprover;
+  const canApproverAct = 
+    request.purchaseStatus === 'em_aprovacao' && 
+    (currentUser.role === 'master' || (detectedApprover && detectedApprover === currentStep));
 
   const handleApprove = () => {
     setActionError('');
@@ -82,6 +93,30 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
     }
   };
 
+  const handleApproverApprove = () => {
+    const approverToUse = (detectedApprover || currentStep as ApproverName || 'Fernando');
+    const success = storage.approveByApprover(request.id, approverToUse, currentUser, approverNotes);
+    if (success) {
+      onStatusChanged();
+    } else {
+      setActionError('Não foi possível aprovar.');
+    }
+  };
+
+  const handleApproverReject = () => {
+    if (!approverNotes.trim()) {
+      setActionError('Para reprovar, é obrigatório preencher a justificativa.');
+      return;
+    }
+    const approverToUse = (detectedApprover || currentStep as ApproverName || 'Fernando');
+    const success = storage.rejectByApprover(request.id, approverToUse, currentUser, approverNotes.trim());
+    if (success) {
+      onStatusChanged();
+    } else {
+      setActionError('Não foi possível reprovar.');
+    }
+  };
+
   // Steps for visual tracking
   const steps = [
     { label: 'Solicitado', done: true, date: formatDate(request.createdAt) },
@@ -94,6 +129,17 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
       label: 'Em Cotação', 
       done: statusInfo.step >= 3,
       date: statusInfo.step >= 3 ? 'Em análise' : '-' 
+    },
+    { 
+      label: 'Alçada Aprovadores', 
+      done: request.approvals?.currentApprover === 'concluido' || (request.approvals?.fernando?.status === 'aprovado' && request.approvals?.eduardo?.status === 'aprovado' && request.approvals?.luiz?.status === 'aprovado'),
+      date: request.approvals?.currentApprover === 'concluido' 
+        ? 'Aprovado 100%' 
+        : request.approvals?.currentApprover === 'reprovado' 
+        ? 'Reprovado' 
+        : request.approvals 
+        ? `Na vez de ${request.approvals.currentApprover}` 
+        : '-' 
     },
     { 
       label: 'Pedido Emitido', 
@@ -396,6 +442,114 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             )}
           </div>
 
+          {/* Executive Approver Chain Record (Fernando -> Eduardo -> Luiz) */}
+          {request.approvals && (
+            <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-purple-700" />
+                  Alçada Executiva de Aprovadores: Fernando ➔ Eduardo ➔ Luiz
+                </span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                  request.approvals.currentApprover === 'concluido'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    : request.approvals.currentApprover === 'reprovado'
+                    ? 'bg-rose-100 text-rose-800 border-rose-300'
+                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                }`}>
+                  {request.approvals.currentApprover === 'concluido'
+                    ? 'Aprovado por Todos (3/3)'
+                    : request.approvals.currentApprover === 'reprovado'
+                    ? 'Reprovado na Alçada'
+                    : `Na vez de ${request.approvals.currentApprover}`}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                {/* 1. Fernando */}
+                <div className={`p-2.5 rounded-lg border ${
+                  request.approvals.fernando?.status === 'aprovado'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : request.approvals.fernando?.status === 'reprovado'
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : request.approvals.currentApprover === 'Fernando'
+                    ? 'bg-amber-50 border-amber-300 text-amber-950 font-semibold'
+                    : 'bg-white border-slate-200 text-slate-400'
+                }`}>
+                  <div className="font-bold">1º Fernando (Operações)</div>
+                  <div className="text-[11px] mt-0.5">
+                    {request.approvals.fernando?.status === 'aprovado' && (
+                      <span className="text-emerald-800">Aprovado {request.approvals.fernando.approvedAt && `em ${formatDate(request.approvals.fernando.approvedAt)}`}</span>
+                    )}
+                    {request.approvals.fernando?.status === 'reprovado' && (
+                      <span className="text-rose-800">Reprovado: {request.approvals.fernando.notes}</span>
+                    )}
+                    {request.approvals.currentApprover === 'Fernando' && (
+                      <span className="text-amber-800">Pendente de avaliação</span>
+                    )}
+                    {request.approvals.fernando?.status === 'bloqueado' && (
+                      <span>Aguardando</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Eduardo */}
+                <div className={`p-2.5 rounded-lg border ${
+                  request.approvals.eduardo?.status === 'aprovado'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : request.approvals.eduardo?.status === 'reprovado'
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : request.approvals.currentApprover === 'Eduardo'
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-950 font-semibold'
+                    : 'bg-white border-slate-200 text-slate-400'
+                }`}>
+                  <div className="font-bold">2º Eduardo (Financeiro)</div>
+                  <div className="text-[11px] mt-0.5">
+                    {request.approvals.eduardo?.status === 'aprovado' && (
+                      <span className="text-emerald-800">Aprovado {request.approvals.eduardo.approvedAt && `em ${formatDate(request.approvals.eduardo.approvedAt)}`}</span>
+                    )}
+                    {request.approvals.eduardo?.status === 'reprovado' && (
+                      <span className="text-rose-800">Reprovado: {request.approvals.eduardo.notes}</span>
+                    )}
+                    {request.approvals.currentApprover === 'Eduardo' && (
+                      <span className="text-indigo-800">Pendente de avaliação</span>
+                    )}
+                    {request.approvals.eduardo?.status === 'bloqueado' && (
+                      <span>Aguardando Fernando</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Luiz */}
+                <div className={`p-2.5 rounded-lg border ${
+                  request.approvals.luiz?.status === 'aprovado'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : request.approvals.luiz?.status === 'reprovado'
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : request.approvals.currentApprover === 'Luiz'
+                    ? 'bg-purple-50 border-purple-300 text-purple-950 font-semibold'
+                    : 'bg-white border-slate-200 text-slate-400'
+                }`}>
+                  <div className="font-bold">3º Luiz (Diretor Geral)</div>
+                  <div className="text-[11px] mt-0.5">
+                    {request.approvals.luiz?.status === 'aprovado' && (
+                      <span className="text-emerald-800">Aprovado {request.approvals.luiz.approvedAt && `em ${formatDate(request.approvals.luiz.approvedAt)}`}</span>
+                    )}
+                    {request.approvals.luiz?.status === 'reprovado' && (
+                      <span className="text-rose-800">Reprovado: {request.approvals.luiz.notes}</span>
+                    )}
+                    {request.approvals.currentApprover === 'Luiz' && (
+                      <span className="text-purple-800">Pendente de chancela final</span>
+                    )}
+                    {request.approvals.luiz?.status === 'bloqueado' && (
+                      <span>Aguardando Eduardo</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Purchasing Notes and Dates (if applicable) */}
           {(request.purchaseDate || request.expectedDeliveryDate) && (
             <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/40 space-y-2">
@@ -564,6 +718,63 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Executive Approver Decision Section */}
+          {canApproverAct && (
+            <div className="p-4 rounded-xl border border-purple-300 bg-purple-50/80 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-purple-950 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-purple-700" />
+                  Ação de Aprovação da Diretoria: Na vez de <strong>{currentStep}</strong>
+                </span>
+                <span className="text-slate-500 text-[11px]">
+                  (Obrigatório motivo para reprovação)
+                </span>
+              </div>
+
+              {actionError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{actionError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-purple-950 mb-1">
+                  Parecer ou Observação do Aprovador ({currentStep})
+                </label>
+                <input
+                  type="text"
+                  value={approverNotes}
+                  onChange={(e) => {
+                    setApproverNotes(e.target.value);
+                    if (actionError) setActionError('');
+                  }}
+                  placeholder={`Parecer de ${currentStep} (ex: Cotação homologada / Fluxo financeiro ok)...`}
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-purple-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-purple-500 outline-hidden"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleApproverApprove}
+                  className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  {currentStep === 'Luiz' ? 'Conceder Chancela Final (100%)' : `Aprovar como ${currentStep}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApproverReject}
+                  className="py-2 px-4 bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reprovar Pedido
+                </button>
+              </div>
             </div>
           )}
 

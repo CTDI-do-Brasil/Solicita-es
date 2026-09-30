@@ -1,4 +1,4 @@
-import { User, UserRole, PurchaseRequest, SectorType, PurchaseOrderStatus, AppVersionRelease, VersionReviewer } from './types';
+import { User, UserRole, PurchaseRequest, SectorType, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName } from './types';
 import { INITIAL_USERS, INITIAL_REQUESTS } from './mockData';
 
 const USERS_STORAGE_KEY = 'compras_app_users_v1';
@@ -103,6 +103,19 @@ export const storage = {
           coord.role = 'gestor';
           needsSave = true;
         }
+
+        // Ensure the 3 approvers (Fernando, Eduardo, Luiz) exist
+        const approverIds = ['user-aprovador-fernando', 'user-aprovador-eduardo', 'user-aprovador-luiz'];
+        approverIds.forEach(id => {
+          if (!users.some(u => u.id === id)) {
+            const initialAppr = INITIAL_USERS.find(u => u.id === id);
+            if (initialAppr) {
+              users.push(initialAppr);
+              needsSave = true;
+            }
+          }
+        });
+
         if (needsSave) {
           localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
         }
@@ -171,6 +184,15 @@ export const storage = {
           localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(migrated));
           return migrated;
         }
+        
+        // Ensure mock requests with approvals exist
+        if (!requests.some(r => r.id === 'req-012' || r.approvals)) {
+          const mockWithApprovals = INITIAL_REQUESTS.filter(ir => ir.approvals);
+          const merged = [...requests, ...mockWithApprovals.filter(m => !requests.some(r => r.id === m.id))];
+          localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(merged));
+          return merged;
+        }
+
         return requests;
       }
     } catch (e) {
@@ -189,10 +211,10 @@ export const storage = {
     }
   },
 
-  // ISOLATION: A sector cannot see requests from other sectors, but Compras and Master see all
+  // ISOLATION: A sector cannot see requests from other sectors, but Compras, Master and Aprovadores see all
   getRequestsForUser(user: User): PurchaseRequest[] {
     const all = this.getAllRequests();
-    if (user.role === 'compras' || user.sector === 'Compras' || user.role === 'master') {
+    if (user.role === 'compras' || user.sector === 'Compras' || user.role === 'master' || user.role === 'aprovador') {
       return all;
     }
     return all.filter(r => r.sector === user.sector);
@@ -311,6 +333,31 @@ export const storage = {
     const index = all.findIndex(r => r.id === requestId);
     if (index === -1) return false;
 
+    const currentApprovals = all[index].approvals;
+    let newApprovals = currentApprovals;
+
+    if (data.status === 'em_aprovacao' && (!currentApprovals || currentApprovals.currentApprover === 'reprovado')) {
+      const now = new Date().toISOString();
+      newApprovals = {
+        currentApprover: 'Fernando',
+        sentToApproversAt: now,
+        sentByPurchasingUser: `${buyer.name} (Compras)`,
+        history: [
+          ...(currentApprovals?.history || []),
+          {
+            step: 'Fernando',
+            action: 'pendente' as any,
+            by: `${buyer.name} (Compras)`,
+            at: now,
+            notes: 'Pedido de compra formalizado por Compras e enviado para a alçada de aprovação.'
+          }
+        ],
+        fernando: { status: 'pendente' },
+        eduardo: { status: 'bloqueado' },
+        luiz: { status: 'bloqueado' },
+      };
+    }
+
     all[index] = {
       ...all[index],
       purchaseStatus: data.status,
@@ -323,7 +370,192 @@ export const storage = {
       expectedDeliveryDate: data.expectedDeliveryDate || all[index].expectedDeliveryDate,
       purchasedBy: `${buyer.name} (Compras)`,
       purchasingNotes: data.purchasingNotes !== undefined ? data.purchasingNotes : all[index].purchasingNotes,
+      approvals: newApprovals,
       updatedAt: new Date().toISOString(),
+    };
+
+    this.saveRequests(all);
+    return true;
+  },
+
+  sendToApprovers(requestId: string, purchasingUser: User): boolean {
+    const all = this.getAllRequests();
+    const index = all.findIndex(r => r.id === requestId);
+    if (index === -1) return false;
+
+    const req = all[index];
+    const now = new Date().toISOString();
+
+    all[index] = {
+      ...req,
+      purchaseStatus: 'em_aprovacao',
+      approvals: {
+        currentApprover: 'Fernando',
+        sentToApproversAt: now,
+        sentByPurchasingUser: `${purchasingUser.name} (Compras)`,
+        history: [
+          ...(req.approvals?.history || []),
+          {
+            step: 'Fernando',
+            action: 'pendente' as any,
+            by: `${purchasingUser.name} (Compras)`,
+            at: now,
+            notes: 'Pedido de compra enviado para alçada sequencial: Fernando -> Eduardo -> Luiz'
+          }
+        ],
+        fernando: { status: 'pendente' },
+        eduardo: { status: 'bloqueado' },
+        luiz: { status: 'bloqueado' },
+      },
+      updatedAt: now,
+    };
+
+    this.saveRequests(all);
+    return true;
+  },
+
+  approveByApprover(requestId: string, approverName: ApproverName, user: User, notes?: string): boolean {
+    const all = this.getAllRequests();
+    const index = all.findIndex(r => r.id === requestId);
+    if (index === -1) return false;
+
+    const req = all[index];
+    if (!req.approvals) return false;
+
+    const now = new Date().toISOString();
+    const current = req.approvals.currentApprover;
+
+    // Check if it is indeed this approver's turn (or user is Master)
+    if (user.role !== 'master' && current !== approverName) {
+      return false;
+    }
+
+    const ap = { ...req.approvals };
+    const history = ap.history ? [...ap.history] : [];
+
+    if (approverName === 'Fernando') {
+      ap.fernando = {
+        status: 'aprovado',
+        approvedAt: now,
+        approvedBy: `${user.name} (1º Aprovador)`,
+        notes: notes || 'Aprovado pelo 1º Aprovador (Fernando).'
+      };
+      ap.currentApprover = 'Eduardo';
+      ap.eduardo = { status: 'pendente' };
+      history.push({
+        step: 'Fernando',
+        action: 'aprovado',
+        by: user.name,
+        at: now,
+        notes: notes || 'Aprovado pelo 1º Aprovador.'
+      });
+    } else if (approverName === 'Eduardo') {
+      if (ap.fernando?.status !== 'aprovado' && user.role !== 'master') {
+        return false;
+      }
+      ap.eduardo = {
+        status: 'aprovado',
+        approvedAt: now,
+        approvedBy: `${user.name} (2º Aprovador)`,
+        notes: notes || 'Aprovado pelo 2º Aprovador (Eduardo).'
+      };
+      ap.currentApprover = 'Luiz';
+      ap.luiz = { status: 'pendente' };
+      history.push({
+        step: 'Eduardo',
+        action: 'aprovado',
+        by: user.name,
+        at: now,
+        notes: notes || 'Aprovado pelo 2º Aprovador.'
+      });
+    } else if (approverName === 'Luiz') {
+      if (ap.eduardo?.status !== 'aprovado' && user.role !== 'master') {
+        return false;
+      }
+      ap.luiz = {
+        status: 'aprovado',
+        approvedAt: now,
+        approvedBy: `${user.name} (3º Aprovador)`,
+        notes: notes || 'Aprovação final concedida pelo 3º Aprovador (Luiz).'
+      };
+      ap.currentApprover = 'concluido';
+      history.push({
+        step: 'Luiz',
+        action: 'aprovado',
+        by: user.name,
+        at: now,
+        notes: notes || 'Aprovação final concedida.'
+      });
+
+      // Fully approved by all 3! Advance purchaseStatus to pedido_emitido
+      all[index].purchaseStatus = 'pedido_emitido';
+    }
+
+    ap.history = history;
+    all[index] = {
+      ...req,
+      approvals: ap,
+      updatedAt: now,
+    };
+
+    this.saveRequests(all);
+    return true;
+  },
+
+  rejectByApprover(requestId: string, approverName: ApproverName, user: User, notes: string): boolean {
+    if (!notes || !notes.trim()) {
+      return false;
+    }
+
+    const all = this.getAllRequests();
+    const index = all.findIndex(r => r.id === requestId);
+    if (index === -1) return false;
+
+    const req = all[index];
+    if (!req.approvals) return false;
+
+    const now = new Date().toISOString();
+    const ap = { ...req.approvals };
+    const history = ap.history ? [...ap.history] : [];
+
+    if (approverName === 'Fernando') {
+      ap.fernando = {
+        status: 'reprovado',
+        approvedAt: now,
+        approvedBy: `${user.name} (1º Aprovador)`,
+        notes: notes.trim(),
+      };
+    } else if (approverName === 'Eduardo') {
+      ap.eduardo = {
+        status: 'reprovado',
+        approvedAt: now,
+        approvedBy: `${user.name} (2º Aprovador)`,
+        notes: notes.trim(),
+      };
+    } else if (approverName === 'Luiz') {
+      ap.luiz = {
+        status: 'reprovado',
+        approvedAt: now,
+        approvedBy: `${user.name} (3º Aprovador)`,
+        notes: notes.trim(),
+      };
+    }
+
+    ap.currentApprover = 'reprovado';
+    history.push({
+      step: approverName,
+      action: 'reprovado',
+      by: user.name,
+      at: now,
+      notes: notes.trim(),
+    });
+
+    ap.history = history;
+    all[index] = {
+      ...req,
+      approvals: ap,
+      purchaseStatus: 'reprovado_aprovadores',
+      updatedAt: now,
     };
 
     this.saveRequests(all);

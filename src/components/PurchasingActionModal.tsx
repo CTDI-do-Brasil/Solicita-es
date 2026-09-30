@@ -242,10 +242,63 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
             )}
           </div>
 
-          {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+          {/* Approvers Pipeline Status Banner */}
+          {request.approvals && (
+            <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileCheck2 className="w-4 h-4 text-purple-700" />
+                  Alçada de Aprovadores: Fernando ➔ Eduardo ➔ Luiz
+                </span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
+                  {request.approvals.currentApprover === 'concluido'
+                    ? 'Aprovado 100%'
+                    : request.approvals.currentApprover === 'reprovado'
+                    ? 'Reprovado na Alçada'
+                    : `Na vez de ${request.approvals.currentApprover}`}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className={`p-2 rounded-lg border ${
+                  request.approvals.fernando?.status === 'aprovado'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                    : request.approvals.fernando?.status === 'reprovado'
+                    ? 'bg-rose-50 border-rose-300 text-rose-800'
+                    : request.approvals.currentApprover === 'Fernando'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
+                    : 'bg-slate-100 border-slate-200 text-slate-500'
+                }`}>
+                  <div className="font-bold">1º Fernando</div>
+                  <div className="text-[11px] capitalize">{request.approvals.fernando?.status || 'Aguardando'}</div>
+                </div>
+
+                <div className={`p-2 rounded-lg border ${
+                  request.approvals.eduardo?.status === 'aprovado'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                    : request.approvals.eduardo?.status === 'reprovado'
+                    ? 'bg-rose-50 border-rose-300 text-rose-800'
+                    : request.approvals.currentApprover === 'Eduardo'
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-bold'
+                    : 'bg-slate-100 border-slate-200 text-slate-500'
+                }`}>
+                  <div className="font-bold">2º Eduardo</div>
+                  <div className="text-[11px] capitalize">{request.approvals.eduardo?.status || 'Aguardando'}</div>
+                </div>
+
+                <div className={`p-2 rounded-lg border ${
+                  request.approvals.luiz?.status === 'aprovado'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                    : request.approvals.luiz?.status === 'reprovado'
+                    ? 'bg-rose-50 border-rose-300 text-rose-800'
+                    : request.approvals.currentApprover === 'Luiz'
+                    ? 'bg-purple-50 border-purple-300 text-purple-900 font-bold'
+                    : 'bg-slate-100 border-slate-200 text-slate-500'
+                }`}>
+                  <div className="font-bold">3º Luiz</div>
+                  <div className="text-[11px] capitalize">{request.approvals.luiz?.status || 'Aguardando'}</div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -268,10 +321,12 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
               >
                 <option value="em_cotacao">Em Cotação com Fornecedores</option>
+                <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
                 <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
                 <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
                 <option value="em_transito">Em Trânsito / Em Transporte</option>
                 <option value="entregue">Entregue no Setor Solicitante</option>
+                <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
                 <option value="cancelado">Cancelado / Sem Fornecedor</option>
               </select>
             </div>
@@ -420,22 +475,54 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <button
+              id="send-to-approvers-action-button"
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              onClick={() => {
+                const numTotal = parseFloat(String(totalPrice));
+                if (isNaN(numTotal) || numTotal <= 0) {
+                  setError('Para enviar à alçada de aprovadores, preencha o valor da cotação.');
+                  return;
+                }
+                const numUnit = parseFloat(String(unitPrice));
+                const numShip = parseFloat(String(shippingCost)) || 0;
+                storage.updatePurchasingDetails(request.id, buyer, {
+                  status: 'em_aprovacao',
+                  purchaseOrderNumber: poNumber.trim(),
+                  supplier: supplier.trim(),
+                  unitPrice: isNaN(numUnit) ? undefined : numUnit,
+                  totalPrice: numTotal,
+                  shippingCost: numShip,
+                  purchaseDate: purchaseDate || undefined,
+                  expectedDeliveryDate: expectedDeliveryDate || undefined,
+                  purchasingNotes: purchasingNotes.trim(),
+                });
+                onSave();
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-lg shadow-xs transition-colors cursor-pointer"
             >
-              Cancelar
+              <FileCheck2 className="w-4 h-4 text-purple-700" />
+              <span>Enviar p/ Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</span>
             </button>
-            <button
-              id="submit-buyer-update-button"
-              type="submit"
-              className="flex items-center gap-2 px-5 py-2 text-xs sm:text-sm font-semibold text-white bg-cyan-700 hover:bg-cyan-800 active:bg-cyan-900 rounded-lg shadow-xs transition-colors"
-            >
-              <Check className="w-4 h-4" />
-              Salvar Alterações & Atualizar Valor
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                id="submit-buyer-update-button"
+                type="submit"
+                className="flex items-center gap-2 px-5 py-2 text-xs sm:text-sm font-semibold text-white bg-cyan-700 hover:bg-cyan-800 active:bg-cyan-900 rounded-lg shadow-xs transition-colors cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                Salvar Alterações
+              </button>
+            </div>
           </div>
 
         </form>

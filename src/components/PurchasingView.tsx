@@ -52,7 +52,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const isManagerOrMaster = currentUser.role === 'gestor' || currentUser.role === 'master';
   const [selectedSector, setSelectedSector] = useState<SectorType | 'Todos'>('Todos');
   const [mobileSectorMenuOpen, setMobileSectorMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
 
@@ -99,6 +99,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     // Filter by Tab
     if (activeTab === 'atrasadas') {
       list = list.filter(r => getRequestDelayInfo(r).isDelayed);
+    } else if (activeTab === 'aprovadores') {
+      list = list.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined);
     } else if (activeTab === 'faturados') {
       list = list.filter(r => r.totalPrice !== undefined && r.totalPrice > 0);
     }
@@ -415,7 +417,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('geral')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
+            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'geral'
                 ? 'border-cyan-700 text-cyan-800 font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -424,6 +426,22 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             <span>Todas as Solicitações</span>
             <span className="text-xs px-2 py-0.2 rounded-full bg-slate-100 text-slate-700 font-mono">
               {allRequests.length}
+            </span>
+          </button>
+
+          <button
+            id="purchasing-tab-aprovadores"
+            onClick={() => setActiveTab('aprovadores')}
+            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'aprovadores'
+                ? 'border-purple-600 text-purple-900 font-bold'
+                : 'border-transparent text-slate-500 hover:text-purple-700'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-purple-600" />
+            <span>Alçada Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</span>
+            <span className="text-xs px-2 py-0.2 rounded-full bg-purple-100 text-purple-900 font-bold">
+              {allRequests.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals).length}
             </span>
           </button>
 
@@ -585,6 +603,24 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.bgClass} ${statusInfo.colorClass} ${statusInfo.borderClass}`}>
                             {statusInfo.label}
                           </span>
+
+                          {/* Badge de Alçada de Aprovadores */}
+                          {req.approvals && (
+                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                              req.approvals.currentApprover === 'concluido'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : req.approvals.currentApprover === 'reprovado'
+                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                : 'bg-purple-100 text-purple-900 border-purple-300'
+                            }`}>
+                              <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                              {req.approvals.currentApprover === 'concluido'
+                                ? 'Aprovado Alçada (3/3)'
+                                : req.approvals.currentApprover === 'reprovado'
+                                ? 'Reprovado na Alçada'
+                                : `Alçada: Na vez de ${req.approvals.currentApprover}`}
+                            </span>
+                          )}
 
                           {/* Badge de Solicitação em atraso (+48h) */}
                           {delayInfo.isDelayed && (

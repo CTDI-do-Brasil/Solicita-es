@@ -114,6 +114,35 @@ export const INITIAL_USERS: User[] = [
     createdAt: '2026-01-12T08:00:00Z',
   },
 
+  // Alçada Executiva de Aprovadores (Ordem: Fernando -> Eduardo -> Luiz)
+  {
+    id: 'user-aprovador-fernando',
+    name: 'Fernando Silva',
+    email: 'fernando.aprovador@empresa.com',
+    role: 'aprovador',
+    sector: 'Compras',
+    position: '1º Aprovador - Diretor de Suprimentos & Operações',
+    createdAt: '2026-01-02T08:00:00Z',
+  },
+  {
+    id: 'user-aprovador-eduardo',
+    name: 'Eduardo Costa',
+    email: 'eduardo.aprovador@empresa.com',
+    role: 'aprovador',
+    sector: 'Financeiro',
+    position: '2º Aprovador - Diretor Financeiro & Controladoria',
+    createdAt: '2026-01-02T08:00:00Z',
+  },
+  {
+    id: 'user-aprovador-luiz',
+    name: 'Luiz Carlos Martins',
+    email: 'luiz.aprovador@empresa.com',
+    role: 'aprovador',
+    sector: 'Administrativo',
+    position: '3º Aprovador - Diretor Executivo Geral (CEO)',
+    createdAt: '2026-01-02T08:00:00Z',
+  },
+
   // Colaboradores dos setores (criados pelos gestores)
   {
     id: 'user-colab-ti-1',
@@ -234,14 +263,31 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
     managerApprovedAt: '2026-09-02T15:20:00Z',
     managerApprovedBy: 'Carlos Alberto Silveira (Gerente Produção)',
     managerNotes: 'Item de altíssima prioridade para desafogar a linha 2.',
-    purchaseStatus: 'em_cotacao',
+    purchaseStatus: 'em_aprovacao',
     purchaseOrderNumber: 'OC-2026-0210',
     supplier: 'Metalúrgica FlexIndústria SA',
     unitPrice: 8400.00,
     totalPrice: 8400.00,
     shippingCost: 350.00,
     purchasedBy: 'Alexandre Fontes (Compras)',
-    purchasingNotes: 'Aguardando 3ª cotação de frete rodoviário para fechar pedido.',
+    purchasingNotes: 'Cotação concluída e pedido de compra enviado para alçada de aprovação.',
+    approvals: {
+      currentApprover: 'Fernando',
+      sentToApproversAt: '2026-09-08T10:45:00Z',
+      sentByPurchasingUser: 'Alexandre Fontes (Compras)',
+      history: [
+        {
+          step: 'Fernando',
+          action: 'aprovado',
+          by: 'Sistema',
+          at: '2026-09-08T10:45:00Z',
+          notes: 'Pedido de compra formalizado pelo setor de compras e aguardando o 1º aprovador (Fernando).'
+        }
+      ],
+      fernando: { status: 'pendente' },
+      eduardo: { status: 'bloqueado' },
+      luiz: { status: 'bloqueado' },
+    },
     updatedAt: '2026-09-08T10:45:00Z',
   },
 
@@ -473,5 +519,199 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
     purchasedBy: 'Alexandre Fontes (Compras)',
     purchasingNotes: 'Em validação com a autoridade certificadora.',
     updatedAt: '2026-09-12T11:20:00Z',
+  },
+
+  // 12. TI - Pedido de Compra Aguardando 2º Aprovador (Eduardo)
+  {
+    id: 'req-012',
+    code: 'S00012',
+    title: 'Servidor Dell PowerEdge R660xs para Virtualização',
+    description: 'Servidor rack 1U com 2x processadores Intel Xeon Silver, 128GB RAM e 4x 960GB SSD NVMe corporativo.',
+    reason: 'Substituição do nó de virtualização legado que atingiu fim de suporte do fabricante.',
+    linkUrl: 'https://www.dell.com/pt-br/poweredge-r660xs',
+    quantity: 1,
+    unit: 'unidade',
+    priority: 'urgente',
+    requesterId: 'user-gestor-ti',
+    requesterName: 'Lucas Barreto',
+    sector: 'TI',
+    createdAt: '2026-09-15T09:30:00Z',
+    managerApprovalStatus: 'aprovado',
+    managerApprovedAt: '2026-09-15T10:00:00Z',
+    managerApprovedBy: 'Lucas Barreto (Gerente TI)',
+    managerNotes: 'Item orçado e priorizado no plano diretor de TI.',
+    purchaseStatus: 'em_aprovacao',
+    purchaseOrderNumber: 'OC-2026-0220',
+    supplier: 'Dell Computadores do Brasil Ltda',
+    unitPrice: 42500.00,
+    totalPrice: 42500.00,
+    shippingCost: 0,
+    purchasedBy: 'Juliana Paes Correia (Compras)',
+    purchasingNotes: 'Negociada garantia ProSupport Plus de 3 anos inclusa.',
+    approvals: {
+      currentApprover: 'Eduardo',
+      sentToApproversAt: '2026-09-18T14:00:00Z',
+      sentByPurchasingUser: 'Juliana Paes Correia (Compras)',
+      history: [
+        {
+          step: 'Fernando',
+          action: 'aprovado',
+          by: 'Fernando Silva (1º Aprovador)',
+          at: '2026-09-19T09:15:00Z',
+          notes: 'Aprovado do ponto de vista de infraestrutura e suprimentos. Encaminhado ao financeiro.'
+        }
+      ],
+      fernando: {
+        status: 'aprovado',
+        approvedAt: '2026-09-19T09:15:00Z',
+        approvedBy: 'Fernando Silva (1º Aprovador)',
+        notes: 'Aprovado do ponto de vista de infraestrutura e suprimentos. Encaminhado ao financeiro.'
+      },
+      eduardo: { status: 'pendente' },
+      luiz: { status: 'bloqueado' }
+    },
+    updatedAt: '2026-09-19T09:15:00Z',
+  },
+
+  // 13. Engenharia - Pedido de Compra Aguardando 3º Aprovador (Luiz)
+  {
+    id: 'req-013',
+    code: 'S00013',
+    title: 'Estação de Solda Robótica Automatizada SMD',
+    description: 'Estação de soldagem com visão computacional para retrabalho de placas multicamadas de alta densidade.',
+    reason: 'Aumento da produtividade e redução do índice de descarte em testes de engenharia.',
+    linkUrl: 'https://www.quick-solder.com/robotics-smd',
+    quantity: 1,
+    unit: 'sistema completo',
+    priority: 'alta',
+    requesterId: 'user-gestor-eng',
+    requesterName: 'Patrícia Albuquerque',
+    sector: 'Engenharia',
+    createdAt: '2026-09-10T14:00:00Z',
+    managerApprovalStatus: 'aprovado',
+    managerApprovedAt: '2026-09-10T15:30:00Z',
+    managerApprovedBy: 'Patrícia Albuquerque (Gerente Engenharia)',
+    managerNotes: 'Projeto de automação aprovado na revisão técnica.',
+    purchaseStatus: 'em_aprovacao',
+    purchaseOrderNumber: 'OC-2026-0225',
+    supplier: 'RoboTech Solutions Brasil',
+    unitPrice: 68900.00,
+    totalPrice: 68900.00,
+    shippingCost: 800.00,
+    purchasedBy: 'Alexandre Fontes (Compras)',
+    purchasingNotes: 'Fornecedor homologado. Prazo de entrega de 25 dias úteis.',
+    approvals: {
+      currentApprover: 'Luiz',
+      sentToApproversAt: '2026-09-12T10:00:00Z',
+      sentByPurchasingUser: 'Alexandre Fontes (Compras)',
+      history: [
+        {
+          step: 'Fernando',
+          action: 'aprovado',
+          by: 'Fernando Silva (1º Aprovador)',
+          at: '2026-09-13T11:00:00Z',
+          notes: 'Especificação técnica e cotação homologadas.'
+        },
+        {
+          step: 'Eduardo',
+          action: 'aprovado',
+          by: 'Eduardo Costa (2º Aprovador)',
+          at: '2026-09-15T16:45:00Z',
+          notes: 'Disponibilidade orçamentária checada. Condições de pagamento faturado 30/60/90 dias aceitas.'
+        }
+      ],
+      fernando: {
+        status: 'aprovado',
+        approvedAt: '2026-09-13T11:00:00Z',
+        approvedBy: 'Fernando Silva (1º Aprovador)',
+        notes: 'Especificação técnica e cotação homologadas.'
+      },
+      eduardo: {
+        status: 'aprovado',
+        approvedAt: '2026-09-15T16:45:00Z',
+        approvedBy: 'Eduardo Costa (2º Aprovador)',
+        notes: 'Disponibilidade orçamentária checada. Condições de pagamento faturado 30/60/90 dias aceitas.'
+      },
+      luiz: { status: 'pendente' }
+    },
+    updatedAt: '2026-09-15T16:45:00Z',
+  },
+
+  // 14. Manutenção - Pedido de Compra 100% Aprovado pelos 3 Aprovadores
+  {
+    id: 'req-014',
+    code: 'S00014',
+    title: 'Compressor de Parafuso Industrial 50HP com Inversor',
+    description: 'Compressor rotativo de parafuso atlas 50HP com tecnologia de acionamento de velocidade variável (VSD).',
+    reason: 'Substituição preventiva do compressor principal da planta para evitar parada de fábrica.',
+    linkUrl: 'https://www.atlascopco.com/pt-br/compressor-50hp',
+    quantity: 1,
+    unit: 'unidade',
+    priority: 'alta',
+    requesterId: 'user-gestor-manut',
+    requesterName: 'Marcos Aurélio Prado',
+    sector: 'Manutenção',
+    createdAt: '2026-09-01T08:00:00Z',
+    managerApprovalStatus: 'aprovado',
+    managerApprovedAt: '2026-09-01T09:00:00Z',
+    managerApprovedBy: 'Marcos Aurélio Prado (Gerente Manutenção)',
+    managerNotes: 'Crítico para o fornecimento de ar comprimido da planta produtiva.',
+    purchaseStatus: 'pedido_emitido',
+    purchaseOrderNumber: 'OC-2026-0230',
+    supplier: 'Atlas Brasil Compressores Industriais Ltda',
+    unitPrice: 94500.00,
+    totalPrice: 94500.00,
+    shippingCost: 1200.00,
+    purchaseDate: '2026-09-07',
+    expectedDeliveryDate: '2026-09-25',
+    purchasedBy: 'Alexandre Fontes (Compras)',
+    purchasingNotes: 'Pedido emitido e enviado ao fabricante após aprovação unânime da diretoria.',
+    approvals: {
+      currentApprover: 'concluido',
+      sentToApproversAt: '2026-09-03T10:00:00Z',
+      sentByPurchasingUser: 'Alexandre Fontes (Compras)',
+      history: [
+        {
+          step: 'Fernando',
+          action: 'aprovado',
+          by: 'Fernando Silva (1º Aprovador)',
+          at: '2026-09-04T10:30:00Z',
+          notes: 'Aprovado pelo suprimento.'
+        },
+        {
+          step: 'Eduardo',
+          action: 'aprovado',
+          by: 'Eduardo Costa (2º Aprovador)',
+          at: '2026-09-05T14:20:00Z',
+          notes: 'Aprovado pelo financeiro com amortização em 4 parcelas.'
+        },
+        {
+          step: 'Luiz',
+          action: 'aprovado',
+          by: 'Luiz Carlos Martins (3º Aprovador)',
+          at: '2026-09-06T11:00:00Z',
+          notes: 'Aprovação final concedida. Emissão autorizada imediatamente.'
+        }
+      ],
+      fernando: {
+        status: 'aprovado',
+        approvedAt: '2026-09-04T10:30:00Z',
+        approvedBy: 'Fernando Silva (1º Aprovador)',
+        notes: 'Aprovado pelo suprimento.'
+      },
+      eduardo: {
+        status: 'aprovado',
+        approvedAt: '2026-09-05T14:20:00Z',
+        approvedBy: 'Eduardo Costa (2º Aprovador)',
+        notes: 'Aprovado pelo financeiro com amortização em 4 parcelas.'
+      },
+      luiz: {
+        status: 'aprovado',
+        approvedAt: '2026-09-06T11:00:00Z',
+        approvedBy: 'Luiz Carlos Martins (3º Aprovador)',
+        notes: 'Aprovação final concedida. Emissão autorizada imediatamente.'
+      }
+    },
+    updatedAt: '2026-09-06T11:00:00Z',
   }
 ];
