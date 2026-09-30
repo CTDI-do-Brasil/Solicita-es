@@ -22,8 +22,26 @@ import {
   Check,
   Send,
   AlertTriangle,
-  Award
+  Award,
+  Calendar,
+  CalendarRange,
+  RotateCcw
 } from 'lucide-react';
+
+const MONTHS_LIST = [
+  { value: 1, label: 'Janeiro' },
+  { value: 2, label: 'Fevereiro' },
+  { value: 3, label: 'Março' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Maio' },
+  { value: 6, label: 'Junho' },
+  { value: 7, label: 'Julho' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Setembro' },
+  { value: 10, label: 'Outubro' },
+  { value: 11, label: 'Novembro' },
+  { value: 12, label: 'Dezembro' },
+];
 
 interface ApproversViewProps {
   currentUser: User;
@@ -117,10 +135,70 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
     };
   }, [approverPipelineRequests, myQueueRequests]);
 
-  // Chart Data 1: Value by Requesting Sector
+  // Analytics Filter States (Acompanhamento Mensal, Anual e Seleção de Datas)
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'mensal' | 'anual' | 'personalizado' | 'todos'>('mensal');
+  const [analyticsViewMode, setAnalyticsViewMode] = useState<'setor' | 'evolucao'>('setor');
+  
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear() || 2026);
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1 || 9);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Available years from requests
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([2024, 2025, 2026, 2027]);
+    approverPipelineRequests.forEach(r => {
+      const raw = r.approvals?.sentToApproversAt || r.purchaseDate || r.createdAt;
+      if (raw) {
+        const d = new Date(raw);
+        if (!isNaN(d.getFullYear())) {
+          years.add(d.getFullYear());
+        }
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [approverPipelineRequests]);
+
+  // Helper to retrieve request reference date
+  const getRequestDate = (r: PurchaseRequest): Date | null => {
+    const raw = r.approvals?.sentToApproversAt || r.purchaseDate || r.createdAt;
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Requests filtered for the analytics dashboard by selected period / dates
+  const filteredAnalyticsRequests = useMemo(() => {
+    return approverPipelineRequests.filter(r => {
+      const d = getRequestDate(r);
+      if (!d) return true;
+
+      if (analyticsPeriod === 'mensal') {
+        return d.getFullYear() === selectedYear && (d.getMonth() + 1) === selectedMonth;
+      }
+      if (analyticsPeriod === 'anual') {
+        return d.getFullYear() === selectedYear;
+      }
+      if (analyticsPeriod === 'personalizado') {
+        if (startDate) {
+          const start = new Date(startDate + 'T00:00:00');
+          if (d < start) return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate + 'T23:59:59');
+          if (d > end) return false;
+        }
+        return true;
+      }
+      return true; // 'todos'
+    });
+  }, [approverPipelineRequests, analyticsPeriod, selectedYear, selectedMonth, startDate, endDate]);
+
+  // Chart Data 1: Value by Requesting Sector in the selected period
   const sectorSpendData = useMemo(() => {
     const map: Record<string, { sector: string; total: number; count: number }> = {};
-    approverPipelineRequests.forEach(r => {
+    filteredAnalyticsRequests.forEach(r => {
       const sec = r.sector;
       if (!map[sec]) {
         map[sec] = { sector: sec, total: 0, count: 0 };
@@ -131,10 +209,41 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
 
     const list = Object.values(map).sort((a, b) => b.total - a.total);
     const maxVal = Math.max(...list.map(s => s.total), 1);
-    return { list, maxVal };
-  }, [approverPipelineRequests]);
+    const periodTotal = list.reduce((acc, s) => acc + s.total, 0);
+    const periodCount = list.reduce((acc, s) => acc + s.count, 0);
+    return { list, maxVal, periodTotal, periodCount };
+  }, [filteredAnalyticsRequests]);
 
-  // Chart Data 2: Distribution by Value Ranges
+  // Chart Data 2: Monthly Evolution (12 months of selected year)
+  const monthlyEvolutionData = useMemo(() => {
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const months = monthNames.map((name, idx) => ({
+      monthNumber: idx + 1,
+      monthName: name,
+      fullName: MONTHS_LIST[idx].label,
+      total: 0,
+      count: 0,
+    }));
+
+    approverPipelineRequests.forEach(r => {
+      const d = getRequestDate(r);
+      if (d && d.getFullYear() === selectedYear) {
+        const m = d.getMonth();
+        if (m >= 0 && m < 12) {
+          months[m].total += (r.totalPrice || 0);
+          months[m].count += 1;
+        }
+      }
+    });
+
+    const maxMonthTotal = Math.max(...months.map(m => m.total), 1);
+    const yearTotal = months.reduce((acc, m) => acc + m.total, 0);
+    const yearCount = months.reduce((acc, m) => acc + m.count, 0);
+
+    return { months, maxMonthTotal, yearTotal, yearCount };
+  }, [approverPipelineRequests, selectedYear]);
+
+  // Chart Data 3: Distribution by Value Ranges in the selected period
   const valueTierData = useMemo(() => {
     let tier1 = 0; // < 10k
     let tier2 = 0; // 10k - 50k
@@ -143,7 +252,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
     let tier2Val = 0;
     let tier3Val = 0;
 
-    approverPipelineRequests.forEach(r => {
+    filteredAnalyticsRequests.forEach(r => {
       const val = r.totalPrice || 0;
       if (val < 10000) {
         tier1++;
@@ -157,12 +266,13 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       }
     });
 
+    const totalCount = filteredAnalyticsRequests.length;
     return [
-      { label: 'Até R$ 10.000 (Operacional)', count: tier1, total: tier1Val, pct: approverPipelineRequests.length ? (tier1 / approverPipelineRequests.length) * 100 : 0 },
-      { label: 'R$ 10.000 a R$ 50.000 (Médio Porte)', count: tier2, total: tier2Val, pct: approverPipelineRequests.length ? (tier2 / approverPipelineRequests.length) * 100 : 0 },
-      { label: 'Acima de R$ 50.000 (Alta Alçada)', count: tier3, total: tier3Val, pct: approverPipelineRequests.length ? (tier3 / approverPipelineRequests.length) * 100 : 0 },
+      { label: 'Até R$ 10.000 (Operacional)', count: tier1, total: tier1Val, pct: totalCount ? (tier1 / totalCount) * 100 : 0 },
+      { label: 'R$ 10.000 a R$ 50.000 (Médio Porte)', count: tier2, total: tier2Val, pct: totalCount ? (tier2 / totalCount) * 100 : 0 },
+      { label: 'Acima de R$ 50.000 (Alta Alçada)', count: tier3, total: tier3Val, pct: totalCount ? (tier3 / totalCount) * 100 : 0 },
     ];
-  }, [approverPipelineRequests]);
+  }, [filteredAnalyticsRequests]);
 
   // Filter requests for list view
   const filteredList = useMemo(() => {
@@ -332,72 +442,379 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
         </div>
       </div>
 
-      {/* DASHBOARD ANALÍTICO COM GRÁFICOS */}
+      {/* DASHBOARD ANALÍTICO COM ACOMPANHAMENTO MENSAL / ANUAL E SELEÇÃO DE DATAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* GRÁFICO 1: Volume Financeiro por Setor Solicitante */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        {/* GRÁFICO 1: Volume Financeiro por Setor / Evolução Mensal */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs lg:col-span-2 space-y-5">
+          
+          {/* Header Superior: Título + Badge de Totais do Período */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-purple-700" />
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-purple-700" />
                 Volume de Pedidos em Aprovação por Setor
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Distribuição financeira das solicitações enviadas por Compras para aprovação da diretoria
+                Acompanhamento financeiro mensal, anual e por datas das solicitações enviadas à diretoria
               </p>
             </div>
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
-              {sectorSpendData.list.length} setores ativos
+            
+            {/* Resumo Rápido do Período */}
+            <div className="flex items-center gap-2 bg-purple-50 text-purple-900 px-3 py-1.5 rounded-xl border border-purple-100 shrink-0">
+              <DollarSign className="w-4 h-4 text-purple-700" />
+              <div className="text-xs">
+                <span className="font-semibold text-purple-800">Total no período: </span>
+                <strong className="font-extrabold text-purple-950">{formatCurrency(sectorSpendData.periodTotal)}</strong>
+                <span className="text-purple-600 ml-1">({sectorSpendData.periodCount} pedido{sectorSpendData.periodCount !== 1 ? 's' : ''})</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de Filtro de Período & Seleção de Datas */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            
+            {/* Botões de Seleção de Modalidade */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-2xs text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setAnalyticsPeriod('mensal')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                  analyticsPeriod === 'mensal'
+                    ? 'bg-purple-700 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Mensal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAnalyticsPeriod('anual')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                  analyticsPeriod === 'anual'
+                    ? 'bg-purple-700 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Anual</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAnalyticsPeriod('personalizado')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                  analyticsPeriod === 'personalizado'
+                    ? 'bg-purple-700 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <CalendarRange className="w-3.5 h-3.5" />
+                <span>Selecionar Datas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAnalyticsPeriod('todos')}
+                className={`px-2.5 py-1.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                  analyticsPeriod === 'todos'
+                    ? 'bg-purple-700 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <span>Todos</span>
+              </button>
+            </div>
+
+            {/* Controles Dinâmicos de Filtro de Acordo com a Modalidade */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              
+              {/* Se Mensal: Seletores de Mês e Ano */}
+              {analyticsPeriod === 'mensal' && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500 font-medium">Mês:</span>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-semibold text-slate-800 shadow-2xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    >
+                      {MONTHS_LIST.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500 font-medium">Ano:</span>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-semibold text-slate-800 shadow-2xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    >
+                      {availableYears.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Se Anual: Seletor de Ano */}
+              {analyticsPeriod === 'anual' && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium">Ano de Referência:</span>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 shadow-2xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  >
+                    {availableYears.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Se Personalizado: Date inputs Data Início e Data Fim */}
+              {analyticsPeriod === 'personalizado' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500 font-medium">De:</span>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-800 shadow-2xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500 font-medium">Até:</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-800 shadow-2xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {(startDate || endDate) && (
+                    <button
+                      type="button"
+                      onClick={() => { setStartDate(''); setEndDate(''); }}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-md transition-colors"
+                      title="Limpar datas"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Se Todos */}
+              {analyticsPeriod === 'todos' && (
+                <span className="text-slate-500 font-medium italic">
+                  Todo o histórico acumulado
+                </span>
+              )}
+
+            </div>
+          </div>
+
+          {/* Sub-abas de Visualização: [ Distribuição por Setor ] e [ Evolução Mensal do Ano ] */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setAnalyticsViewMode('setor')}
+                className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                  analyticsViewMode === 'setor'
+                    ? 'bg-white text-purple-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Distribuição por Setor ({sectorSpendData.list.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnalyticsViewMode('evolucao')}
+                className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                  analyticsViewMode === 'evolucao'
+                    ? 'bg-white text-purple-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Evolução Mensal ({selectedYear})
+              </button>
+            </div>
+
+            <span className="text-[11px] text-slate-400 font-medium">
+              {analyticsPeriod === 'mensal' && `${MONTHS_LIST.find(m => m.value === selectedMonth)?.label} / ${selectedYear}`}
+              {analyticsPeriod === 'anual' && `Ano ${selectedYear}`}
+              {analyticsPeriod === 'personalizado' && (startDate || endDate ? `${startDate ? formatDate(startDate) : 'Início'} até ${endDate ? formatDate(endDate) : 'Hoje'}` : 'Período personalizado')}
+              {analyticsPeriod === 'todos' && 'Histórico completo'}
             </span>
           </div>
 
-          <div className="space-y-3 pt-2">
-            {sectorSpendData.list.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-500">
-                Nenhum pedido em aprovação no momento.
-              </div>
-            ) : (
-              sectorSpendData.list.map((item) => {
-                const pct = (item.total / sectorSpendData.maxVal) * 100;
-                const color = getSectorColor(item.sector as any);
-                return (
-                  <div key={item.sector} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
-                        <span className="font-bold text-slate-800">{item.sector}</span>
-                        <span className="text-slate-400 font-normal">({item.count} pedido{item.count > 1 ? 's' : ''})</span>
+          {/* CONTEÚDO 1: Distribuição por Setor */}
+          {analyticsViewMode === 'setor' && (
+            <div className="space-y-3 pt-1">
+              {sectorSpendData.list.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                  <BarChart3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-600">Nenhum pedido encontrado para o período selecionado.</p>
+                  <p className="text-slate-400 mt-1">Alterne o mês, o ano ou selecione outro intervalo de datas.</p>
+                </div>
+              ) : (
+                sectorSpendData.list.map((item) => {
+                  const pct = (item.total / sectorSpendData.maxVal) * 100;
+                  const color = getSectorColor(item.sector as any);
+                  return (
+                    <div key={item.sector} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
+                          <span className="font-bold text-slate-800">{item.sector}</span>
+                          <span className="text-slate-400 font-normal">
+                            ({item.count} pedido{item.count > 1 ? 's' : ''})
+                          </span>
+                        </div>
+                        <span className="font-extrabold text-slate-900">
+                          {formatCurrency(item.total)}
+                        </span>
                       </div>
-                      <span className="font-extrabold text-slate-900">
-                        {formatCurrency(item.total)}
-                      </span>
+                      {/* Visual Progress Bar */}
+                      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-purple-600 to-indigo-600"
+                          style={{ width: `${Math.max(pct, 4)}%` }}
+                        />
+                      </div>
                     </div>
-                    {/* Visual Progress Bar */}
-                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
-                      <div 
-                        className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-purple-600 to-indigo-600"
-                        style={{ width: `${Math.max(pct, 4)}%` }}
-                      />
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* CONTEÚDO 2: Evolução Mensal (Gráfico Mês a Mês do Ano Selecionado) */}
+          {analyticsViewMode === 'evolucao' && (
+            <div className="space-y-4 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                {monthlyEvolutionData.months.map((m) => {
+                  const isCurrentSelectedMonth = analyticsPeriod === 'mensal' && m.monthNumber === selectedMonth;
+                  const hasActivity = m.count > 0;
+                  const pctHeight = (m.total / monthlyEvolutionData.maxMonthTotal) * 100;
+
+                  return (
+                    <div
+                      key={m.monthNumber}
+                      onClick={() => {
+                        setSelectedMonth(m.monthNumber);
+                        setAnalyticsPeriod('mensal');
+                        setAnalyticsViewMode('setor');
+                      }}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                        isCurrentSelectedMonth
+                          ? 'bg-purple-50/80 border-purple-400 ring-2 ring-purple-400/30 shadow-xs'
+                          : hasActivity
+                          ? 'bg-white border-slate-200 hover:border-purple-300 hover:shadow-2xs'
+                          : 'bg-slate-50/60 border-slate-100 text-slate-400'
+                      }`}
+                      title={`Ver pedidos de ${m.fullName}/${selectedYear}`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <span className={`font-bold ${isCurrentSelectedMonth ? 'text-purple-900' : 'text-slate-700'}`}>
+                          {m.monthName}
+                        </span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          hasActivity ? 'bg-purple-100 text-purple-800' : 'text-slate-400'
+                        }`}>
+                          {m.count} {m.count === 1 ? 'ped' : 'peds'}
+                        </span>
+                      </div>
+
+                      {/* Mini Bar */}
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden my-1.5">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            isCurrentSelectedMonth
+                              ? 'bg-purple-600'
+                              : hasActivity
+                              ? 'bg-indigo-500'
+                              : 'bg-transparent'
+                          }`}
+                          style={{ width: `${hasActivity ? Math.max(pctHeight, 8) : 0}%` }}
+                        />
+                      </div>
+
+                      <div className={`text-xs font-bold truncate mt-1 ${
+                        hasActivity ? 'text-slate-900' : 'text-slate-400 font-normal'
+                      }`}>
+                        {hasActivity ? formatCurrency(m.total) : 'R$ 0,00'}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 text-xs text-purple-900 flex items-center justify-between">
+                <span>
+                  <strong>Total Acumulado em {selectedYear}:</strong> {formatCurrency(monthlyEvolutionData.yearTotal)} ({monthlyEvolutionData.yearCount} pedido{monthlyEvolutionData.yearCount !== 1 ? 's' : ''})
+                </span>
+                <span className="text-[11px] text-purple-700">
+                  Clique em um mês para filtrar a distribuição por setor
+                </span>
+              </div>
+            </div>
+          )}
+
         </div>
 
-        {/* GRÁFICO 2: Faixas de Valor */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="pb-2 border-b border-slate-100">
+        {/* GRÁFICO 2: Faixas de Valor (Também sincronizado com o período) */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="pb-3 border-b border-slate-100">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <PieChart className="w-4 h-4 text-emerald-700" />
               Faixas de Valor dos Pedidos
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Distribuição por alçadas de investimento
+              Distribuição por alçadas de investimento no período
             </p>
           </div>
+
+          {/* Stat Box do Período */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Período ativo:</span>
+              <span className="font-bold text-slate-800">
+                {analyticsPeriod === 'mensal' && `${MONTHS_LIST.find(m => m.value === selectedMonth)?.label}/${selectedYear}`}
+                {analyticsPeriod === 'anual' && `Ano ${selectedYear}`}
+                {analyticsPeriod === 'personalizado' && 'Datas personalizadas'}
+                {analyticsPeriod === 'todos' && 'Histórico completo'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Média por pedido:</span>
+              <span className="font-bold text-emerald-700">
+                {formatCurrency(
+                  sectorSpendData.periodCount > 0 
+                    ? sectorSpendData.periodTotal / sectorSpendData.periodCount 
+                    : 0
+                )}
+              </span>
+            </div>
+          </div>
+
           <div className="space-y-2 text-xs">
             {valueTierData.map((tier, idx) => (
               <div key={idx} className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-between">
