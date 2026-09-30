@@ -8,7 +8,8 @@ import {
   getManagerApprovalInfo, 
   getSectorColor,
   getRequestDelayInfo,
-  getRequestPurchaseReleaseInfo
+  getRequestPurchaseReleaseInfo,
+  getLatestRequestStatusInfo
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
 import { 
@@ -638,6 +639,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 const statusInfo = getPurchaseStatusInfo(req.purchaseStatus);
                 const approvalInfo = getManagerApprovalInfo(req.managerApprovalStatus);
                 const releaseInfo = getRequestPurchaseReleaseInfo(req);
+                const latestStatus = getLatestRequestStatusInfo(req);
                 const sectorColor = getSectorColor(req.sector);
                 const hasPrice = req.totalPrice !== undefined && req.totalPrice > 0;
                 const delayInfo = getRequestDelayInfo(req);
@@ -666,57 +668,9 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                             Setor: {req.sector}
                           </span>
 
-                          {/* Badge de Liberação para Compra após Aprovação */}
-                          <span 
-                            id={`badge-liberacao-${req.id}`}
-                            className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${releaseInfo.badgeClass}`}
-                            title={releaseInfo.description}
-                          >
-                            {releaseInfo.isReleased ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                            ) : (
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                            )}
-                            <span>{releaseInfo.badgeLabel}</span>
+                          <span className={`text-xs px-2.5 py-0.5 rounded-full border ${latestStatus.badgeClass}`}>
+                            {latestStatus.label}
                           </span>
-
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${approvalInfo.badgeClass}`}>
-                            Gestor: {approvalInfo.label}
-                          </span>
-
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.bgClass} ${statusInfo.colorClass} ${statusInfo.borderClass}`}>
-                            {statusInfo.label}
-                          </span>
-
-                          {/* Badge de Alçada de Aprovadores */}
-                          {req.approvals && (
-                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
-                              req.approvals.currentApprover === 'concluido'
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : req.approvals.currentApprover === 'reprovado'
-                                ? 'bg-rose-100 text-rose-800 border-rose-300'
-                                : 'bg-purple-100 text-purple-900 border-purple-300'
-                            }`}>
-                              <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
-                              {req.approvals.currentApprover === 'concluido'
-                                ? 'Aprovado Alçada (3/3)'
-                                : req.approvals.currentApprover === 'reprovado'
-                                ? 'Reprovado na Alçada'
-                                : `Alçada: Na vez de ${req.approvals.currentApprover}`}
-                            </span>
-                          )}
-
-                          {/* Badge de Solicitação em atraso (+48h) */}
-                          {delayInfo.isDelayed && (
-                            <span 
-                              id={`badge-atraso-${req.id}`}
-                              className="text-xs px-2.5 py-0.5 rounded-full border border-rose-300 bg-rose-100 text-rose-800 flex items-center gap-1 font-bold animate-pulse"
-                              title={`Recebida há ${delayInfo.hoursElapsed}h pelo setor de Compras (prazo limite de 48h excedido)`}
-                            >
-                              <Clock className="w-3 h-3 text-rose-600" />
-                              Solicitação em atraso ({delayInfo.hoursElapsed}h)
-                            </span>
-                          )}
 
                           <span className="text-[11px] text-slate-400">
                             • Solicitante: <strong>{req.requesterName}</strong> ({formatDate(req.createdAt)})

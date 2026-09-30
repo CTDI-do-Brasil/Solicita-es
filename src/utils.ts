@@ -141,6 +141,106 @@ export function getPurchaseStatusInfo(status: PurchaseOrderStatus): {
   }
 }
 
+export function getLatestRequestStatusInfo(req: PurchaseRequest): {
+  label: string;
+  badgeClass: string;
+} {
+  // 1. If cancelled
+  if (req.purchaseStatus === 'cancelado') {
+    return {
+      label: 'Cancelado',
+      badgeClass: 'bg-rose-50 text-rose-800 border-rose-200 font-semibold',
+    };
+  }
+
+  // 2. Manager approval stage
+  if (req.managerApprovalStatus === 'pendente') {
+    return {
+      label: 'Aguardando Aprovação do Gerente',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-200 font-semibold',
+    };
+  }
+  if (req.managerApprovalStatus === 'reprovado') {
+    return {
+      label: 'Reprovado pelo Gerente',
+      badgeClass: 'bg-rose-50 text-rose-800 border-rose-200 font-semibold',
+    };
+  }
+
+  // 3. Reproved in approvers chain
+  if (req.purchaseStatus === 'reprovado_aprovadores' || req.approvals?.currentApprover === 'reprovado') {
+    return {
+      label: 'Reprovado na Alçada',
+      badgeClass: 'bg-rose-50 text-rose-800 border-rose-200 font-semibold',
+    };
+  }
+
+  // 4. In executive approval pipeline
+  if (req.purchaseStatus === 'em_aprovacao') {
+    const cur = req.approvals?.currentApprover;
+    if (cur === 'Fernando' || cur === 'Eduardo' || cur === 'Luiz') {
+      return {
+        label: `Aguardando Alçada (${cur})`,
+        badgeClass: 'bg-purple-100 text-purple-900 border-purple-300 font-semibold',
+      };
+    }
+    if (cur === 'concluido') {
+      return {
+        label: 'Aprovado na Alçada (Liberado)',
+        badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-semibold',
+      };
+    }
+    return {
+      label: 'Em Aprovação da Diretoria',
+      badgeClass: 'bg-purple-100 text-purple-900 border-purple-300 font-semibold',
+    };
+  }
+
+  // 5. Subsequent purchasing fulfillment stages
+  if (req.purchaseStatus === 'entregue') {
+    return {
+      label: 'Entregue no Setor',
+      badgeClass: 'bg-green-100 text-green-900 border-green-300 font-semibold',
+    };
+  }
+  if (req.purchaseStatus === 'em_transito') {
+    return {
+      label: 'Em Trânsito',
+      badgeClass: 'bg-teal-50 text-teal-800 border-teal-200 font-semibold',
+    };
+  }
+  if (req.purchaseStatus === 'compra_realizada') {
+    return {
+      label: 'Compra Realizada',
+      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold',
+    };
+  }
+  if (req.purchaseStatus === 'pedido_emitido') {
+    return {
+      label: 'Pedido de Compra Emitido',
+      badgeClass: 'bg-cyan-50 text-cyan-800 border-cyan-200 font-semibold',
+    };
+  }
+  if (req.purchaseStatus === 'em_cotacao') {
+    return {
+      label: 'Em Cotação',
+      badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-200 font-semibold',
+    };
+  }
+  if (req.purchaseStatus === 'recebido_em_compras') {
+    return {
+      label: 'Recebido em Compras',
+      badgeClass: 'bg-blue-50 text-blue-800 border-blue-200 font-semibold',
+    };
+  }
+
+  const fallback = getPurchaseStatusInfo(req.purchaseStatus);
+  return {
+    label: fallback.label,
+    badgeClass: `${fallback.bgClass} ${fallback.colorClass} ${fallback.borderClass} font-semibold`,
+  };
+}
+
 export function getManagerApprovalInfo(status: ManagerApprovalStatus): {
   label: string;
   badgeClass: string;
