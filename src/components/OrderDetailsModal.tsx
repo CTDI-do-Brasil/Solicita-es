@@ -70,10 +70,11 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
 
   const handleReject = () => {
     if (!managerNotes.trim()) {
-      setActionError('Por favor, informe a justificativa da reprovação.');
+      setActionError('O motivo da reprovação é obrigatório. Por favor, informe a justificativa.');
+      setShowRejectForm(true);
       return;
     }
-    const success = storage.rejectRequestByManager(request.id, currentUser, managerNotes);
+    const success = storage.rejectRequestByManager(request.id, currentUser, managerNotes.trim());
     if (success) {
       onStatusChanged();
     } else {
@@ -378,6 +379,21 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                 {approvalInfo.label}
               </span>
             </div>
+            {request.managerApprovalStatus === 'reprovado' && request.managerNotes && (
+              <div className="mt-3 pt-3 border-t border-rose-200/80 bg-rose-50/70 p-3 rounded-lg border border-rose-200">
+                <span className="text-xs font-bold text-rose-900 block uppercase tracking-wider">
+                  Motivo da Reprovação:
+                </span>
+                <p className="text-xs text-rose-950 mt-1 whitespace-pre-line leading-relaxed">
+                  {request.managerNotes}
+                </p>
+                {request.managerApprovedBy && (
+                  <p className="text-[11px] text-rose-700 mt-1.5 font-medium">
+                    Reprovado por: <strong>{request.managerApprovedBy}</strong> {request.managerApprovedAt && `em ${formatDateTime(request.managerApprovedAt)}`}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Purchasing Notes and Dates (if applicable) */}
@@ -465,42 +481,89 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               </div>
 
               {actionError && (
-                <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded text-xs">
-                  {actionError}
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{actionError}</span>
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-medium text-indigo-950 mb-1">
-                  Parecer ou Observação do Gestor (Opcional para aprovação, obrigatório para recusa)
-                </label>
-                <input
-                  type="text"
-                  value={managerNotes}
-                  onChange={(e) => setManagerNotes(e.target.value)}
-                  placeholder="ex: Aprovado conforme cotação ou Verba autorizada..."
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
-                />
-              </div>
+              {showRejectForm ? (
+                <div className="p-3.5 bg-rose-50/90 border-2 border-rose-300 rounded-xl space-y-3 animate-in fade-in">
+                  <div className="flex items-center gap-2 text-rose-950 font-bold text-xs uppercase tracking-wider">
+                    <XCircle className="w-4 h-4 text-rose-600" />
+                    <span>Justificativa da Reprovação (Obrigatória)</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    required
+                    value={managerNotes}
+                    onChange={(e) => {
+                      setManagerNotes(e.target.value);
+                      if (actionError) setActionError('');
+                    }}
+                    placeholder="Informe obrigatoriamente o motivo da reprovação desta solicitação..."
+                    className="w-full px-3 py-2 text-xs bg-white border border-rose-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-rose-500 outline-hidden resize-none"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRejectForm(false);
+                        setActionError('');
+                      }}
+                      className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200/60 rounded-lg font-medium cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      id="confirm-reject-button"
+                      onClick={handleReject}
+                      className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                    >
+                      Confirmar Reprovação
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-indigo-950 mb-1">
+                      Parecer ou Observação do Gestor (Opcional para aprovação)
+                    </label>
+                    <input
+                      type="text"
+                      value={managerNotes}
+                      onChange={(e) => setManagerNotes(e.target.value)}
+                      placeholder="ex: Aprovado conforme cotação ou Verba autorizada..."
+                      className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    />
+                  </div>
 
-              <div className="flex items-center gap-3 pt-1">
-                <button
-                  id="approve-request-button"
-                  onClick={handleApprove}
-                  className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Aprovar e Enviar para Compras
-                </button>
-                <button
-                  id="reject-request-button"
-                  onClick={handleReject}
-                  className="py-2 px-4 bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Recusar Solicitação
-                </button>
-              </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      id="approve-request-button"
+                      onClick={handleApprove}
+                      className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Aprovar e Enviar para Compras
+                    </button>
+                    <button
+                      id="reject-request-button"
+                      onClick={() => {
+                        setShowRejectForm(true);
+                        setActionError('');
+                      }}
+                      className="py-2 px-4 bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reprovar Solicitação
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

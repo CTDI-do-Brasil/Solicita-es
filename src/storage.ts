@@ -266,6 +266,10 @@ export const storage = {
   },
 
   rejectRequestByManager(requestId: string, manager: User, notes: string): boolean {
+    if (!notes || !notes.trim()) {
+      return false; // Motivo da reprovação é estritamente obrigatório
+    }
+
     const all = this.getAllRequests();
     const index = all.findIndex(r => r.id === requestId);
     if (index === -1) return false;
@@ -279,7 +283,7 @@ export const storage = {
       managerApprovalStatus: 'reprovado',
       managerApprovedAt: new Date().toISOString(),
       managerApprovedBy: manager.role === 'master' ? `${manager.name} (Acesso Master)` : `${manager.name} (Gestor de ${manager.sector})`,
-      managerNotes: notes || 'Solicitação recusada pelo gestor.',
+      managerNotes: notes.trim(),
       purchaseStatus: 'cancelado',
       updatedAt: new Date().toISOString(),
     };

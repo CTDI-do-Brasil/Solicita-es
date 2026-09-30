@@ -88,6 +88,13 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
       }
     }
 
+    if (status === 'cancelado') {
+      if (!purchasingNotes.trim()) {
+        setError('Para cancelar a solicitação, informe obrigatoriamente o motivo do cancelamento nas observações.');
+        return;
+      }
+    }
+
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status,

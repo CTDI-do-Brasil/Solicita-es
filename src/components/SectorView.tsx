@@ -54,12 +54,13 @@ export const SectorView: React.FC<SectorViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [dashboardScope, setDashboardScope] = useState<'setor' | 'consolidado'>('setor');
+  const [localVersion, setLocalVersion] = useState(0);
 
   // STRICT ISOLATION: Get only requests belonging to this user's sector
   const sectorRequests = useMemo(() => {
     return storage.getRequestsForUser(currentUser);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, requestsVersion]);
+  }, [currentUser, requestsVersion, localVersion]);
 
   const sectorUsers = useMemo(() => {
     return storage.getUsers().filter(u => u.sector === currentUser.sector);
@@ -616,8 +617,9 @@ export const SectorView: React.FC<SectorViewProps> = ({
                             <button
                               onClick={() => {
                                 storage.approveRequestByManager(req.id, currentUser);
+                                setLocalVersion(v => v + 1);
                               }}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
                               title="Aprovar em 1 clique e enviar para Compras"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -625,13 +627,22 @@ export const SectorView: React.FC<SectorViewProps> = ({
                             </button>
                             <button
                               onClick={() => {
-                                const reason = prompt('Motivo da recusa (opcional):') || 'Recusado pelo gestor da área.';
-                                storage.rejectRequestByManager(req.id, currentUser, reason);
+                                const reason = prompt('Informe obrigatoriamente o motivo da reprovação:');
+                                if (reason === null) {
+                                  // Cancelado pelo gestor
+                                  return;
+                                }
+                                if (!reason.trim()) {
+                                  alert('O motivo da reprovação é obrigatório. A solicitação não foi reprovada.');
+                                  return;
+                                }
+                                storage.rejectRequestByManager(req.id, currentUser, reason.trim());
+                                setLocalVersion(v => v + 1);
                               }}
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 rounded-lg text-xs font-medium transition-colors"
-                              title="Recusar solicitação"
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                              title="Reprovar solicitação (motivo obrigatório)"
                             >
-                              Recusar
+                              Reprovar
                             </button>
                           </div>
                         ) : (
