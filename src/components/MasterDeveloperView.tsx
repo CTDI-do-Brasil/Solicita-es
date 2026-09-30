@@ -668,11 +668,6 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                           <span>Qtd: <strong className="text-slate-800">{req.quantity} {req.unit}</strong></span>
                           <span>Prioridade: <strong className="text-slate-800 capitalize">{req.priority}</strong></span>
                           {req.supplier && <span>Fornecedor: <strong className="text-slate-800">{req.supplier}</strong></span>}
-                          {req.purchaseOrderNumber && (
-                            <span className="font-mono text-cyan-800 bg-cyan-50 px-1.5 py-0.2 rounded border border-cyan-200 font-semibold">
-                              OC: {req.purchaseOrderNumber}
-                            </span>
-                          )}
                         </div>
                       </div>
 
