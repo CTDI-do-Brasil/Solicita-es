@@ -56,6 +56,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const isManagerOrMaster = currentUser.role === 'gestor' || currentUser.role === 'master';
   const [selectedSector, setSelectedSector] = useState<SectorType | 'Todos'>('Todos');
   const [mobileSectorMenuOpen, setMobileSectorMenuOpen] = useState(false);
+  const [mobileNavMenuOpen, setMobileNavMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'geral' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -87,6 +88,12 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const completedPurchasesCount = useMemo(() => {
     return allRequests.filter(
       r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue'
+    ).length;
+  }, [allRequests]);
+
+  const approversCount = useMemo(() => {
+    return allRequests.filter(
+      r => r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined
     ).length;
   }, [allRequests]);
 
@@ -316,8 +323,222 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
       {/* 2-Column Workspace with Lateral Sector Panel */}
       <div className="flex flex-col lg:flex-row items-start gap-6">
         
-        {/* LATERAL PANEL: Filtrar por Área */}
-        <aside className="w-full lg:w-72 shrink-0 lg:sticky lg:top-20 space-y-4">
+        {/* LATERAL PANEL: Navegação & Setores */}
+        <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-20 space-y-4">
+          
+          {/* CARD 1: Menu de Navegação */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-slate-900 text-amber-400 flex items-center justify-center shadow-xs">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Menu de Compras
+                  </h2>
+                  <p className="text-[10px] text-slate-500">
+                    Navegação e visualizações
+                  </p>
+                </div>
+              </div>
+
+              {/* Mobile toggle button */}
+              <button
+                type="button"
+                onClick={() => setMobileNavMenuOpen(!mobileNavMenuOpen)}
+                className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"
+                aria-label="Alternar menu de navegação"
+              >
+                {mobileNavMenuOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* List of Navigation Tabs */}
+            <nav className={`mt-3 space-y-1.5 ${mobileNavMenuOpen ? 'block' : 'hidden lg:block'}`} aria-label="Menu de Compras">
+              
+              {/* Todas as Solicitações */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('geral');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'geral'
+                    ? 'bg-slate-900 text-white font-bold border-slate-900 shadow-xs'
+                    : 'text-slate-700 hover:bg-slate-100 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'geral' ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <span className="truncate">Todas as Solicitações</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                  activeTab === 'geral' ? 'bg-slate-800 text-amber-300' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {allRequests.length}
+                </span>
+              </button>
+
+              {/* Liberadas para Compra */}
+              <button
+                type="button"
+                id="purchasing-tab-liberadas"
+                onClick={() => {
+                  setActiveTab('liberadas');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'liberadas'
+                    ? 'bg-emerald-700 text-white font-bold border-emerald-700 shadow-xs'
+                    : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CheckCircle2 className={`w-4 h-4 shrink-0 ${activeTab === 'liberadas' ? 'text-white' : 'text-emerald-600'}`} />
+                  <span className="truncate">Liberadas para Compra</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                  activeTab === 'liberadas' ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {releasedRequests.length}
+                </span>
+              </button>
+
+              {/* Em Aprovação (Alçada) */}
+              <button
+                type="button"
+                id="purchasing-tab-aprovadores"
+                onClick={() => {
+                  setActiveTab('aprovadores');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'aprovadores'
+                    ? 'bg-purple-700 text-white font-bold border-purple-700 shadow-xs'
+                    : 'text-slate-700 hover:bg-purple-50 hover:text-purple-900 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTab === 'aprovadores' ? 'text-white' : 'text-purple-600'}`} />
+                  <span className="truncate">Em Aprovação (Alçada)</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                  activeTab === 'aprovadores' ? 'bg-purple-800 text-purple-100' : 'bg-purple-100 text-purple-900'
+                }`}>
+                  {approversCount}
+                </span>
+              </button>
+
+              {/* Solicitações em Atraso (+48h) */}
+              <button
+                type="button"
+                id="purchasing-tab-atrasadas"
+                onClick={() => {
+                  setActiveTab('atrasadas');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'atrasadas'
+                    ? 'bg-rose-700 text-white font-bold border-rose-700 shadow-xs'
+                    : 'text-slate-700 hover:bg-rose-50 hover:text-rose-800 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <AlertTriangle className={`w-4 h-4 shrink-0 ${activeTab === 'atrasadas' ? 'text-white' : 'text-rose-600'}`} />
+                  <span className="truncate">Solicitações em Atraso (+48h)</span>
+                </div>
+                {delayedRequests.length > 0 ? (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                    activeTab === 'atrasadas' ? 'bg-rose-900 text-rose-100' : 'bg-rose-600 text-white animate-pulse'
+                  }`}>
+                    {delayedRequests.length}
+                  </span>
+                ) : (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono shrink-0 ${
+                    activeTab === 'atrasadas' ? 'bg-rose-800 text-rose-200' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    0
+                  </span>
+                )}
+              </button>
+
+              {/* Compra Realizada */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('faturados');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'faturados'
+                    ? 'bg-emerald-800 text-white font-bold border-emerald-800 shadow-xs'
+                    : 'text-slate-700 hover:bg-slate-100 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <DollarSign className={`w-4 h-4 shrink-0 ${activeTab === 'faturados' ? 'text-emerald-300' : 'text-emerald-600'}`} />
+                  <span className="truncate">Compra Realizada</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                  activeTab === 'faturados' ? 'bg-emerald-900 text-emerald-200' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {completedPurchasesCount}
+                </span>
+              </button>
+
+              {/* Dashboard Consolidado */}
+              {isManagerOrMaster && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('dashboard');
+                    setMobileNavMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                    activeTab === 'dashboard'
+                      ? 'bg-indigo-700 text-white font-bold border-indigo-700 shadow-xs'
+                      : 'text-slate-700 hover:bg-indigo-50 hover:text-indigo-800 border-transparent font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <BarChart3 className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-white' : 'text-indigo-600'}`} />
+                    <span className="truncate">Dashboard Consolidado</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Controle de Versões */}
+              {currentUser.role === 'master' && (
+                <button
+                  type="button"
+                  id="purchasing-tab-versoes"
+                  onClick={() => {
+                    setActiveTab('versoes');
+                    setMobileNavMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                    activeTab === 'versoes'
+                      ? 'bg-slate-900 text-white font-bold border-slate-900 shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 border-transparent font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GitBranch className={`w-4 h-4 shrink-0 ${activeTab === 'versoes' ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <span className="truncate">Controle de Versões</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-900 font-bold rounded shrink-0">
+                    Revisores
+                  </span>
+                </button>
+              )}
+
+            </nav>
+          </div>
+
+          {/* CARD 2: Filtrar por Área */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
             
             {/* Panel Header */}
@@ -460,123 +681,54 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
 
         {/* MAIN WORKSPACE COLUMN */}
         <main className="flex-1 min-w-0 w-full space-y-5">
-          {/* Primary Tabs */}
-          <div className="flex items-center justify-between border-b border-slate-200">
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('geral')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'geral'
-                ? 'border-cyan-700 text-cyan-800 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <span>Todas as Solicitações</span>
-            <span className="text-xs px-2 py-0.2 rounded-full bg-slate-100 text-slate-700 font-mono">
-              {allRequests.length}
-            </span>
-          </button>
+          {/* Active View Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
+            <div>
+              <div className="flex items-center gap-2.5">
+                {activeTab === 'geral' && <Layers className="w-5 h-5 text-slate-700" />}
+                {activeTab === 'liberadas' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+                {activeTab === 'aprovadores' && <ShieldCheck className="w-5 h-5 text-purple-600" />}
+                {activeTab === 'atrasadas' && <AlertTriangle className="w-5 h-5 text-rose-600" />}
+                {activeTab === 'faturados' && <DollarSign className="w-5 h-5 text-emerald-600" />}
+                {activeTab === 'dashboard' && <BarChart3 className="w-5 h-5 text-indigo-600" />}
+                {activeTab === 'versoes' && <GitBranch className="w-5 h-5 text-amber-500" />}
+                <h1 className="text-base font-bold text-slate-900">
+                  {activeTab === 'geral' && 'Todas as Solicitações'}
+                  {activeTab === 'liberadas' && 'Liberadas para Compra'}
+                  {activeTab === 'aprovadores' && 'Em Aprovação (Alçada)'}
+                  {activeTab === 'atrasadas' && 'Solicitações em Atraso (+48h)'}
+                  {activeTab === 'faturados' && 'Compras Realizadas'}
+                  {activeTab === 'dashboard' && 'Dashboard Consolidado'}
+                  {activeTab === 'versoes' && 'Controle de Versões & Revisores'}
+                </h1>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {activeTab === 'geral' && 'Listagem completa de requisições de compra de todos os setores'}
+                {activeTab === 'liberadas' && 'Solicitações autorizadas prontas para cotação, faturamento ou emissão'}
+                {activeTab === 'aprovadores' && 'Solicitações aguardando deliberação de gestores e diretoria'}
+                {activeTab === 'atrasadas' && 'Solicitações recebidas há mais de 48 horas aguardando atendimento'}
+                {activeTab === 'faturados' && 'Histórico de pedidos comprados, faturados ou entregues'}
+                {activeTab === 'dashboard' && 'Visão financeira e acompanhamento mensal por setor'}
+                {activeTab === 'versoes' && 'Histórico e homologação de versões da aplicação'}
+              </p>
+            </div>
 
-          {/* TAB: Liberadas para Compra */}
-          <button
-            id="purchasing-tab-liberadas"
-            onClick={() => setActiveTab('liberadas')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'liberadas'
-                ? 'border-emerald-600 text-emerald-800 font-bold'
-                : 'border-transparent text-slate-500 hover:text-emerald-700'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Liberadas para Compra</span>
-            <span className="text-xs px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-900 font-bold">
-              {releasedRequests.length}
-            </span>
-          </button>
-
-          <button
-            id="purchasing-tab-aprovadores"
-            onClick={() => setActiveTab('aprovadores')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'aprovadores'
-                ? 'border-purple-600 text-purple-900 font-bold'
-                : 'border-transparent text-slate-500 hover:text-purple-700'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
-            <span>Em Aprovação (Alçada)</span>
-            <span className="text-xs px-2 py-0.2 rounded-full bg-purple-100 text-purple-900 font-bold">
-              {allRequests.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals).length}
-            </span>
-          </button>
-
-          <button
-            id="purchasing-tab-atrasadas"
-            onClick={() => setActiveTab('atrasadas')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
-              activeTab === 'atrasadas'
-                ? 'border-rose-600 text-rose-800 font-bold'
-                : 'border-transparent text-slate-500 hover:text-rose-700'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
-            <span>Solicitações em Atraso (+48h)</span>
-            {delayedRequests.length > 0 ? (
-              <span className="text-xs px-2 py-0.2 rounded-full bg-rose-600 text-white font-bold animate-pulse">
-                {delayedRequests.length}
-              </span>
-            ) : (
-              <span className="text-xs px-2 py-0.2 rounded-full bg-slate-100 text-slate-600 font-mono">
-                0
-              </span>
+            {/* Sector indicator if filtered */}
+            {selectedSector !== 'Todos' && (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-cyan-50 border border-cyan-200 text-cyan-900 rounded-lg text-xs font-semibold self-start sm:self-auto">
+                <Building2 className="w-3.5 h-3.5 text-cyan-700" />
+                <span>Área: {selectedSector}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSector('Todos')}
+                  className="ml-1 text-cyan-700 hover:text-cyan-950 transition-colors"
+                  title="Limpar filtro de área"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('faturados')}
-            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
-              activeTab === 'faturados'
-                ? 'border-emerald-600 text-emerald-800 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Compra Realizada</span>
-          </button>
-
-          {isManagerOrMaster && (
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'dashboard'
-                  ? 'border-indigo-600 text-indigo-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Dashboard Consolidado</span>
-            </button>
-          )}
-
-          {currentUser.role === 'master' && (
-            <button
-              id="purchasing-tab-versoes"
-              onClick={() => setActiveTab('versoes')}
-              className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'versoes'
-                  ? 'border-indigo-600 text-indigo-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <GitBranch className="w-4 h-4" />
-              <span>Controle de Versões</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-900 font-bold rounded">
-                Revisores
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
+          </div>
 
       {/* Tab Content: Requests List (Tabs 1, 2, 3, 4) */}
       {(activeTab === 'geral' || activeTab === 'liberadas' || activeTab === 'aprovadores' || activeTab === 'atrasadas' || activeTab === 'faturados') && (
