@@ -248,7 +248,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
                   <FileCheck2 className="w-4 h-4 text-purple-700" />
-                  Alçada de Aprovadores: Fernando ➔ Eduardo ➔ Luiz
+                  Aprovadores
                 </span>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
                   {request.approvals.currentApprover === 'concluido'

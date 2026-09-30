@@ -177,7 +177,7 @@ export default function App() {
                 <div className="mb-4 p-3 bg-purple-950 text-white rounded-xl shadow-xs flex items-center justify-between border border-purple-800">
                   <div className="flex items-center gap-2 text-xs">
                     <ShieldAlert className="w-4 h-4 text-purple-300" />
-                    <span>Modo de Visualização Master: <strong>Alçada Executiva de Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</strong></span>
+                    <span>Modo de Visualização Master: <strong>Aprovadores</strong></span>
                   </div>
                   <button
                     onClick={() => setMasterViewMode('console')}

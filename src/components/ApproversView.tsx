@@ -943,7 +943,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                   <div className="pt-3 border-t border-slate-100">
                     <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-purple-700" />
-                      Fluxo de Alçada Sequencial (Fernando ➔ Eduardo ➔ Luiz)
+                      Aprovadores
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

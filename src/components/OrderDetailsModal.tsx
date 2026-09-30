@@ -448,7 +448,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-purple-700" />
-                  Alçada Executiva de Aprovadores: Fernando ➔ Eduardo ➔ Luiz
+                  Aprovadores
                 </span>
                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                   request.approvals.currentApprover === 'concluido'
