@@ -54,33 +54,33 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between min-h-[72px] sm:min-h-20 py-2.5 gap-4">
           
           {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5 shrink-0">
             <img
               src="/ctdi-logo.png"
               alt="Logo CTDI"
-              className="h-8 sm:h-9 w-auto object-contain"
+              className="h-9 sm:h-11 w-auto object-contain shrink-0"
             />
-            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-            <div>
+            <div className="h-9 w-px bg-slate-200 hidden sm:block" />
+            <div className="flex flex-col justify-center">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg">
+                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg whitespace-nowrap">
                   Centro de Solicitações de Compra
                 </span>
                 {isMaster ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
                     MASTER / DEV
                   </span>
                 ) : (
-                  <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                  <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 shrink-0">
                     Corporativo
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">
+              <p className="text-xs text-slate-500 whitespace-nowrap hidden sm:block mt-0.5">
                 Gestão de Compras & Solicitações por Setor
               </p>
             </div>
@@ -152,10 +152,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Non-Master Navigation: Setor / Compras / Aprovadores */}
           {!isMaster && onSelectAppArea && (
-            <div className="hidden sm:flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs">
+            <div className="hidden sm:flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs shrink-0">
               <button
                 onClick={() => onSelectAppArea(currentUser.role === 'compras' ? 'compras' : 'setor')}
-                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                   activeAppArea !== 'aprovadores'
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -166,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => onSelectAppArea('aprovadores')}
-                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                   activeAppArea === 'aprovadores'
                     ? 'bg-purple-800 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -179,7 +179,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* Current User & Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             
             {/* Quick User Switcher Dropdown */}
             <div className="relative">
