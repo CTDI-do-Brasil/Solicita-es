@@ -15,7 +15,6 @@ import {
   Building2, 
   Layers, 
   BarChart3, 
-  PieChart, 
   FileText, 
   AlertCircle,
   Eye,
@@ -243,37 +242,6 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
     return { months, maxMonthTotal, yearTotal, yearCount };
   }, [approverPipelineRequests, selectedYear]);
 
-  // Chart Data 3: Distribution by Value Ranges in the selected period
-  const valueTierData = useMemo(() => {
-    let tier1 = 0; // < 10k
-    let tier2 = 0; // 10k - 50k
-    let tier3 = 0; // > 50k
-    let tier1Val = 0;
-    let tier2Val = 0;
-    let tier3Val = 0;
-
-    filteredAnalyticsRequests.forEach(r => {
-      const val = r.totalPrice || 0;
-      if (val < 10000) {
-        tier1++;
-        tier1Val += val;
-      } else if (val <= 50000) {
-        tier2++;
-        tier2Val += val;
-      } else {
-        tier3++;
-        tier3Val += val;
-      }
-    });
-
-    const totalCount = filteredAnalyticsRequests.length;
-    return [
-      { label: 'Até R$ 10.000 (Operacional)', count: tier1, total: tier1Val, pct: totalCount ? (tier1 / totalCount) * 100 : 0 },
-      { label: 'R$ 10.000 a R$ 50.000 (Médio Porte)', count: tier2, total: tier2Val, pct: totalCount ? (tier2 / totalCount) * 100 : 0 },
-      { label: 'Acima de R$ 50.000 (Alta Alçada)', count: tier3, total: tier3Val, pct: totalCount ? (tier3 / totalCount) * 100 : 0 },
-    ];
-  }, [filteredAnalyticsRequests]);
-
   // Filter requests for list view
   const filteredList = useMemo(() => {
     let list: PurchaseRequest[] = [];
@@ -443,10 +411,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       </div>
 
       {/* DASHBOARD ANALÍTICO COM ACOMPANHAMENTO MENSAL / ANUAL E SELEÇÃO DE DATAS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* GRÁFICO 1: Volume Financeiro por Setor / Evolução Mensal */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs lg:col-span-2 space-y-5">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
           
           {/* Header Superior: Título + Badge de Totais do Período */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
@@ -779,58 +744,6 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
           )}
 
         </div>
-
-        {/* GRÁFICO 2: Faixas de Valor (Também sincronizado com o período) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-          <div className="pb-3 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-emerald-700" />
-              Faixas de Valor dos Pedidos
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Distribuição por alçadas de investimento no período
-            </p>
-          </div>
-
-          {/* Stat Box do Período */}
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">Período ativo:</span>
-              <span className="font-bold text-slate-800">
-                {analyticsPeriod === 'mensal' && `${MONTHS_LIST.find(m => m.value === selectedMonth)?.label}/${selectedYear}`}
-                {analyticsPeriod === 'anual' && `Ano ${selectedYear}`}
-                {analyticsPeriod === 'personalizado' && 'Datas personalizadas'}
-                {analyticsPeriod === 'todos' && 'Histórico completo'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">Média por pedido:</span>
-              <span className="font-bold text-emerald-700">
-                {formatCurrency(
-                  sectorSpendData.periodCount > 0 
-                    ? sectorSpendData.periodTotal / sectorSpendData.periodCount 
-                    : 0
-                )}
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            {valueTierData.map((tier, idx) => (
-              <div key={idx} className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-slate-800">{tier.label}</div>
-                  <div className="text-[11px] text-slate-500">{tier.count} pedido(s) • {formatCurrency(tier.total)}</div>
-                </div>
-                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded">
-                  {Math.round(tier.pct)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
 
       {/* FILTER TABS & SEARCH */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4">
