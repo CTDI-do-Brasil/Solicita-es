@@ -31,9 +31,11 @@ import {
   ShieldCheck,
   Plus,
   GitBranch,
-  Radio
+  Radio,
+  BarChart3
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
+import { ApproversView } from './ApproversView';
 
 interface MasterDeveloperViewProps {
   currentUser: User;
@@ -52,7 +54,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
   onOpenNewRequest,
   requestsVersion,
 }) => {
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'solicitacoes' | 'setores' | 'versoes' | 'devtools'>('versoes');
+  const [activeTab, setActiveTab] = useState<'aprovadores' | 'usuarios' | 'solicitacoes' | 'setores' | 'versoes' | 'devtools'>('aprovadores');
   
   // User Management State
   const [userSearch, setUserSearch] = useState('');
@@ -236,6 +238,14 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => setActiveTab('aprovadores')}
+              className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-xs"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Painel de Aprovadores (Gráficos)</span>
+            </button>
+
+            <button
               onClick={handleOpenCreateUser}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-xs"
             >
@@ -310,6 +320,22 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto">
         <button
+          id="tab-aprovadores-dashboard"
+          onClick={() => setActiveTab('aprovadores')}
+          className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+            activeTab === 'aprovadores'
+              ? 'border-purple-600 text-purple-700 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-purple-600" />
+          <span>Alçada de Aprovadores (Gráficos & Esteira)</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">
+            Dashboard
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('usuarios')}
           className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
             activeTab === 'usuarios'
@@ -379,6 +405,38 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
           <span>Ferramentas Desenvolvedor</span>
         </button>
       </div>
+
+      {/* TAB 0: APPROVERS DASHBOARD & CHARTS */}
+      {activeTab === 'aprovadores' && (
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-purple-900 text-white p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs border border-purple-800/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-xs">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-white">
+                  Dashboard Executivo & Esteira de Aprovações
+                </h2>
+                <p className="text-xs text-purple-200">
+                  Ordem de Aprovação: <strong>1º Fernando Silva ➔ 2º Eduardo Costa ➔ 3º Luiz Carlos Martins</strong>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-purple-200 bg-white/10 px-2.5 py-1 rounded-lg border border-purple-300/30 font-medium">
+                Console Master Integrado
+              </span>
+            </div>
+          </div>
+
+          <ApproversView
+            currentUser={currentUser}
+            onSelectRequest={onSelectRequest}
+            requestsVersion={requestsVersion}
+          />
+        </div>
+      )}
 
       {/* TAB 1: USERS & COLLABORATORS */}
       {activeTab === 'usuarios' && (
