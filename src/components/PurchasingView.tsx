@@ -172,8 +172,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
           )}
         </div>
 
-        {/* 4 Global Indicator Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-100">
+        {/* Global Indicator Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-100">
           
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -223,18 +223,6 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             </div>
             <span className="text-[11px] text-emerald-800 font-medium">
               Pedidos adquiridos / faturados
-            </span>
-          </div>
-
-          <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200">
-            <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
-              Investimento Total Acumulado
-            </span>
-            <div className="text-2xl font-extrabold text-emerald-950 mt-1 tracking-tight">
-              {formatCurrency(totalGlobalSpent)}
-            </div>
-            <span className="text-[11px] text-emerald-700 font-medium">
-              Soma de todas as compras da empresa
             </span>
           </div>
 
