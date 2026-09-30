@@ -15,7 +15,6 @@ import {
   Building2, 
   Layers, 
   BarChart3, 
-  TrendingUp, 
   PieChart, 
   FileText, 
   AlertCircle,
@@ -135,49 +134,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
     return { list, maxVal };
   }, [approverPipelineRequests]);
 
-  // Chart Data 2: Pipeline Funnel Stages
-  const funnelStages = useMemo(() => {
-    return [
-      {
-        step: 1,
-        name: 'Fernando',
-        title: '1º Aprovador',
-        count: metrics.waitingFernandoCount,
-        value: metrics.waitingFernandoValue,
-        color: 'from-amber-500 to-amber-600',
-        badgeBg: 'bg-amber-100 text-amber-900 border-amber-300',
-      },
-      {
-        step: 2,
-        name: 'Eduardo',
-        title: '2º Aprovador',
-        count: metrics.waitingEduardoCount,
-        value: metrics.waitingEduardoValue,
-        color: 'from-indigo-500 to-indigo-600',
-        badgeBg: 'bg-indigo-100 text-indigo-900 border-indigo-300',
-      },
-      {
-        step: 3,
-        name: 'Luiz',
-        title: '3º Aprovador',
-        count: metrics.waitingLuizCount,
-        value: metrics.waitingLuizValue,
-        color: 'from-purple-500 to-purple-600',
-        badgeBg: 'bg-purple-100 text-purple-900 border-purple-300',
-      },
-      {
-        step: 4,
-        name: 'Concluído',
-        title: 'Aprovado 100% (3/3)',
-        count: metrics.fullyApprovedCount,
-        value: metrics.fullyApprovedTotalValue,
-        color: 'from-emerald-500 to-emerald-600',
-        badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-      }
-    ];
-  }, [metrics]);
-
-  // Chart Data 3: Distribution by Value Ranges
+  // Chart Data 2: Distribution by Value Ranges
   const valueTierData = useMemo(() => {
     let tier1 = 0; // < 10k
     let tier2 = 0; // 10k - 50k
@@ -430,66 +387,30 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
           </div>
         </div>
 
-        {/* GRÁFICO 2 & 3: Funil de Aprovação & Faixas de Valor */}
-        <div className="space-y-6">
-          {/* Funil Visual da Esteira */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-            <div className="pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-indigo-700" />
-                Funil de Status da Esteira
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Onde estão alocados os pedidos atualmente
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {funnelStages.map((stage) => (
-                <div key={stage.step} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${stage.badgeBg}`}>
-                        {stage.step}º {stage.name}
-                      </span>
-                      <span className="text-slate-600 font-medium hidden sm:inline">{stage.title}</span>
-                    </div>
-                    <span className="font-bold text-slate-900">
-                      {stage.count} pedido{stage.count !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
-                    <span>Total nessa etapa:</span>
-                    <strong className="text-slate-800">{formatCurrency(stage.value)}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* GRÁFICO 2: Faixas de Valor */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="pb-2 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-emerald-700" />
+              Faixas de Valor dos Pedidos
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Distribuição por alçadas de investimento
+            </p>
           </div>
-
-          {/* Faixas de Valor (Capex / Opex) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <div className="pb-2 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <PieChart className="w-4 h-4 text-emerald-700" />
-                Faixas de Valor dos Pedidos
-              </h2>
-            </div>
-            <div className="space-y-2 text-xs">
-              {valueTierData.map((tier, idx) => (
-                <div key={idx} className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-slate-800">{tier.label}</div>
-                    <div className="text-[11px] text-slate-500">{tier.count} pedido(s) • {formatCurrency(tier.total)}</div>
-                  </div>
-                  <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded">
-                    {Math.round(tier.pct)}%
-                  </span>
+          <div className="space-y-2 text-xs">
+            {valueTierData.map((tier, idx) => (
+              <div key={idx} className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-slate-800">{tier.label}</div>
+                  <div className="text-[11px] text-slate-500">{tier.count} pedido(s) • {formatCurrency(tier.total)}</div>
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded">
+                  {Math.round(tier.pct)}%
+                </span>
+              </div>
+            ))}
           </div>
-
         </div>
 
       </div>
