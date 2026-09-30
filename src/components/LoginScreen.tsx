@@ -80,7 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           className="mx-auto h-14 sm:h-16 w-auto object-contain"
         />
         <h1 className="mt-4 text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          Centro de Solicitações de Compra
+          SmartBuy
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           Gestão descentralizada por setor com controle centralizado de compras
