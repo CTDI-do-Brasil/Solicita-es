@@ -70,13 +70,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg whitespace-nowrap">
                   SmartBuy
                 </span>
-                {isMaster ? (
+                {isMaster && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
                     MASTER / DEV
-                  </span>
-                ) : (
-                  <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 shrink-0">
-                    Corporativo
                   </span>
                 )}
               </div>
