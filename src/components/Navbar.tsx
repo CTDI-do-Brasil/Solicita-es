@@ -59,9 +59,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Logo & Platform Name */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs">
-              <Building2 className="w-5 h-5" />
-            </div>
+            <img
+              src="/ctdi-logo.png"
+              alt="Logo CTDI"
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
+            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg">

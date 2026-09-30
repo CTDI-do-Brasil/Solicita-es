@@ -74,11 +74,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       
       {/* Container */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
-          <Building2 className="w-8 h-8" />
-        </div>
+        <img
+          src="/ctdi-logo.png"
+          alt="Logo CTDI"
+          className="mx-auto h-14 sm:h-16 w-auto object-contain"
+        />
         <h1 className="mt-4 text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          Portal de Compras & Suprimentos
+          Centro de Solicitações de Compra
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           Gestão descentralizada por setor com controle centralizado de compras
