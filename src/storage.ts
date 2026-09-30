@@ -193,6 +193,42 @@ export const storage = {
           return merged;
         }
 
+        // Ensure all requests in Compras have prices populated
+        let priceUpdated = false;
+        const withPrices = requests.map(r => {
+          if (r.id === 'req-007' && (!r.totalPrice || r.totalPrice <= 0)) {
+            priceUpdated = true;
+            return {
+              ...r,
+              purchaseOrderNumber: r.purchaseOrderNumber || 'OC-2026-0208',
+              supplier: 'Distribuidora Rolamentos SKF Brasil Ltda',
+              unitPrice: 485.00,
+              totalPrice: 1940.00,
+              shippingCost: 80.00,
+              purchasedBy: 'Alexandre Fontes (Compras)',
+              purchasingNotes: 'Cotação realizada e valor definido pelo setor de Compras.',
+            };
+          }
+          if (r.id === 'req-002' && (!r.totalPrice || r.totalPrice <= 0)) {
+            priceUpdated = true;
+            return {
+              ...r,
+              supplier: 'Terabyte E-commerce de Informática Ltda',
+              unitPrice: 650.00,
+              totalPrice: 2600.00,
+              shippingCost: 35.00,
+              purchasedBy: 'Juliana Paes Correia (Compras)',
+              purchasingNotes: 'Cotação preliminar registrada pelo setor de Compras.',
+            };
+          }
+          return r;
+        });
+
+        if (priceUpdated) {
+          localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(withPrices));
+          return withPrices;
+        }
+
         return requests;
       }
     } catch (e) {

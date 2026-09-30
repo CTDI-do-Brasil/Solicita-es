@@ -264,7 +264,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <div className="p-3.5 bg-gradient-to-r from-purple-900 to-indigo-950 border border-purple-800 text-purple-100 rounded-xl text-xs space-y-1 shadow-xs">
                   <div className="font-bold text-amber-300 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-purple-300" />
-                    Alçada Executiva de Aprovação:
+                    Aprovação
                   </div>
                   <p className="text-purple-200">
                     O setor de compras estrutura o pedido e estes três aprovadores avaliam na seguinte ordem rigorosa:
