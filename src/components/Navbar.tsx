@@ -65,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg">
-                  Portal de Suprimentos
+                  Centro de Solicitações de Compra
                 </span>
                 {isMaster ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300">
