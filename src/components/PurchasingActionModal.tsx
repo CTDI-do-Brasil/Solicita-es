@@ -545,37 +545,39 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
 
           {/* Footer Actions */}
           <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-            <button
-              id="send-to-approvers-action-button"
-              type="button"
-              onClick={() => {
-                const numTotal = parseFloat(String(totalPrice));
-                if (isNaN(numTotal) || numTotal <= 0) {
-                  setError('Para enviar à alçada de aprovadores, preencha o valor da cotação.');
-                  return;
-                }
-                const numUnit = parseFloat(String(unitPrice));
-                const numShip = parseFloat(String(shippingCost)) || 0;
-                storage.updatePurchasingDetails(request.id, buyer, {
-                  status: 'em_aprovacao',
-                  purchaseOrderNumber: poNumber.trim(),
-                  supplier: supplier.trim(),
-                  unitPrice: isNaN(numUnit) ? undefined : numUnit,
-                  totalPrice: numTotal,
-                  shippingCost: numShip,
-                  purchaseDate: purchaseDate || undefined,
-                  expectedDeliveryDate: expectedDeliveryDate || undefined,
-                  purchasingNotes: purchasingNotes.trim(),
-                });
-                onSave();
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
-              <FileCheck2 className="w-4 h-4 text-purple-700" />
-              <span>Enviar p/ Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</span>
-            </button>
+            {!releaseInfo.isReleased && request.purchaseStatus !== 'em_aprovacao' && (
+              <button
+                id="send-to-approvers-action-button"
+                type="button"
+                onClick={() => {
+                  const numTotal = parseFloat(String(totalPrice));
+                  if (isNaN(numTotal) || numTotal <= 0) {
+                    setError('Para enviar à alçada de aprovadores, preencha o valor da cotação.');
+                    return;
+                  }
+                  const numUnit = parseFloat(String(unitPrice));
+                  const numShip = parseFloat(String(shippingCost)) || 0;
+                  storage.updatePurchasingDetails(request.id, buyer, {
+                    status: 'em_aprovacao',
+                    purchaseOrderNumber: poNumber.trim(),
+                    supplier: supplier.trim(),
+                    unitPrice: isNaN(numUnit) ? undefined : numUnit,
+                    totalPrice: numTotal,
+                    shippingCost: numShip,
+                    purchaseDate: purchaseDate || undefined,
+                    expectedDeliveryDate: expectedDeliveryDate || undefined,
+                    purchasingNotes: purchasingNotes.trim(),
+                  });
+                  onSave();
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-lg shadow-xs transition-colors cursor-pointer"
+              >
+                <FileCheck2 className="w-4 h-4 text-purple-700" />
+                <span>Enviar p/ Aprovadores (Fernando ➔ Eduardo ➔ Luiz)</span>
+              </button>
+            )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto">
               <button
                 type="button"
                 onClick={onClose}
