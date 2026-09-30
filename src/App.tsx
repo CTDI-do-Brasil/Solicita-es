@@ -29,6 +29,9 @@ export default function App() {
 
   // Synchronize storage events
   useEffect(() => {
+    // Sincronizar com o banco de dados PostgreSQL
+    storage.syncWithBackend();
+
     const handleRequestsUpdate = () => {
       setRequestsVersion(v => v + 1);
       // If modal open, refresh selected request
@@ -73,6 +76,15 @@ export default function App() {
   const handleLogout = () => {
     storage.setCurrentUser(null);
     setCurrentUser(null);
+  };
+
+  const handleGoHome = () => {
+    setSelectedRequest(null);
+    setPurchasingEditRequest(null);
+    setShowRequestModal(false);
+    setShowUserModal(false);
+    setMasterViewMode('console');
+    handleLogout();
   };
 
   const handleSwitchUser = (user: User) => {
@@ -124,6 +136,7 @@ export default function App() {
       <Navbar
         currentUser={currentUser}
         onLogout={handleLogout}
+        onGoHome={handleGoHome}
         onSwitchUser={handleSwitchUser}
         masterViewMode={masterViewMode}
         onSelectMasterViewMode={setMasterViewMode}
