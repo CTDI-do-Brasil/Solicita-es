@@ -497,4 +497,141 @@ export function getApproversProgressInfo(request: PurchaseRequest): {
   };
 }
 
+export interface RequestPurchaseReleaseInfo {
+  isReleased: boolean;
+  status: 'liberada' | 'aguardando_gestor' | 'aguardando_alcada' | 'reprovada' | 'cancelada' | 'concluida';
+  badgeLabel: string;
+  badgeClass: string;
+  dotColor: string;
+  title: string;
+  description: string;
+  approvalStageText: string;
+}
+
+export function getRequestPurchaseReleaseInfo(request: PurchaseRequest): RequestPurchaseReleaseInfo {
+  if (request.purchaseStatus === 'cancelado' || request.managerApprovalStatus === 'reprovado') {
+    return {
+      isReleased: false,
+      status: request.purchaseStatus === 'cancelado' ? 'cancelada' : 'reprovada',
+      badgeLabel: 'Não Liberada (Reprovada)',
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
+      dotColor: 'bg-rose-500',
+      title: 'Compra Não Autorizada / Reprovada',
+      description: request.managerNotes
+        ? `Reprovada pelo Gestor: ${request.managerNotes}`
+        : 'Solicitação reprovada ou cancelada. Compra bloqueada.',
+      approvalStageText: 'Reprovada',
+    };
+  }
+
+  if (request.managerApprovalStatus === 'pendente') {
+    return {
+      isReleased: false,
+      status: 'aguardando_gestor',
+      badgeLabel: 'Aguardando Gestor (Não Liberada)',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-semibold',
+      dotColor: 'bg-amber-500',
+      title: 'Aguardando Aprovação do Gestor',
+      description: 'A solicitação ainda não foi aprovada pelo gestor do setor. Não está liberada para compra.',
+      approvalStageText: 'Pendente Gestor da Área',
+    };
+  }
+
+  // Manager is approved
+  const ap = request.approvals;
+  if (ap) {
+    if (ap.currentApprover === 'reprovado' || request.purchaseStatus === 'reprovado_aprovadores') {
+      return {
+        isReleased: false,
+        status: 'reprovada',
+        badgeLabel: 'Bloqueada na Alçada',
+        badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
+        dotColor: 'bg-rose-500',
+        title: 'Reprovada na Alçada da Diretoria',
+        description: 'Solicitação reprovada durante o processo de alçada da diretoria. Compra bloqueada.',
+        approvalStageText: 'Reprovada por Aprovador',
+      };
+    }
+
+    if (
+      ap.currentApprover === 'concluido' ||
+      (ap.fernando?.status === 'aprovado' &&
+        ap.eduardo?.status === 'aprovado' &&
+        ap.luiz?.status === 'aprovado')
+    ) {
+      const isFinished =
+        request.purchaseStatus === 'compra_realizada' || request.purchaseStatus === 'entregue';
+      return {
+        isReleased: true,
+        status: isFinished ? 'concluida' : 'liberada',
+        badgeLabel: isFinished ? 'Compra Realizada (Aprovada)' : 'Liberada para Compra',
+        badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
+        dotColor: 'bg-emerald-500',
+        title: 'Liberada para Compra após Aprovação',
+        description: 'Aprovada 100% pela Alçada da Diretoria (Fernando ➔ Eduardo ➔ Luiz) e pelo Gestor da Área. Liberada para compra.',
+        approvalStageText: 'Alçada Concluída (3/3) - 100% Aprovada',
+      };
+    }
+
+    if (ap.currentApprover === 'Fernando' || ap.currentApprover === 'Eduardo' || ap.currentApprover === 'Luiz') {
+      return {
+        isReleased: false,
+        status: 'aguardando_alcada',
+        badgeLabel: `Aguardando Alçada (${ap.currentApprover})`,
+        badgeClass: 'bg-purple-100 text-purple-900 border-purple-300 font-semibold',
+        dotColor: 'bg-purple-500',
+        title: `Em Aprovação da Diretoria (Na vez de ${ap.currentApprover})`,
+        description: `Enviada para aprovação da diretoria. Na vez de ${ap.currentApprover}. Não liberada para compra ainda.`,
+        approvalStageText: `Na vez de ${ap.currentApprover} (Alçada)`,
+      };
+    }
+  }
+
+  // Without approvals object
+  if (request.purchaseStatus === 'em_aprovacao') {
+    return {
+      isReleased: false,
+      status: 'aguardando_alcada',
+      badgeLabel: 'Em Aprovação da Diretoria',
+      badgeClass: 'bg-purple-100 text-purple-900 border-purple-300 font-semibold',
+      dotColor: 'bg-purple-500',
+      title: 'Em Aprovação da Diretoria',
+      description: 'Solicitação aguardando avaliação pela alçada de aprovadores.',
+      approvalStageText: 'Aguardando Diretoria',
+    };
+  }
+
+  if (
+    request.purchaseStatus === 'compra_realizada' ||
+    request.purchaseStatus === 'em_transito' ||
+    request.purchaseStatus === 'entregue'
+  ) {
+    return {
+      isReleased: true,
+      status: 'concluida',
+      badgeLabel: 'Compra Realizada',
+      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold',
+      dotColor: 'bg-emerald-500',
+      title: 'Compra Realizada',
+      description: 'Aprovada pelo gestor e processo de compra finalizado.',
+      approvalStageText: 'Aprovada pelo Gestor',
+    };
+  }
+
+  // Approved by manager, ready for purchasing to quote and purchase
+  return {
+    isReleased: true,
+    status: 'liberada',
+    badgeLabel: 'Liberada para Compra',
+    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
+    dotColor: 'bg-emerald-500',
+    title: 'Liberada para Compra após Aprovação',
+    description: request.managerApprovedBy
+      ? `Aprovada pelo Gestor (${request.managerApprovedBy}). Liberada para cotação e compra.`
+      : 'Aprovada pelo Gestor da Área. Liberada para compra.',
+    approvalStageText: 'Aprovada pelo Gestor da Área',
+  };
+}
+
+
 

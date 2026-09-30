@@ -7,7 +7,8 @@ import {
   getPurchaseStatusInfo, 
   getManagerApprovalInfo, 
   getSectorColor,
-  getRequestDelayInfo
+  getRequestDelayInfo,
+  getRequestPurchaseReleaseInfo
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
 import { 
@@ -517,6 +518,7 @@ export const SectorView: React.FC<SectorViewProps> = ({
               {displayedRequests.map((req) => {
                 const statusInfo = getPurchaseStatusInfo(req.purchaseStatus);
                 const approvalInfo = getManagerApprovalInfo(req.managerApprovalStatus);
+                const releaseInfo = getRequestPurchaseReleaseInfo(req);
                 const hasPrice = req.totalPrice !== undefined && req.totalPrice > 0;
                 const delayInfo = getRequestDelayInfo(req);
 
@@ -527,6 +529,8 @@ export const SectorView: React.FC<SectorViewProps> = ({
                     className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer group ${
                       delayInfo.isDelayed
                         ? 'border-rose-300 ring-2 ring-rose-100 shadow-sm'
+                        : releaseInfo.isReleased && req.purchaseStatus !== 'compra_realizada' && req.purchaseStatus !== 'entregue'
+                        ? 'border-emerald-200 hover:border-emerald-500 hover:shadow-md'
                         : 'border-slate-200 hover:border-indigo-400 hover:shadow-md'
                     }`}
                   >
@@ -538,8 +542,23 @@ export const SectorView: React.FC<SectorViewProps> = ({
                           <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-white">
                             {req.code}
                           </span>
+                          
+                          {/* Badge de Liberação para Compra após Aprovação */}
+                          <span 
+                            id={`sector-badge-liberacao-${req.id}`}
+                            className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${releaseInfo.badgeClass}`}
+                            title={releaseInfo.description}
+                          >
+                            {releaseInfo.isReleased ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                            ) : (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                            )}
+                            <span>{releaseInfo.badgeLabel}</span>
+                          </span>
+
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${approvalInfo.badgeClass}`}>
-                            {approvalInfo.label}
+                            Gestor: {approvalInfo.label}
                           </span>
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.bgClass} ${statusInfo.colorClass} ${statusInfo.borderClass}`}>
                             {statusInfo.label}

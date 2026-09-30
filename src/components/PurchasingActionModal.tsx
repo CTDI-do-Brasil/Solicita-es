@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, PurchaseRequest, PurchaseOrderStatus } from '../types';
 import { storage } from '../storage';
-import { formatCurrency, formatDate, getSectorColor } from '../utils';
+import { formatCurrency, formatDate, getSectorColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
   X, 
   ShoppingBag, 
@@ -12,7 +12,10 @@ import {
   Truck, 
   FileCheck2, 
   AlertCircle,
-  Package 
+  Package,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 
 interface PurchasingActionModalProps {
@@ -51,6 +54,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   const [error, setError] = useState('');
 
   const sectorColor = getSectorColor(request.sector);
+  const releaseInfo = getRequestPurchaseReleaseInfo(request);
 
   // Auto calculate total when unit price or shipping changes (unless manually edited)
   const handleUnitPriceChange = (val: string) => {
@@ -80,6 +84,12 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     const numTotal = parseFloat(String(totalPrice));
     const numUnit = parseFloat(String(unitPrice));
     const numShip = parseFloat(String(shippingCost)) || 0;
+
+    // Trava de segurança: Solicitação precisa estar liberada para compra após aprovação
+    if (status === 'compra_realizada' && !releaseInfo.isReleased && buyer.role !== 'master') {
+      setError(`Atenção: Esta solicitação ainda não está liberada para compra (${releaseInfo.badgeLabel}). Obtenha a aprovação necessária antes de marcar como compra realizada.`);
+      return;
+    }
 
     if (status === 'compra_realizada' || status === 'pedido_emitido' || status === 'entregue') {
       if (isNaN(numTotal) || numTotal <= 0) {
@@ -158,6 +168,65 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         {/* Scrollable Content */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
           
+          {/* Error Callout */}
+          {error && (
+            <div className="p-3.5 bg-rose-50 border-2 border-rose-300 text-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2.5 animate-in fade-in">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* BANNER PROMINENTE: Liberação para Compra após Aprovação */}
+          {releaseInfo.isReleased ? (
+            <div 
+              id="purchasing-modal-liberada-banner"
+              className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex items-center justify-between gap-3 text-emerald-950 shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-900">
+                      SOLICITAÇÃO LIBERADA PARA COMPRA APÓS APROVAÇÃO
+                    </span>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-950 border border-emerald-400">
+                      Liberada
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    {releaseInfo.description} Você pode emitir a Ordem de Compra (OC) e efetivar a compra com segurança.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div 
+              id="purchasing-modal-bloqueada-banner"
+              className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center justify-between gap-3 text-amber-950 shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-900">
+                      ATENÇÃO: SOLICITAÇÃO AINDA NÃO LIBERADA PARA COMPRA
+                    </span>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-950 border border-amber-400">
+                      {releaseInfo.badgeLabel}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    {releaseInfo.description} A compra definitiva requer a aprovação integral prévia.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Summary of Original Request */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">

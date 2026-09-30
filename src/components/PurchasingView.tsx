@@ -7,7 +7,8 @@ import {
   getPurchaseStatusInfo, 
   getManagerApprovalInfo, 
   getSectorColor,
-  getRequestDelayInfo
+  getRequestDelayInfo,
+  getRequestPurchaseReleaseInfo
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
 import { 
@@ -33,7 +34,8 @@ import {
   FileCheck2,
   Send,
   GitBranch,
-  ShieldCheck
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 
@@ -53,7 +55,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const isManagerOrMaster = currentUser.role === 'gestor' || currentUser.role === 'master';
   const [selectedSector, setSelectedSector] = useState<SectorType | 'Todos'>('Todos');
   const [mobileSectorMenuOpen, setMobileSectorMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
 
@@ -66,6 +68,14 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   // Key metrics
   const totalGlobalSpent = useMemo(() => {
     return allRequests.reduce((acc, r) => acc + (r.totalPrice || 0), 0);
+  }, [allRequests]);
+
+  // Solicitações liberadas para compra após aprovação e aguardando faturamento/emissão
+  const releasedRequests = useMemo(() => {
+    return allRequests.filter(r => {
+      const rel = getRequestPurchaseReleaseInfo(r);
+      return rel.isReleased && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado';
+    });
   }, [allRequests]);
 
   // Solicitações com mais de 48h de recebimento sem conclusão da compra
@@ -100,6 +110,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     // Filter by Tab
     if (activeTab === 'atrasadas') {
       list = list.filter(r => getRequestDelayInfo(r).isDelayed);
+    } else if (activeTab === 'liberadas') {
+      list = list.filter(r => getRequestPurchaseReleaseInfo(r).isReleased);
     } else if (activeTab === 'aprovadores') {
       list = list.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined);
     } else if (activeTab === 'faturados') {
@@ -108,7 +120,11 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
 
     // Filter by Status dropdown
     if (statusFilter !== 'todos') {
-      if (statusFilter === 'sem_valor') {
+      if (statusFilter === 'liberadas') {
+        list = list.filter(r => getRequestPurchaseReleaseInfo(r).isReleased);
+      } else if (statusFilter === 'aguardando_aprovacao') {
+        list = list.filter(r => !getRequestPurchaseReleaseInfo(r).isReleased);
+      } else if (statusFilter === 'sem_valor') {
         list = list.filter(r => !r.totalPrice || r.totalPrice === 0);
       } else if (statusFilter === 'com_valor') {
         list = list.filter(r => r.totalPrice !== undefined && r.totalPrice > 0);
@@ -176,9 +192,16 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
         </div>
 
         {/* Global Indicator Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-100">
           
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          <div 
+            onClick={() => setActiveTab('geral')}
+            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+              activeTab === 'geral'
+                ? 'bg-slate-100 border-slate-400 shadow-xs'
+                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+            }`}
+          >
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Solicitações Recebidas
             </span>
@@ -187,6 +210,29 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             </div>
             <span className="text-[11px] text-slate-500">
               Englobando todas as 9 áreas
+            </span>
+          </div>
+
+          {/* NOVO CARD: Liberadas para Compra */}
+          <div 
+            id="card-solicitacoes-liberadas"
+            onClick={() => setActiveTab('liberadas')}
+            className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+              activeTab === 'liberadas'
+                ? 'bg-emerald-100/90 border-emerald-400 ring-2 ring-emerald-200 shadow-xs'
+                : 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/60'
+            }`}
+          >
+            <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider flex items-center justify-between">
+              <span>Liberadas p/ Compra</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            </span>
+            <div className="text-2xl font-extrabold text-emerald-950 mt-1 flex items-baseline gap-1.5">
+              {releasedRequests.length}
+              <span className="text-xs font-semibold text-emerald-700">Aprovadas</span>
+            </div>
+            <span className="text-[11px] text-emerald-800 font-medium">
+              Prontas para emissão / compra
             </span>
           </div>
 
@@ -430,6 +476,23 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             </span>
           </button>
 
+          {/* TAB: Liberadas para Compra */}
+          <button
+            id="purchasing-tab-liberadas"
+            onClick={() => setActiveTab('liberadas')}
+            className={`pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'liberadas'
+                ? 'border-emerald-600 text-emerald-800 font-bold'
+                : 'border-transparent text-slate-500 hover:text-emerald-700'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Liberadas para Compra</span>
+            <span className="text-xs px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-900 font-bold">
+              {releasedRequests.length}
+            </span>
+          </button>
+
           <button
             id="purchasing-tab-aprovadores"
             onClick={() => setActiveTab('aprovadores')}
@@ -440,7 +503,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             }`}
           >
             <ShieldCheck className="w-4 h-4 text-purple-600" />
-            <span>Aprovadores</span>
+            <span>Em Aprovação (Alçada)</span>
             <span className="text-xs px-2 py-0.2 rounded-full bg-purple-100 text-purple-900 font-bold">
               {allRequests.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals).length}
             </span>
@@ -514,8 +577,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
         </div>
       </div>
 
-      {/* Tab Content: Requests List (Tabs 1, 2, 3) */}
-      {(activeTab === 'geral' || activeTab === 'atrasadas' || activeTab === 'faturados') && (
+      {/* Tab Content: Requests List (Tabs 1, 2, 3, 4) */}
+      {(activeTab === 'geral' || activeTab === 'liberadas' || activeTab === 'aprovadores' || activeTab === 'atrasadas' || activeTab === 'faturados') && (
         <div className="space-y-4">
           
           {/* Search & Filter Toolbar */}
@@ -542,9 +605,12 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 className="w-full sm:w-auto px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-cyan-500 outline-hidden"
               >
                 <option value="todos">Todos os Status Operacionais</option>
+                <option value="liberadas">🟢 Liberadas para Compra (Aprovação Concluída)</option>
+                <option value="aguardando_aprovacao">⏳ Aguardando Aprovação (Não Liberadas)</option>
                 <option value="em_atraso">Solicitação em atraso (+48h)</option>
                 <option value="recebido_em_compras">Recebido em Compras</option>
                 <option value="em_cotacao">Em Cotação com Fornecedores</option>
+                <option value="em_aprovacao">Em Aprovação Diretoria (Alçada)</option>
                 <option value="pedido_emitido">Pedido de Compra Emitido</option>
                 <option value="compra_realizada">Compra Realizada</option>
                 <option value="em_transito">Em Trânsito / Transporte</option>
@@ -571,6 +637,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
               {filteredRequests.map((req) => {
                 const statusInfo = getPurchaseStatusInfo(req.purchaseStatus);
                 const approvalInfo = getManagerApprovalInfo(req.managerApprovalStatus);
+                const releaseInfo = getRequestPurchaseReleaseInfo(req);
                 const sectorColor = getSectorColor(req.sector);
                 const hasPrice = req.totalPrice !== undefined && req.totalPrice > 0;
                 const delayInfo = getRequestDelayInfo(req);
@@ -581,6 +648,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                     className={`bg-white p-5 rounded-2xl border transition-all group ${
                       delayInfo.isDelayed
                         ? 'border-rose-300 ring-2 ring-rose-100 shadow-sm'
+                        : releaseInfo.isReleased && req.purchaseStatus !== 'compra_realizada' && req.purchaseStatus !== 'entregue'
+                        ? 'border-emerald-300 hover:border-emerald-500 hover:shadow-md'
                         : 'border-slate-200 hover:border-cyan-500 hover:shadow-md'
                     }`}
                   >
@@ -597,8 +666,22 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                             Setor: {req.sector}
                           </span>
 
+                          {/* Badge de Liberação para Compra após Aprovação */}
+                          <span 
+                            id={`badge-liberacao-${req.id}`}
+                            className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${releaseInfo.badgeClass}`}
+                            title={releaseInfo.description}
+                          >
+                            {releaseInfo.isReleased ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                            ) : (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                            )}
+                            <span>{releaseInfo.badgeLabel}</span>
+                          </span>
+
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${approvalInfo.badgeClass}`}>
-                            {approvalInfo.label}
+                            Gestor: {approvalInfo.label}
                           </span>
 
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.bgClass} ${statusInfo.colorClass} ${statusInfo.borderClass}`}>
@@ -652,6 +735,58 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                         <p className="text-xs text-slate-600 line-clamp-2">
                           {req.description}
                         </p>
+
+                        {/* Callout de Liberação para Compra após Aprovação */}
+                        {releaseInfo.isReleased && req.purchaseStatus !== 'compra_realizada' && req.purchaseStatus !== 'entregue' && (
+                          <div 
+                            id={`callout-liberada-${req.id}`}
+                            className="p-2.5 bg-emerald-50/90 rounded-xl border border-emerald-300 text-xs text-emerald-950 mt-1 flex items-center justify-between gap-2 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>
+                                <strong>Liberada para Compra:</strong> {releaseInfo.description}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded border border-emerald-400 shrink-0">
+                              Aprovação Ok
+                            </span>
+                          </div>
+                        )}
+
+                        {!releaseInfo.isReleased && req.purchaseStatus === 'em_aprovacao' && (
+                          <div 
+                            id={`callout-aguardando-alcada-${req.id}`}
+                            className="p-2.5 bg-purple-50/90 rounded-xl border border-purple-200 text-xs text-purple-950 mt-1 flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />
+                              <span>
+                                <strong>Aguardando Alçada:</strong> Tramitando na vez de <strong>{req.approvals?.currentApprover || 'Aprovadores'}</strong>. Aguardar aprovação final antes de efetivar compra.
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800 bg-white px-2 py-0.5 rounded border border-purple-200 shrink-0">
+                              Não Liberada
+                            </span>
+                          </div>
+                        )}
+
+                        {req.managerApprovalStatus === 'pendente' && (
+                          <div 
+                            id={`callout-pendente-gestor-${req.id}`}
+                            className="p-2.5 bg-amber-50/90 rounded-xl border border-amber-200 text-xs text-amber-950 mt-1 flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>
+                                <strong>Aguardando Gestor:</strong> Solicitação aguarda aprovação gerencial de <strong>{req.sector}</strong>. Bloqueada para compra.
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-white px-2 py-0.5 rounded border border-amber-200 shrink-0">
+                              Pendente Gestor
+                            </span>
+                          </div>
+                        )}
 
                         {/* Callout de Alerta de Solicitação em atraso */}
                         {delayInfo.isDelayed && (
