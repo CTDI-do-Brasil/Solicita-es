@@ -718,7 +718,23 @@ export function getRequestPurchaseReleaseInfo(request: PurchaseRequest): Request
     };
   }
 
-  // Approved by manager, ready for purchasing to quote and purchase
+  // Regra de Compras: Somente Compras coloca o valor dos produtos, e na parte de compras sempre tem que ter valor
+  if (!request.totalPrice || request.totalPrice <= 0) {
+    return {
+      isReleased: false,
+      status: 'aguardando_gestor',
+      badgeLabel: 'Aguardando Valor (Compras)',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-semibold',
+      dotColor: 'bg-amber-500',
+      title: 'Pendente de Definição de Valor por Compras',
+      description: request.managerApprovedBy
+        ? `Aprovada pelo Gestor (${request.managerApprovedBy}), mas aguarda preenchimento de valor pelo Setor de Compras.`
+        : 'Aprovada pelo Gestor, mas aguarda definição de valor por Compras.',
+      approvalStageText: 'Aguardando Cotação por Compras',
+    };
+  }
+
+  // Approved by manager and price defined by purchasing!
   return {
     isReleased: true,
     status: 'liberada',
@@ -727,8 +743,8 @@ export function getRequestPurchaseReleaseInfo(request: PurchaseRequest): Request
     dotColor: 'bg-emerald-500',
     title: 'Liberada para Compra após Aprovação',
     description: request.managerApprovedBy
-      ? `Aprovada pelo Gestor (${request.managerApprovedBy}). Liberada para cotação e compra.`
-      : 'Aprovada pelo Gestor da Área. Liberada para compra.',
+      ? `Aprovada pelo Gestor (${request.managerApprovedBy}). Valor definido por Compras: liberada para compra.`
+      : 'Aprovada pelo Gestor da Área e valor definido por Compras. Liberada para compra.',
     approvalStageText: 'Aprovada pelo Gestor da Área',
   };
 }

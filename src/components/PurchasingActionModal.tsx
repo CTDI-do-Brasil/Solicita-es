@@ -87,9 +87,10 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
       return;
     }
 
-    if (status === 'compra_realizada' || status === 'pedido_emitido' || status === 'entregue') {
+    // Na Central de Compras sempre tem que ter valor definido pelos compradores
+    if (status !== 'cancelado') {
       if (isNaN(numTotal) || numTotal <= 0) {
-        setError('Para emitir pedido ou finalizar compra, informe o valor total gasto.');
+        setError('Na Central de Compras é obrigatório informar o valor dos produtos.');
         return;
       }
     }
