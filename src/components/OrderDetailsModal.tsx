@@ -476,7 +476,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     ? 'bg-amber-50 border-amber-300 text-amber-950 font-semibold'
                     : 'bg-white border-slate-200 text-slate-400'
                 }`}>
-                  <div className="font-bold">1º Fernando (Operações)</div>
+                  <div className="font-bold">1º Fernando</div>
                   <div className="text-[11px] mt-0.5">
                     {request.approvals.fernando?.status === 'aprovado' && (
                       <span className="text-emerald-800">Aprovado {request.approvals.fernando.approvedAt && `em ${formatDate(request.approvals.fernando.approvedAt)}`}</span>
@@ -503,7 +503,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     ? 'bg-indigo-50 border-indigo-300 text-indigo-950 font-semibold'
                     : 'bg-white border-slate-200 text-slate-400'
                 }`}>
-                  <div className="font-bold">2º Eduardo (Financeiro)</div>
+                  <div className="font-bold">2º Eduardo</div>
                   <div className="text-[11px] mt-0.5">
                     {request.approvals.eduardo?.status === 'aprovado' && (
                       <span className="text-emerald-800">Aprovado {request.approvals.eduardo.approvedAt && `em ${formatDate(request.approvals.eduardo.approvedAt)}`}</span>
@@ -530,7 +530,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     ? 'bg-purple-50 border-purple-300 text-purple-950 font-semibold'
                     : 'bg-white border-slate-200 text-slate-400'
                 }`}>
-                  <div className="font-bold">3º Luiz (Diretor Geral)</div>
+                  <div className="font-bold">3º Luiz</div>
                   <div className="text-[11px] mt-0.5">
                     {request.approvals.luiz?.status === 'aprovado' && (
                       <span className="text-emerald-800">Aprovado {request.approvals.luiz.approvedAt && `em ${formatDate(request.approvals.luiz.approvedAt)}`}</span>

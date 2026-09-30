@@ -150,7 +150,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       {
         step: 1,
         name: 'Fernando',
-        title: '1º Aprovador (Operações)',
+        title: '1º Aprovador',
         count: metrics.waitingFernandoCount,
         value: metrics.waitingFernandoValue,
         color: 'from-amber-500 to-amber-600',
@@ -159,7 +159,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       {
         step: 2,
         name: 'Eduardo',
-        title: '2º Aprovador (Financeiro)',
+        title: '2º Aprovador',
         count: metrics.waitingEduardoCount,
         value: metrics.waitingEduardoValue,
         color: 'from-indigo-500 to-indigo-600',
@@ -168,7 +168,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       {
         step: 3,
         name: 'Luiz',
-        title: '3º Aprovador (Diretor Geral)',
+        title: '3º Aprovador',
         count: metrics.waitingLuizCount,
         value: metrics.waitingLuizValue,
         color: 'from-purple-500 to-purple-600',
@@ -847,7 +847,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                           : 'bg-slate-50 border-slate-200 text-slate-400'
                       }`}>
                         <div className="flex items-center justify-between text-xs font-bold">
-                          <span>1º Fernando (Operações)</span>
+                          <span>1º Fernando</span>
                           {approvals?.fernando?.status === 'aprovado' ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                           ) : approvals?.fernando?.status === 'reprovado' ? (
@@ -892,7 +892,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                           : 'bg-slate-50 border-slate-200 text-slate-400'
                       }`}>
                         <div className="flex items-center justify-between text-xs font-bold">
-                          <span>2º Eduardo (Financeiro)</span>
+                          <span>2º Eduardo</span>
                           {approvals?.eduardo?.status === 'aprovado' ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                           ) : approvals?.eduardo?.status === 'reprovado' ? (
@@ -937,7 +937,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                           : 'bg-slate-50 border-slate-200 text-slate-400'
                       }`}>
                         <div className="flex items-center justify-between text-xs font-bold">
-                          <span>3º Luiz (Diretor Geral)</span>
+                          <span>3º Luiz</span>
                           {approvals?.luiz?.status === 'aprovado' ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                           ) : approvals?.luiz?.status === 'reprovado' ? (
