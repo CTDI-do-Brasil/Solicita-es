@@ -410,7 +410,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                 </span>
               </div>
               <div className="text-[11px] text-purple-200/70 truncate">
-                {metrics.waitingLuizCount} aguardando chancela final ({formatCurrency(metrics.waitingLuizValue)})
+                {metrics.waitingLuizCount} aguardando aprovação final ({formatCurrency(metrics.waitingLuizValue)})
               </div>
             </div>
           </div>
@@ -504,7 +504,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
             <span className="text-3xl font-extrabold text-indigo-700">
               {metrics.approvalRate}%
             </span>
-            <span className="text-xs font-medium text-slate-500">índice de chancela</span>
+            <span className="text-xs font-medium text-slate-500">índice de aprovação</span>
           </div>
           <div className="mt-2 text-xs text-slate-600 flex items-center gap-1.5">
             <span className="font-semibold text-rose-600">{metrics.reprovedCount} reprovado(s)</span>
@@ -943,9 +943,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                           ) : approvals?.luiz?.status === 'reprovado' ? (
                             <XCircle className="w-4 h-4 text-rose-600" />
                           ) : currentStep === 'Luiz' ? (
-                            <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.2 rounded font-black">
-                              CHANCELA FINAL
-                            </span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-ping" />
                           ) : (
                             <Lock className="w-3.5 h-3.5 text-slate-400" />
                           )}
@@ -964,7 +962,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                               <div className="text-rose-700 italic mt-0.5">"{approvals.luiz.notes}"</div>
                             </div>
                           ) : currentStep === 'Luiz' ? (
-                            <span className="text-purple-800">Aguardando chancela final da diretoria</span>
+                            <span className="text-purple-800">Aguardando aprovação final da diretoria</span>
                           ) : (
                             <span className="text-slate-400 italic">Aguardando Eduardo</span>
                           )}
@@ -1003,7 +1001,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                           >
                             <Check className="w-4 h-4" />
                             {currentStep === 'Luiz' 
-                              ? 'Chancela Final (Aprovar 100%)' 
+                              ? 'Aprovar (100%)' 
                               : `Aprovar como ${approverToAct}`}
                           </button>
 
@@ -1026,7 +1024,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                         <span>
                           {currentStep === 'Fernando' && 'Aguardando aprovação inicial do 1º Aprovador (Fernando).'}
                           {currentStep === 'Eduardo' && 'Aprovado por Fernando. Aguardando análise orçamentária de Eduardo (2º Aprovador).'}
-                          {currentStep === 'Luiz' && 'Aprovado por Fernando e Eduardo. Aguardando chancela final de Luiz (3º Aprovador).'}
+                          {currentStep === 'Luiz' && 'Aprovado por Fernando e Eduardo. Aguardando aprovação final de Luiz (3º Aprovador).'}
                         </span>
                       </div>
                       <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">

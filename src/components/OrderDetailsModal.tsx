@@ -539,7 +539,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                       <span className="text-rose-800">Reprovado: {request.approvals.luiz.notes}</span>
                     )}
                     {request.approvals.currentApprover === 'Luiz' && (
-                      <span className="text-purple-800">Pendente de chancela final</span>
+                      <span className="text-purple-800">Pendente de aprovação final</span>
                     )}
                     {request.approvals.luiz?.status === 'bloqueado' && (
                       <span>Aguardando Eduardo</span>
@@ -764,7 +764,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   className="flex-1 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
-                  {currentStep === 'Luiz' ? 'Conceder Chancela Final (100%)' : `Aprovar como ${currentStep}`}
+                  {currentStep === 'Luiz' ? 'Conceder Aprovação Final (100%)' : `Aprovar como ${currentStep}`}
                 </button>
                 <button
                   type="button"
