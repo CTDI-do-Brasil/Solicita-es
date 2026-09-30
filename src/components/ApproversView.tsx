@@ -632,7 +632,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
 
           {/* CONTEÚDO 1: Distribuição por Setor */}
           {analyticsViewMode === 'setor' && (
-            <div className="space-y-3 pt-1">
+            <div className="pt-2">
               {sectorSpendData.list.length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-500 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                   <BarChart3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -640,33 +640,66 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                   <p className="text-slate-400 mt-1">Alterne o mês, o ano ou selecione outro intervalo de datas.</p>
                 </div>
               ) : (
-                sectorSpendData.list.map((item) => {
-                  const pct = (item.total / sectorSpendData.maxVal) * 100;
-                  const color = getSectorColor(item.sector as any);
-                  return (
-                    <div key={item.sector} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
-                          <span className="font-bold text-slate-800">{item.sector}</span>
-                          <span className="text-slate-400 font-normal">
-                            ({item.count} pedido{item.count > 1 ? 's' : ''})
-                          </span>
-                        </div>
-                        <span className="font-extrabold text-slate-900">
-                          {formatCurrency(item.total)}
-                        </span>
-                      </div>
-                      {/* Visual Progress Bar */}
-                      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                <div className="relative pt-6 pb-2">
+                  {/* Linhas de grade de referência ao fundo */}
+                  <div className="absolute inset-x-0 top-12 bottom-20 flex flex-col justify-between pointer-events-none opacity-40">
+                    <div className="border-b border-dashed border-slate-300 w-full" />
+                    <div className="border-b border-dashed border-slate-200 w-full" />
+                    <div className="border-b border-dashed border-slate-200 w-full" />
+                    <div className="border-b border-slate-300 w-full" />
+                  </div>
+
+                  {/* Barras Verticais */}
+                  <div className="relative flex items-end justify-around gap-3 sm:gap-6 min-h-[280px] px-2 overflow-x-auto">
+                    {sectorSpendData.list.map((item) => {
+                      const pct = (item.total / sectorSpendData.maxVal) * 100;
+                      const color = getSectorColor(item.sector as any);
+
+                      return (
                         <div 
-                          className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-purple-600 to-indigo-600"
-                          style={{ width: `${Math.max(pct, 4)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
+                          key={item.sector} 
+                          className="flex flex-col items-center flex-1 max-w-[150px] min-w-[95px] group"
+                        >
+                          {/* Valor no topo da coluna */}
+                          <div className="text-center mb-2.5 transition-transform duration-200 group-hover:-translate-y-1">
+                            <span className="font-extrabold text-xs sm:text-sm text-slate-900 block whitespace-nowrap">
+                              {formatCurrency(item.total)}
+                            </span>
+                            <span className="text-[10px] font-semibold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-full mt-0.5 inline-block">
+                              {pct.toFixed(0)}%
+                            </span>
+                          </div>
+
+                          {/* Área da Coluna Vertical */}
+                          <div className="w-full h-44 sm:h-52 flex items-end justify-center">
+                            <div className="w-12 sm:w-16 md:w-20 h-full flex items-end justify-center rounded-t-xl bg-slate-100/90 p-1">
+                              <div
+                                className="w-full rounded-t-lg bg-gradient-to-t from-purple-700 via-purple-600 to-indigo-500 transition-all duration-700 group-hover:from-purple-800 group-hover:to-indigo-600 shadow-sm"
+                                style={{ height: `${Math.max(pct, 6)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Linha de Base */}
+                          <div className="w-full border-t-2 border-slate-200 mb-2.5" />
+
+                          {/* Rótulo do Setor e Contagem */}
+                          <div className="flex flex-col items-center gap-1 text-center w-full">
+                            <div className="flex items-center justify-center gap-1.5 max-w-full">
+                              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
+                              <span className="font-bold text-xs sm:text-sm text-slate-800 truncate" title={item.sector}>
+                                {item.sector}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              {item.count} {item.count === 1 ? 'pedido' : 'pedidos'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
           )}
