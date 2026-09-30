@@ -234,7 +234,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   Solicitado por: <strong>{request.requesterName}</strong> em {formatDate(request.createdAt)}
                 </span>
               </div>
-              <div className="text-xs bg-slate-200/80 px-2 py-0.5 rounded text-slate-700 font-medium">
+              <div className="text-xs sm:text-sm bg-slate-200/90 px-2.5 py-1 rounded-md text-slate-900 font-bold border border-slate-300">
                 {request.items && request.items.length > 1
                   ? `Total: ${request.items.length} itens (${request.quantity} ${request.unit})`
                   : `Qtd: ${request.quantity} ${request.unit}`}
@@ -433,9 +433,9 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                     placeholder="0,00"
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
                   />
-                  <span className="text-[10px] text-slate-500">
-                    Qtd: {request.quantity} {request.unit}
-                  </span>
+                  <div className="mt-1.5 text-xs sm:text-sm font-bold text-slate-700">
+                    Qtd: <span className="text-cyan-950 font-extrabold text-sm sm:text-base">{request.quantity} {request.unit}</span>
+                  </div>
                 </div>
 
                 <div>
