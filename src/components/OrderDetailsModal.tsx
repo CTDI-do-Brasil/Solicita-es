@@ -26,8 +26,7 @@ import {
   Receipt,
   FileCheck2,
   BellRing,
-  AlertCircle,
-  Package
+  AlertCircle
 } from 'lucide-react';
 
 interface OrderDetailsModalProps {
@@ -154,9 +153,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded font-medium">
-                  {request.items && request.items.length > 1
-                    ? `Total: ${request.items.length} itens (${request.quantity} ${request.unit})`
-                    : `Quantidade: ${request.quantity} ${request.unit}`}
+                  Quantidade: <strong>{request.quantity} {request.unit}</strong>
                 </span>
                 <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded capitalize">
                   Prioridade: <strong>{request.priority}</strong>
@@ -261,77 +258,16 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Description and Items Breakdown */}
+          {/* Description and Justification */}
           <div className="space-y-4">
-            {request.items && request.items.length > 0 ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Package className="w-4 h-4 text-indigo-600" />
-                    Itens Solicitados ({request.items.length})
-                  </h4>
-                  <span className="text-xs text-slate-500 font-medium">
-                    Total: <strong>{request.quantity} {request.unit}</strong>
-                  </span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {request.items.map((item, idx) => (
-                    <div 
-                      key={item.id || idx}
-                      className="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-2.5">
-                          <span className="shrink-0 w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center mt-0.5">
-                            {idx + 1}
-                          </span>
-                          <div>
-                            <h5 className="text-sm font-bold text-slate-900 leading-snug">
-                              {item.name}
-                            </h5>
-                            {item.description && (
-                              <p className="text-xs text-slate-600 mt-1 whitespace-pre-line leading-relaxed">
-                                {item.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <span className="inline-block px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 shadow-2xs">
-                            {item.quantity} {item.unit}
-                          </span>
-                        </div>
-                      </div>
-
-                      {item.linkUrl && (
-                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 pl-8.5">
-                          <a
-                            href={item.linkUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline break-all"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                            <span>Link de Referência do Item</span>
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Descrição do Item
-                </h4>
-                <p className="text-sm text-slate-800 bg-slate-50 p-3 rounded-lg border border-slate-200 whitespace-pre-line leading-relaxed">
-                  {request.description}
-                </p>
-              </div>
-            )}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Descrição do Item
+              </h4>
+              <p className="text-sm text-slate-800 bg-slate-50 p-3 rounded-lg border border-slate-200 whitespace-pre-line leading-relaxed">
+                {request.description}
+              </p>
+            </div>
 
             <div>
               <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -342,8 +278,8 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               </p>
             </div>
 
-            {/* Reference Link (for legacy single-item requests without items array) */}
-            {(!request.items || request.items.length === 0) && request.linkUrl && (
+            {/* Reference Link */}
+            {request.linkUrl && (
               <div>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Link de Referência

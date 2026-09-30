@@ -646,16 +646,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
 
                         <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
                           <span>
-                            {req.items && req.items.length > 1 ? (
-                              <>
-                                <span className="inline-flex items-center gap-1 font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md mr-1">
-                                  {req.items.length} itens inclusos
-                                </span>
-                                Quantidade total: <strong className="text-slate-800">{req.quantity} {req.unit}</strong>
-                              </>
-                            ) : (
-                              <>Quantidade: <strong className="text-slate-800">{req.quantity} {req.unit}</strong></>
-                            )}
+                            Quantidade: <strong className="text-slate-800">{req.quantity} {req.unit}</strong>
                           </span>
                           <span>
                             Prioridade: <strong className="text-slate-800 capitalize">{req.priority}</strong>
