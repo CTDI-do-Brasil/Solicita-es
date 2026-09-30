@@ -78,15 +78,6 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  const handleGoHome = () => {
-    setSelectedRequest(null);
-    setPurchasingEditRequest(null);
-    setShowRequestModal(false);
-    setShowUserModal(false);
-    setMasterViewMode('console');
-    handleLogout();
-  };
-
   const handleSwitchUser = (user: User) => {
     storage.setCurrentUser(user);
     setCurrentUser(user);
@@ -136,7 +127,6 @@ export default function App() {
       <Navbar
         currentUser={currentUser}
         onLogout={handleLogout}
-        onGoHome={handleGoHome}
         onSwitchUser={handleSwitchUser}
         masterViewMode={masterViewMode}
         onSelectMasterViewMode={setMasterViewMode}

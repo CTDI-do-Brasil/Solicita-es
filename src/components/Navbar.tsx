@@ -19,7 +19,6 @@ import {
 interface NavbarProps {
   currentUser: User;
   onLogout: () => void;
-  onGoHome?: () => void;
   onSwitchUser: (user: User) => void;
   masterViewMode?: 'console' | 'compras' | 'setor' | 'aprovadores';
   onSelectMasterViewMode?: (mode: 'console' | 'compras' | 'setor' | 'aprovadores') => void;
@@ -32,7 +31,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ 
   currentUser, 
   onLogout, 
-  onGoHome,
   onSwitchUser,
   masterViewMode = 'console',
   onSelectMasterViewMode,
@@ -61,34 +59,27 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Logo & Platform Name */}
           <div className="flex items-center gap-3.5 shrink-0">
-            <button
-              type="button"
-              onClick={onGoHome || onLogout}
-              className="cursor-pointer hover:opacity-85 transition-all focus:outline-none flex items-center gap-3.5 group text-left"
-              title="Voltar para a tela inicial"
-            >
-              <img
-                src="/ctdi-logo.png"
-                alt="Logo CTDI"
-                className="h-9 sm:h-11 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
-              />
-              <div className="h-9 w-px bg-slate-200 hidden sm:block" />
-              <div className="flex flex-col justify-center">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg whitespace-nowrap group-hover:text-purple-700 transition-colors">
-                    SmartBuy
+            <img
+              src="/ctdi-logo.png"
+              alt="Logo CTDI"
+              className="h-9 sm:h-11 w-auto object-contain shrink-0"
+            />
+            <div className="h-9 w-px bg-slate-200 hidden sm:block" />
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg whitespace-nowrap">
+                  SmartBuy
+                </span>
+                {isMaster && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                    MASTER / DEV
                   </span>
-                  {isMaster && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
-                      MASTER / DEV
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 whitespace-nowrap hidden sm:block mt-0.5">
-                  Gestão de Compras & Solicitações por Setor
-                </p>
+                )}
               </div>
-            </button>
+              <p className="text-xs text-slate-500 whitespace-nowrap hidden sm:block mt-0.5">
+                Gestão de Compras & Solicitações por Setor
+              </p>
+            </div>
           </div>
 
           {/* Master View Mode Switcher (When logged as Master) */}
