@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Eye,
   Check,
-  UserCheck,
   Send,
   AlertTriangle,
   Award
@@ -41,11 +40,6 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
   // Determine if the logged-in user is one of the 3 approvers or Master
   const detectedApprover = getApproverFromUser(currentUser);
   const isMaster = currentUser.role === 'master';
-
-  // Selected approver perspective (allows switching or simulating in dev/master)
-  const [activeApproverPerspective, setActiveApproverPerspective] = useState<ApproverName | 'Todos'>(
-    detectedApprover || 'Todos'
-  );
 
   const [activeTab, setActiveTab] = useState<'minha_vez' | 'esteira' | 'aprovados' | 'reprovados'>('minha_vez');
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,11 +62,8 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
     return allRequests.filter(r => r.approvals !== undefined || r.purchaseStatus === 'em_aprovacao');
   }, [allRequests]);
 
-  // Filter based on active perspective
-  const currentApproverRole: ApproverName | null = 
-    activeApproverPerspective !== 'Todos' 
-      ? activeApproverPerspective 
-      : detectedApprover;
+  // Current approver role (from logged in user)
+  const currentApproverRole: ApproverName | null = detectedApprover;
 
   // Requests currently waiting for this specific approver
   const myQueueRequests = useMemo(() => {
@@ -287,136 +278,6 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Banner & Header */}
-      <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl border border-purple-800/40">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-500/30 text-purple-200 border border-purple-400/40 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
-                Área de Aprovadores • Alçada de Diretoria
-              </span>
-              <span className="text-xs text-purple-200/80 font-mono">
-                SLA Sequencial Rigoroso
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Painel de Aprovação de Compras
-            </h1>
-            <p className="text-purple-200/90 text-sm mt-1 max-w-2xl">
-              Pedidos de compra cotados pelo setor de compras submetidos à esteira executiva de aprovação sequencial:
-              <strong className="text-amber-300 ml-1">1º Fernando</strong> ➔ 
-              <strong className="text-indigo-300 ml-1">2º Eduardo</strong> ➔ 
-              <strong className="text-purple-300 ml-1">3º Luiz</strong>.
-            </p>
-          </div>
-
-          {/* Perspective Switcher for Master / Dev */}
-          <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 flex flex-col gap-2 shrink-0">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-purple-200 flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-amber-300" />
-              <span>Visão Ativa de Aprovação:</span>
-            </div>
-            <div className="flex items-center gap-1 bg-black/20 p-1 rounded-lg text-xs">
-              <button
-                onClick={() => setActiveApproverPerspective('Fernando')}
-                className={`px-3 py-1.5 rounded-md font-bold transition-all ${
-                  activeApproverPerspective === 'Fernando'
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                Fernando (1º)
-              </button>
-              <button
-                onClick={() => setActiveApproverPerspective('Eduardo')}
-                className={`px-3 py-1.5 rounded-md font-bold transition-all ${
-                  activeApproverPerspective === 'Eduardo'
-                    ? 'bg-indigo-500 text-white shadow-xs'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                Eduardo (2º)
-              </button>
-              <button
-                onClick={() => setActiveApproverPerspective('Luiz')}
-                className={`px-3 py-1.5 rounded-md font-bold transition-all ${
-                  activeApproverPerspective === 'Luiz'
-                    ? 'bg-purple-500 text-white shadow-xs'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                Luiz (3º)
-              </button>
-              <button
-                onClick={() => setActiveApproverPerspective('Todos')}
-                className={`px-2.5 py-1.5 rounded-md font-bold transition-all ${
-                  activeApproverPerspective === 'Todos'
-                    ? 'bg-white/30 text-white shadow-xs'
-                    : 'text-white/60 hover:text-white'
-                }`}
-              >
-                Todos
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Approval Chain Visual Stepper */}
-        <div className="mt-6 pt-5 border-t border-purple-800/60 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">
-              1º
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>Fernando Silva</span>
-                <span className="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.2 rounded font-semibold">
-                  Operações & Suprimentos
-                </span>
-              </div>
-              <div className="text-[11px] text-purple-200/70 truncate">
-                {metrics.waitingFernandoCount} aguardando análise inicial ({formatCurrency(metrics.waitingFernandoValue)})
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0">
-              2º
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>Eduardo Costa</span>
-                <span className="text-[10px] bg-indigo-400/20 text-indigo-300 px-1.5 py-0.2 rounded font-semibold">
-                  Financeiro & Controladoria
-                </span>
-              </div>
-              <div className="text-[11px] text-purple-200/70 truncate">
-                {metrics.waitingEduardoCount} aguardando análise orçamentária ({formatCurrency(metrics.waitingEduardoValue)})
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-sm shrink-0">
-              3º
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>Luiz Carlos Martins</span>
-                <span className="text-[10px] bg-purple-400/20 text-purple-300 px-1.5 py-0.2 rounded font-semibold">
-                  Diretor Geral / CEO
-                </span>
-              </div>
-              <div className="text-[11px] text-purple-200/70 truncate">
-                {metrics.waitingLuizCount} aguardando aprovação final ({formatCurrency(metrics.waitingLuizValue)})
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Success Notification Alert */}
       {actionSuccessMsg && (
         <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-xs animate-in fade-in">
