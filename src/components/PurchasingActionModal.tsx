@@ -36,10 +36,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
       ? 'em_cotacao'
       : request.purchaseStatus
   );
-
-  const [poNumber, setPoNumber] = useState(
-    request.purchaseOrderNumber || `OC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`
-  );
   const [supplier, setSupplier] = useState(request.supplier || '');
   const [unitPrice, setUnitPrice] = useState<number | string>(request.unitPrice || '');
   const [shippingCost, setShippingCost] = useState<number | string>(request.shippingCost || '');
@@ -108,7 +104,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status,
-        purchaseOrderNumber: poNumber.trim(),
+        purchaseOrderNumber: request.purchaseOrderNumber,
         supplier: supplier.trim(),
         unitPrice: isNaN(numUnit) ? undefined : numUnit,
         totalPrice: isNaN(numTotal) ? undefined : numTotal,
@@ -400,35 +396,19 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               </select>
             </div>
 
-            {/* Order Number & Supplier */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Nº do Pedido de Compra (OC)
-                </label>
-                <input
-                  id="buyer-po-number"
-                  type="text"
-                  value={poNumber}
-                  onChange={(e) => setPoNumber(e.target.value)}
-                  placeholder="ex: OC-2026-0245"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Fornecedor / Razão Social
-                </label>
-                <input
-                  id="buyer-supplier-name"
-                  type="text"
-                  value={supplier}
-                  onChange={(e) => setSupplier(e.target.value)}
-                  placeholder="ex: Kalunga SA, Dell do Brasil, SKF Rolamentos..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-                />
-              </div>
+            {/* Supplier */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Fornecedor / Razão Social
+              </label>
+              <input
+                id="buyer-supplier-name"
+                type="text"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder="ex: Kalunga SA, Dell do Brasil, SKF Rolamentos..."
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
+              />
             </div>
 
             {/* Pricing Section (Valor de Compra) */}
@@ -559,7 +539,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   const numShip = parseFloat(String(shippingCost)) || 0;
                   storage.updatePurchasingDetails(request.id, buyer, {
                     status: 'em_aprovacao',
-                    purchaseOrderNumber: poNumber.trim(),
+                    purchaseOrderNumber: request.purchaseOrderNumber,
                     supplier: supplier.trim(),
                     unitPrice: isNaN(numUnit) ? undefined : numUnit,
                     totalPrice: numTotal,
