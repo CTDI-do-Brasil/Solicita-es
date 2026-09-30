@@ -607,7 +607,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Distribuição por Setor ({sectorSpendData.list.length})
+                Gasto total no setor
               </button>
               <button
                 type="button"
@@ -770,7 +770,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                   <strong>Total Acumulado em {selectedYear}:</strong> {formatCurrency(monthlyEvolutionData.yearTotal)} ({monthlyEvolutionData.yearCount} pedido{monthlyEvolutionData.yearCount !== 1 ? 's' : ''})
                 </span>
                 <span className="text-[11px] text-purple-700">
-                  Clique em um mês para filtrar a distribuição por setor
+                  Clique em um mês para filtrar o gasto total no setor
                 </span>
               </div>
             </div>
