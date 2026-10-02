@@ -265,7 +265,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTab === 'aprovadores' ? 'text-white' : 'text-purple-600'}`} />
-                  <span className="truncate">Em Aprovação (Alçada)</span>
+                  <span className="truncate">Em Aprovação</span>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
                   activeTab === 'aprovadores' ? 'bg-purple-800 text-purple-100' : 'bg-purple-100 text-purple-900'
@@ -537,7 +537,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 <h1 className="text-base font-bold text-slate-900">
                   {activeTab === 'geral' && 'Todas as Solicitações'}
                   {activeTab === 'liberadas' && 'Liberadas para Compra'}
-                  {activeTab === 'aprovadores' && 'Em Aprovação (Alçada)'}
+                  {activeTab === 'aprovadores' && 'Em Aprovação'}
                   {activeTab === 'atrasadas' && 'Solicitações em Atraso (+48h)'}
                   {activeTab === 'faturados' && 'Compras Realizadas'}
                   {activeTab === 'dashboard' && 'Dashboard Consolidado'}
@@ -605,7 +605,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 <option value="em_atraso">Solicitação em atraso (+48h)</option>
                 <option value="recebido_em_compras">Recebido em Compras</option>
                 <option value="em_cotacao">Em Cotação com Fornecedores</option>
-                <option value="em_aprovacao">Em Aprovação Diretoria (Alçada)</option>
+                <option value="em_aprovacao">Em Aprovação Diretoria</option>
                 <option value="pedido_emitido">Pedido de Compra Emitido</option>
                 <option value="compra_realizada">Compra Realizada</option>
                 <option value="em_transito">Em Trânsito / Transporte</option>

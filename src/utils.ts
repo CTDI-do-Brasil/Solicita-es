@@ -682,7 +682,7 @@ export function getRequestPurchaseReleaseInfo(request: PurchaseRequest): Request
         dotColor: 'bg-purple-500',
         title: `Em Aprovação da Diretoria (Na vez de ${ap.currentApprover})`,
         description: `Enviada para aprovação da diretoria. Na vez de ${ap.currentApprover}. Não liberada para compra ainda.`,
-        approvalStageText: `Na vez de ${ap.currentApprover} (Alçada)`,
+        approvalStageText: `Na vez de ${ap.currentApprover}`,
       };
     }
   }
