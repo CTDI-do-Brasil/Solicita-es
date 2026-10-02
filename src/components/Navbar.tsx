@@ -62,14 +62,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img
               src="/ctdi-logo.png"
               alt="Logo CTDI"
-              className="h-7 sm:h-8 md:h-9 w-auto object-contain shrink-0"
+              className="h-8 sm:h-9 md:h-10 w-auto object-contain shrink-0"
             />
-            <div className="h-8 sm:h-9 w-[1.5px] bg-slate-200 rounded-full hidden sm:block shrink-0" />
+            <div className="h-9 sm:h-11 w-[1.5px] bg-slate-200 rounded-full hidden sm:block shrink-0" />
             <div className="flex items-center gap-2.5">
               <img
                 src="/nexus-logo.png"
                 alt="Nexus - Procurement & Supply Chain Hub"
-                className="h-10 sm:h-12 md:h-13 w-auto object-contain shrink-0"
+                className="h-12 sm:h-14 md:h-16 w-auto object-contain shrink-0"
               />
               {isMaster && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
