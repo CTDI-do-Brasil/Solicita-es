@@ -55,21 +55,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between min-h-[72px] sm:min-h-20 py-2.5 gap-4">
+        <div className="flex items-center justify-between min-h-[76px] sm:min-h-[84px] md:min-h-[88px] py-2 sm:py-2.5 gap-4">
           
           {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3.5 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-3.5 sm:gap-4.5 shrink-0">
             <img
               src="/ctdi-logo.png"
               alt="Logo CTDI"
-              className="h-8 sm:h-9 md:h-10 w-auto object-contain shrink-0"
+              className="h-8 sm:h-10 md:h-11 lg:h-[48px] w-auto object-contain shrink-0"
             />
-            <div className="h-9 sm:h-11 w-[1.5px] bg-slate-200 rounded-full hidden sm:block shrink-0" />
+            <div className="h-10 sm:h-12 md:h-13 w-[1.5px] bg-slate-200 rounded-full hidden sm:block shrink-0" />
             <div className="flex items-center gap-2.5">
               <img
                 src="/nexus-logo.png"
                 alt="Nexus - Procurement & Supply Chain Hub"
-                className="h-12 sm:h-14 md:h-16 w-auto object-contain shrink-0"
+                className="h-13 sm:h-15 md:h-[68px] lg:h-[72px] w-auto object-contain shrink-0 drop-shadow-2xs"
               />
               {isMaster && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
