@@ -58,18 +58,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between min-h-[72px] sm:min-h-20 py-2.5 gap-4">
           
           {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-3.5 sm:gap-4 shrink-0">
             <img
               src="/ctdi-logo.png"
               alt="Logo CTDI"
-              className="h-8 sm:h-10 w-auto object-contain shrink-0"
+              className="h-7 sm:h-8 md:h-9 w-auto object-contain shrink-0"
             />
-            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-            <div className="flex items-center gap-2">
+            <div className="h-8 sm:h-9 w-[1.5px] bg-slate-200 rounded-full hidden sm:block shrink-0" />
+            <div className="flex items-center gap-2.5">
               <img
                 src="/nexus-logo.png"
                 alt="Nexus - Procurement & Supply Chain Hub"
-                className="h-9 sm:h-11 w-auto object-contain shrink-0"
+                className="h-10 sm:h-12 md:h-13 w-auto object-contain shrink-0"
               />
               {isMaster && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">

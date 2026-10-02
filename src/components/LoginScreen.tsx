@@ -74,17 +74,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       
       {/* Container */}
       <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center">
-        <div className="flex items-center justify-center gap-4 sm:gap-6 mb-3">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mb-4">
           <img
             src="/ctdi-logo.png"
             alt="Logo CTDI"
-            className="h-10 sm:h-12 w-auto object-contain"
+            className="h-8 sm:h-10 w-auto object-contain shrink-0"
           />
-          <div className="h-9 sm:h-10 w-px bg-slate-300" />
+          <div className="h-9 sm:h-11 w-[1.5px] bg-slate-300 rounded-full shrink-0" />
           <img
             src="/nexus-logo.png"
             alt="Logo NEXUS"
-            className="h-12 sm:h-15 w-auto object-contain"
+            className="h-13 sm:h-16 w-auto object-contain shrink-0"
           />
         </div>
         <p className="mt-2 text-sm text-slate-600">
