@@ -35,7 +35,8 @@ import {
   Send,
   GitBranch,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  History
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 
@@ -71,7 +72,22 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     return allRequests.reduce((acc, r) => acc + (r.totalPrice || 0), 0);
   }, [allRequests]);
 
-  // Solicitações liberadas para compra após aprovação e aguardando faturamento/emissão
+  // Solicitações ativas em andamento (fila operacional de Compras: pendentes, em cotação, em aprovação ou liberadas para compra)
+  // Pedidos comprados saem desta fila e vão para o Histórico de Compras!
+  const activeRequests = useMemo(() => {
+    return allRequests.filter(
+      r => r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
+    );
+  }, [allRequests]);
+
+  // Histórico de compras realizadas (concluídas e faturadas)
+  const historyRequests = useMemo(() => {
+    return allRequests.filter(
+      r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue'
+    );
+  }, [allRequests]);
+
+  // Solicitações liberadas para compra após aprovação e aguardando faturamento/emissão (que AINDA NÃO foram compradas)
   const releasedRequests = useMemo(() => {
     return allRequests.filter(r => {
       const rel = getRequestPurchaseReleaseInfo(r);
@@ -79,31 +95,34 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     });
   }, [allRequests]);
 
-  // Solicitações com mais de 48h de recebimento sem conclusão da compra
+  // Solicitações com mais de 48h de recebimento sem conclusão da compra (em aberto)
   const delayedRequests = useMemo(() => {
-    return allRequests.filter(r => getRequestDelayInfo(r).isDelayed);
-  }, [allRequests]);
-
-  const completedPurchasesCount = useMemo(() => {
     return allRequests.filter(
-      r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue'
-    ).length;
+      r => getRequestDelayInfo(r).isDelayed && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
+    );
   }, [allRequests]);
 
   const approversCount = useMemo(() => {
     return allRequests.filter(
-      r => r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined
-    ).length;
+      r => (r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined) && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
+    );
   }, [allRequests]);
 
-  const selectedSectorRequests = useMemo(() => {
-    if (selectedSector === 'Todos') return allRequests;
-    return allRequests.filter(r => r.sector === selectedSector);
-  }, [allRequests, selectedSector]);
+  // Setor selecionado: contagens separadas de ativas e histórico
+  const selectedSectorActiveRequests = useMemo(() => {
+    if (selectedSector === 'Todos') return activeRequests;
+    return activeRequests.filter(r => r.sector === selectedSector);
+  }, [activeRequests, selectedSector]);
+
+  const selectedSectorHistoryRequests = useMemo(() => {
+    if (selectedSector === 'Todos') return historyRequests;
+    return historyRequests.filter(r => r.sector === selectedSector);
+  }, [historyRequests, selectedSector]);
 
   const selectedSectorTotalSpent = useMemo(() => {
-    return selectedSectorRequests.reduce((acc, r) => acc + (r.totalPrice || 0), 0);
-  }, [selectedSectorRequests]);
+    const list = selectedSector === 'Todos' ? allRequests : allRequests.filter(r => r.sector === selectedSector);
+    return list.reduce((acc, r) => acc + (r.totalPrice || 0), 0);
+  }, [allRequests, selectedSector]);
 
   // Filter requests
   const filteredRequests = useMemo(() => {
@@ -115,20 +134,33 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     }
 
     // Filter by Tab
-    if (activeTab === 'atrasadas') {
-      list = list.filter(r => getRequestDelayInfo(r).isDelayed);
+    if (activeTab === 'geral') {
+      // Solicitações em Aberto: Pedidos comprados saem desta lista e vão para o Histórico de Compras!
+      list = list.filter(r => r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado');
     } else if (activeTab === 'liberadas') {
-      list = list.filter(r => getRequestPurchaseReleaseInfo(r).isReleased);
+      // Apenas solicitações liberadas que AINDA NÃO foram compradas!
+      list = list.filter(r => {
+        const rel = getRequestPurchaseReleaseInfo(r);
+        return rel.isReleased && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado';
+      });
     } else if (activeTab === 'aprovadores') {
-      list = list.filter(r => r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined);
+      // Em aprovação ativas
+      list = list.filter(r => (r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined) && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado');
+    } else if (activeTab === 'atrasadas') {
+      // Em atraso ativas
+      list = list.filter(r => getRequestDelayInfo(r).isDelayed && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado');
     } else if (activeTab === 'faturados') {
-      list = list.filter(r => r.totalPrice !== undefined && r.totalPrice > 0);
+      // HISTÓRICO DE COMPRAS: todos os pedidos cuja compra já foi realizada!
+      list = list.filter(r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue');
     }
 
     // Filter by Status dropdown
     if (statusFilter !== 'todos') {
       if (statusFilter === 'liberadas') {
-        list = list.filter(r => getRequestPurchaseReleaseInfo(r).isReleased);
+        list = list.filter(r => {
+          const rel = getRequestPurchaseReleaseInfo(r);
+          return rel.isReleased && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado';
+        });
       } else if (statusFilter === 'aguardando_aprovacao') {
         list = list.filter(r => !getRequestPurchaseReleaseInfo(r).isReleased);
       } else if (statusFilter === 'sem_valor') {
@@ -200,7 +232,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             {/* List of Navigation Tabs */}
             <nav className={`mt-3 space-y-1.5 ${mobileNavMenuOpen ? 'block' : 'hidden lg:block'}`} aria-label="Menu de Compras">
               
-              {/* Todas as Solicitações */}
+              {/* Solicitações em Aberto */}
               <button
                 type="button"
                 onClick={() => {
@@ -215,12 +247,12 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Layers className={`w-4 h-4 shrink-0 ${activeTab === 'geral' ? 'text-amber-400' : 'text-slate-400'}`} />
-                  <span className="truncate">Todas as Solicitações</span>
+                  <span className="truncate">Solicitações em Aberto</span>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
                   activeTab === 'geral' ? 'bg-slate-800 text-amber-300' : 'bg-slate-100 text-slate-600'
                 }`}>
-                  {allRequests.length}
+                  {activeRequests.length}
                 </span>
               </button>
 
@@ -307,27 +339,28 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 )}
               </button>
 
-              {/* Compra Realizada */}
+              {/* Histórico de Compras */}
               <button
                 type="button"
+                id="purchasing-tab-historico"
                 onClick={() => {
                   setActiveTab('faturados');
                   setMobileNavMenuOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
                   activeTab === 'faturados'
-                    ? 'bg-emerald-800 text-white font-bold border-emerald-800 shadow-xs'
-                    : 'text-slate-700 hover:bg-slate-100 border-transparent font-medium'
+                    ? 'bg-slate-900 text-white font-bold border-slate-900 shadow-xs'
+                    : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 border-transparent font-medium'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <DollarSign className={`w-4 h-4 shrink-0 ${activeTab === 'faturados' ? 'text-emerald-300' : 'text-emerald-600'}`} />
-                  <span className="truncate">Compra Realizada</span>
+                  <History className={`w-4 h-4 shrink-0 ${activeTab === 'faturados' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  <span className="truncate">Histórico de Compras</span>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
-                  activeTab === 'faturados' ? 'bg-emerald-900 text-emerald-200' : 'bg-slate-100 text-slate-600'
+                  activeTab === 'faturados' ? 'bg-emerald-900 text-emerald-200' : 'bg-emerald-100 text-emerald-800'
                 }`}>
-                  {completedPurchasesCount}
+                  {historyRequests.length}
                 </span>
               </button>
 
@@ -444,14 +477,16 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
                   selectedSector === 'Todos' ? 'bg-slate-800 text-amber-300' : 'bg-slate-100 text-slate-600'
                 }`}>
-                  {allRequests.length}
+                  {activeTab === 'faturados' ? historyRequests.length : activeRequests.length}
                 </span>
               </button>
 
               {/* Sector Buttons */}
               <div className="pt-1.5 space-y-1 border-t border-slate-100">
                 {ALL_SECTORS.map((sec) => {
-                  const count = allRequests.filter(r => r.sector === sec).length;
+                  const activeCount = activeRequests.filter(r => r.sector === sec).length;
+                  const historyCount = historyRequests.filter(r => r.sector === sec).length;
+                  const count = activeTab === 'faturados' ? historyCount : activeCount;
                   const sectorColor = getSectorColor(sec);
                   const isSelected = selectedSector === sec;
 
@@ -495,13 +530,17 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="bg-white p-2 rounded-lg border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block">Solicitações</span>
-                      <span className="text-sm font-bold text-slate-900">{selectedSectorRequests.length}</span>
+                      <span className="text-[10px] text-slate-500 block">Em Aberto</span>
+                      <span className="text-sm font-bold text-slate-900">{selectedSectorActiveRequests.length}</span>
                     </div>
                     <div className="bg-white p-2 rounded-lg border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block">Total Gasto</span>
-                      <span className="text-xs font-bold text-emerald-700">{formatCurrency(selectedSectorTotalSpent)}</span>
+                      <span className="text-[10px] text-slate-500 block">Comprados</span>
+                      <span className="text-sm font-bold text-emerald-700">{selectedSectorHistoryRequests.length}</span>
                     </div>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-500 block">Total Gasto (Histórico)</span>
+                    <span className="text-xs font-bold text-emerald-700">{formatCurrency(selectedSectorTotalSpent)}</span>
                   </div>
                   <button
                     onClick={() => setSelectedSector('Todos')}
@@ -512,7 +551,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 </div>
               ) : (
                 <div className="mt-4 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center justify-between">
-                  <span>9 setores monitorados</span>
+                  <span>{ALL_SECTORS.length} setores monitorados</span>
                   <span className="font-mono font-bold text-slate-700">{formatCurrency(totalGlobalSpent)}</span>
                 </div>
               )}
@@ -531,25 +570,25 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 {activeTab === 'liberadas' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
                 {activeTab === 'aprovadores' && <ShieldCheck className="w-5 h-5 text-purple-600" />}
                 {activeTab === 'atrasadas' && <AlertTriangle className="w-5 h-5 text-rose-600" />}
-                {activeTab === 'faturados' && <DollarSign className="w-5 h-5 text-emerald-600" />}
+                {activeTab === 'faturados' && <History className="w-5 h-5 text-emerald-600" />}
                 {activeTab === 'dashboard' && <BarChart3 className="w-5 h-5 text-indigo-600" />}
                 {activeTab === 'versoes' && <GitBranch className="w-5 h-5 text-amber-500" />}
                 <h1 className="text-base font-bold text-slate-900">
-                  {activeTab === 'geral' && 'Todas as Solicitações'}
+                  {activeTab === 'geral' && 'Solicitações em Aberto'}
                   {activeTab === 'liberadas' && 'Liberadas para Compra'}
                   {activeTab === 'aprovadores' && 'Em Aprovação'}
                   {activeTab === 'atrasadas' && 'Solicitações em Atraso (+48h)'}
-                  {activeTab === 'faturados' && 'Compras Realizadas'}
+                  {activeTab === 'faturados' && 'Histórico de Compras Realizadas'}
                   {activeTab === 'dashboard' && 'Dashboard Consolidado'}
                   {activeTab === 'versoes' && 'Controle de Versões & Revisores'}
                 </h1>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                {activeTab === 'geral' && 'Listagem completa de requisições de compra de todos os setores'}
-                {activeTab === 'liberadas' && 'Solicitações autorizadas prontas para cotação, faturamento ou emissão'}
+                {activeTab === 'geral' && 'Fila operacional de solicitações ativas em cotação e atendimento'}
+                {activeTab === 'liberadas' && 'Solicitações autorizadas prontas para compra ou emissão de pedido'}
                 {activeTab === 'aprovadores' && 'Solicitações aguardando deliberação de gestores e diretoria'}
                 {activeTab === 'atrasadas' && 'Solicitações recebidas há mais de 48 horas aguardando atendimento'}
-                {activeTab === 'faturados' && 'Histórico de pedidos comprados, faturados ou entregues'}
+                {activeTab === 'faturados' && 'Arquivo histórico de pedidos já comprados, faturados e concluídos'}
                 {activeTab === 'dashboard' && 'Visão financeira e acompanhamento mensal por setor'}
                 {activeTab === 'versoes' && 'Histórico e homologação de versões da aplicação'}
               </p>
@@ -698,6 +737,25 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                             </div>
                             <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded border border-emerald-400 shrink-0">
                               Aprovação Ok
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Callout de Compra Realizada (Histórico) */}
+                        {(req.purchaseStatus === 'compra_realizada' || req.purchaseStatus === 'entregue') && (
+                          <div 
+                            id={`callout-compra-concluida-${req.id}`}
+                            className="p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-300 text-xs text-emerald-950 mt-1 flex items-center justify-between gap-2 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <History className="w-4 h-4 text-emerald-700 shrink-0" />
+                              <span>
+                                <strong>Compra Concluída:</strong> Pedido finalizado e arquivado no Histórico de Compras.
+                                {req.purchaseOrderNumber ? ` (OC: ${req.purchaseOrderNumber})` : ''}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-900 bg-emerald-200/90 px-2 py-0.5 rounded border border-emerald-400 shrink-0">
+                              Histórico
                             </span>
                           </div>
                         )}
