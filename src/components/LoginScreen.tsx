@@ -73,15 +73,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       
       {/* Container */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <img
-          src="/ctdi-logo.png"
-          alt="Logo CTDI"
-          className="mx-auto h-14 sm:h-16 w-auto object-contain"
-        />
-        <h1 className="mt-4 text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          SmartBuy
-        </h1>
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mb-3">
+          <img
+            src="/ctdi-logo.png"
+            alt="Logo CTDI"
+            className="h-10 sm:h-12 w-auto object-contain"
+          />
+          <div className="h-9 sm:h-10 w-px bg-slate-300" />
+          <img
+            src="/nexus-logo.png"
+            alt="Logo NEXUS"
+            className="h-12 sm:h-15 w-auto object-contain"
+          />
+        </div>
         <p className="mt-2 text-sm text-slate-600">
           Gestão descentralizada por setor com controle centralizado de compras
         </p>

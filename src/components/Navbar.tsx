@@ -58,27 +58,24 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between min-h-[72px] sm:min-h-20 py-2.5 gap-4">
           
           {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3.5 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <img
               src="/ctdi-logo.png"
               alt="Logo CTDI"
-              className="h-9 sm:h-11 w-auto object-contain shrink-0"
+              className="h-8 sm:h-10 w-auto object-contain shrink-0"
             />
-            <div className="h-9 w-px bg-slate-200 hidden sm:block" />
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg whitespace-nowrap">
-                  SmartBuy
+            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              <img
+                src="/nexus-logo.png"
+                alt="Nexus - Procurement & Supply Chain Hub"
+                className="h-9 sm:h-11 w-auto object-contain shrink-0"
+              />
+              {isMaster && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                  MASTER / DEV
                 </span>
-                {isMaster && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
-                    MASTER / DEV
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 whitespace-nowrap hidden sm:block mt-0.5">
-                Gestão de Compras & Solicitações por Setor
-              </p>
+              )}
             </div>
           </div>
 
