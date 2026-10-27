@@ -800,7 +800,7 @@ export function isRequestWaitingQuote(request: PurchaseRequest): boolean {
 export function isLocalEnvironment(): boolean {
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || Boolean(import.meta.env?.DEV);
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || Boolean((import.meta as any).env?.DEV);
 }
 
 

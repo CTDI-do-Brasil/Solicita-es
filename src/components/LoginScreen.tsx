@@ -69,7 +69,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     }
 
     if (!password.trim()) {
-      setErrorMessage('Por favor, informe a senha de acesso (padrão inicial: 123456).');
+      setErrorMessage('Por favor, informe a senha de acesso.');
       return;
     }
 
@@ -110,43 +110,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             className="h-15 sm:h-20 w-auto object-contain shrink-0"
           />
         </div>
-        <p className="mt-2 text-sm text-slate-600">
-          Gestão descentralizada por setor com controle centralizado de compras
-        </p>
       </div>
 
       {/* Main Card */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
-        
-        {/* Master Developer Quick Access Banner */}
-        <div className="mb-4 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3 text-left">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Acesso Nível Master (Desenvolvedor)
-                </span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono">
-                  dev@empresa.com
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Controle total sobre todas as áreas, setores e colaboradores.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => handleQuickLogin(masterUser)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs shrink-0"
-          >
-            <span>Entrar como Master</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
         <div className="bg-white py-8 px-6 sm:px-10 shadow-lg rounded-2xl border border-slate-200">
           
           {/* Direct Login Form */}
@@ -171,13 +138,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="mb-1">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Senha de Acesso
                 </label>
-                <span className="text-[11px] text-slate-500">
-                  Padrão: <strong className="text-slate-700 font-mono">123456</strong>
-                </span>
               </div>
               <div className="relative rounded-lg shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -480,22 +444,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
           </div>
           )}
-
-          {/* System Highlights */}
-          <div className="mt-8 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> 9 Setores Isolados
-            </span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Aprovação do Gestor
-            </span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Central de Compras
-            </span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Valor Refletido
-            </span>
-          </div>
 
         </div>
       </div>
