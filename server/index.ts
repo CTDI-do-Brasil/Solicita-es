@@ -43,18 +43,18 @@ app.get('*', (_req, res) => {
   const indexPath = path.join(distPath, 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
-      res.status(404).send('SmartBuy API Server is running. Frontend build not found.');
+      res.status(404).send('Nexus API Server is running. Frontend build not found.');
     }
   });
 });
 
 app.listen(PORT, async () => {
-  console.log(`[SmartBuy Server] Servidor backend rodando na porta ${PORT}`);
-  console.log(`[SmartBuy Server] Endpoint de Saúde: http://localhost:${PORT}/api/health`);
+  console.log(`[Nexus Server] Servidor backend rodando na porta ${PORT}`);
+  console.log(`[Nexus Server] Endpoint de Saúde: http://localhost:${PORT}/api/health`);
   
   // Tentar migração automática em segundo plano
   runAutoMigrations().catch((err) => {
-    console.warn('[SmartBuy Server] Aviso ao verificar banco:', err.message);
+    console.warn('[Nexus Server] Aviso ao verificar banco:', err.message);
   });
 });
 

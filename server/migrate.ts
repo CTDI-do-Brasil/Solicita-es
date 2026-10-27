@@ -14,16 +14,20 @@ export async function runAutoMigrations() {
   }
 
   try {
-    const sqlPath = path.resolve(__dirname, '../database/init_smartbuy.sql');
+    let sqlPath = path.resolve(__dirname, '../database/init_nexus.sql');
+    if (!fs.existsSync(sqlPath)) {
+      sqlPath = path.resolve(__dirname, '../database/init_smartbuy.sql');
+    }
     if (!fs.existsSync(sqlPath)) {
       console.warn('[PostgreSQL] Arquivo SQL não encontrado em:', sqlPath);
       return;
     }
 
     const sql = fs.readFileSync(sqlPath, 'utf-8');
-    console.log('[PostgreSQL] Executando script DDL / Seed em SmartBuy...');
+    const dbName = process.env.PGDATABASE || 'nexus';
+    console.log(`[PostgreSQL] Executando script DDL / Seed em ${dbName}...`);
     await pool.query(sql);
-    console.log('[PostgreSQL] Migração e estrutura inicial do banco SmartBuy validadas com sucesso!');
+    console.log(`[PostgreSQL] Migração e estrutura inicial do banco ${dbName} validadas com sucesso!`);
   } catch (error: any) {
     console.error('[PostgreSQL] Erro ao executar migração automática:', error.message);
   }

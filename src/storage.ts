@@ -820,11 +820,11 @@ export const storage = {
       }
 
       if (hasChanges) {
-        console.log('[PostgreSQL SmartBuy] Sincronização inicial realizada com sucesso a partir da API.');
+        console.log('[PostgreSQL Nexus] Sincronização inicial realizada com sucesso a partir da API.');
       }
       return hasChanges;
     } catch (e) {
-      console.debug('[PostgreSQL SmartBuy] Operando com cache local enquanto o backend inicializa:', e);
+      console.debug('[PostgreSQL Nexus] Operando com cache local enquanto o backend inicializa:', e);
       return false;
     }
   }
