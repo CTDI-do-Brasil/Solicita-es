@@ -217,10 +217,36 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
     unitPrice: 2850.00,
     totalPrice: 5700.00,
     shippingCost: 85.00,
+    paymentTerms: 'À vista com 5% desc',
+    deliveryDeadline: '3 a 5 dias úteis',
     purchaseDate: '2026-08-10',
     expectedDeliveryDate: '2026-08-18',
     purchasedBy: 'Juliana Paes Correia (Compras)',
     purchasingNotes: 'Negociado desconto de 5% à vista. Faturado com nota fiscal 48.912.',
+    quotes: [
+      {
+        id: 'q-001-1',
+        supplier: 'TecnoSupply Distribuidora Ltda',
+        unitPrice: 2850.00,
+        shippingCost: 85.00,
+        totalPrice: 5785.00,
+        paymentTerms: 'À vista com 5% desc',
+        deliveryDeadline: '3 a 5 dias úteis',
+        selected: true,
+        notes: 'Melhor condição negociada com desconto à vista.'
+      },
+      {
+        id: 'q-001-2',
+        supplier: 'Cisco Redes Brasil Comércio',
+        unitPrice: 2990.00,
+        shippingCost: 50.00,
+        totalPrice: 6030.00,
+        paymentTerms: 'Boleto 30 dias',
+        deliveryDeadline: '7 dias úteis',
+        selected: false,
+        notes: 'Preço ligeiramente acima da TecnoSupply.'
+      }
+    ],
     updatedAt: '2026-08-10T16:00:00Z',
   },
 
@@ -275,8 +301,45 @@ export const INITIAL_REQUESTS: PurchaseRequest[] = [
     unitPrice: 8400.00,
     totalPrice: 8400.00,
     shippingCost: 350.00,
+    paymentTerms: '28 DDL',
+    deliveryDeadline: '10 dias úteis',
     purchasedBy: 'Alexandre Fontes (Compras)',
-    purchasingNotes: 'Cotação concluída e pedido de compra enviado para alçada de aprovação.',
+    purchasingNotes: 'Cotação concluída com 3 fornecedores concorrentes e pedido de compra enviado para alçada de aprovação.',
+    quotes: [
+      {
+        id: 'q-003-1',
+        supplier: 'Metalúrgica FlexIndústria SA',
+        unitPrice: 8050.00,
+        shippingCost: 350.00,
+        totalPrice: 8400.00,
+        paymentTerms: '28 DDL',
+        deliveryDeadline: '10 dias úteis',
+        selected: true,
+        notes: 'Melhor custo-benefício e prazo de entrega adequado para a linha 2.'
+      },
+      {
+        id: 'q-003-2',
+        supplier: 'Roster Indústria Mecânica Ltda',
+        unitPrice: 8700.00,
+        shippingCost: 200.00,
+        totalPrice: 8900.00,
+        paymentTerms: '30 dias',
+        deliveryDeadline: '15 dias corridos',
+        selected: false,
+        notes: 'Prazo mais longo (15 dias) e valor superior.'
+      },
+      {
+        id: 'q-003-3',
+        supplier: 'Equipamentos Dinâmicos Brasil',
+        unitPrice: 9200.00,
+        shippingCost: 0.00,
+        totalPrice: 9200.00,
+        paymentTerms: 'À vista',
+        deliveryDeadline: '7 dias úteis',
+        selected: false,
+        notes: 'Frete grátis porém valor unitário significativamente mais elevado.'
+      }
+    ],
     approvals: {
       currentApprover: 'Fernando',
       sentToApproversAt: '2026-09-08T10:45:00Z',

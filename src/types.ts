@@ -76,6 +76,20 @@ export type PurchaseOrderStatus =
   | 'reprovado_aprovadores'       // Reproved by an approver
   | 'cancelado';                  // Cancelled
 
+export interface ProductQuote {
+  id: string;
+  itemId?: string;
+  supplier: string;
+  unitPrice: number;
+  shippingCost?: number;
+  totalPrice: number;
+  paymentTerms?: string; // Prazo de Pagamento (ex: "30 dias", "Boleto 28 DDL", "À vista")
+  deliveryDeadline?: string; // Prazo de Entrega (ex: "5 dias úteis", "15 dias corridos", "Imediato")
+  notes?: string;
+  selected?: boolean; // Orçamento selecionado / vencedor
+  createdAt?: string;
+}
+
 export interface RequestItem {
   id: string;
   name: string;
@@ -83,6 +97,7 @@ export interface RequestItem {
   quantity: number;
   unit: string;
   linkUrl?: string;
+  quotes?: ProductQuote[];
 }
 
 export interface PurchaseRequest {
@@ -119,10 +134,13 @@ export interface PurchaseRequest {
   unitPrice?: number;
   totalPrice?: number; // Valor final de compra preenchido por Compras
   shippingCost?: number;
+  paymentTerms?: string; // Prazo de Pagamento (ex: "30 dias", "Boleto 28 DDL", "À vista")
+  deliveryDeadline?: string; // Prazo de Entrega do fornecedor (ex: "5 dias úteis", "15 dias corridos")
   purchaseDate?: string;
   expectedDeliveryDate?: string;
   purchasedBy?: string;
   purchasingNotes?: string;
+  quotes?: ProductQuote[]; // Múltiplos orçamentos cadastrados pela Central de Compras
   updatedAt: string;
 }
 

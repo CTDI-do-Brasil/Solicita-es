@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { User, PurchaseRequest, PurchaseOrderStatus } from '../types';
+import React, { useState } from 'react';
+import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem } from '../types';
 import { storage } from '../storage';
 import { formatCurrency, formatDate, getSectorColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
@@ -11,11 +11,16 @@ import {
   Calendar, 
   Truck, 
   FileCheck2, 
-  AlertCircle,
-  Package,
-  CheckCircle2,
-  AlertTriangle,
-  ShieldCheck
+  AlertCircle, 
+  Package, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Plus, 
+  Trash2, 
+  CreditCard, 
+  Clock, 
+  Award,
+  Sparkles
 } from 'lucide-react';
 
 interface PurchasingActionModalProps {
@@ -24,6 +29,19 @@ interface PurchasingActionModalProps {
   onClose: () => void;
   onSave: () => void;
 }
+
+interface ItemQuotesState {
+  itemId: string;
+  itemName: string;
+  itemQuantity: number;
+  itemUnit: string;
+  quotes: ProductQuote[];
+}
+
+const QUICK_PAYMENT_TERMS = ['À vista', '15 dias', '28 DDL', '30 dias', '30/60 dias', 'Faturado 45 dias'];
+const QUICK_DELIVERY_TERMS = ['Pronta entrega', '2 a 3 dias úteis', '5 dias úteis', '10 dias úteis', '15 dias corridos'];
+
+const generateQuoteId = () => `quote-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
 export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   request,
@@ -36,10 +54,77 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
       ? 'em_cotacao'
       : request.purchaseStatus
   );
-  const [supplier, setSupplier] = useState(request.supplier || '');
-  const [unitPrice, setUnitPrice] = useState<number | string>(request.unitPrice || '');
-  const [shippingCost, setShippingCost] = useState<number | string>(request.shippingCost || '');
-  const [totalPrice, setTotalPrice] = useState<number | string>(request.totalPrice || '');
+
+  // Initialize items and quotes
+  const [itemsQuotes, setItemsQuotes] = useState<ItemQuotesState[]>(() => {
+    if (request.items && request.items.length > 0) {
+      return request.items.map((it, idx) => {
+        if (it.quotes && it.quotes.length > 0) {
+          return {
+            itemId: it.id || `item-${idx}`,
+            itemName: it.name,
+            itemQuantity: it.quantity,
+            itemUnit: it.unit,
+            quotes: it.quotes.map(q => ({ ...q })),
+          };
+        }
+        // If single item in items array and request has top-level quotes
+        if (request.items!.length === 1 && request.quotes && request.quotes.length > 0) {
+          return {
+            itemId: it.id || `item-${idx}`,
+            itemName: it.name,
+            itemQuantity: it.quantity,
+            itemUnit: it.unit,
+            quotes: request.quotes.map(q => ({ ...q })),
+          };
+        }
+        // Default initial quote
+        const initialQuote: ProductQuote = {
+          id: generateQuoteId(),
+          itemId: it.id,
+          supplier: (request.items!.length === 1 ? request.supplier : '') || '',
+          unitPrice: (request.items!.length === 1 ? request.unitPrice : 0) || 0,
+          shippingCost: (request.items!.length === 1 ? request.shippingCost : 0) || 0,
+          totalPrice: (request.items!.length === 1 ? request.totalPrice : 0) || 0,
+          paymentTerms: (request.items!.length === 1 ? request.paymentTerms : '') || '',
+          deliveryDeadline: (request.items!.length === 1 ? request.deliveryDeadline : '') || '',
+          notes: '',
+          selected: true,
+        };
+        return {
+          itemId: it.id || `item-${idx}`,
+          itemName: it.name,
+          itemQuantity: it.quantity,
+          itemUnit: it.unit,
+          quotes: [initialQuote],
+        };
+      });
+    }
+
+    // Single item from request top-level fields
+    const quotesList: ProductQuote[] = (request.quotes && request.quotes.length > 0)
+      ? request.quotes.map(q => ({ ...q }))
+      : [{
+          id: generateQuoteId(),
+          supplier: request.supplier || '',
+          unitPrice: request.unitPrice || 0,
+          shippingCost: request.shippingCost || 0,
+          totalPrice: request.totalPrice || (request.unitPrice ? (request.unitPrice * request.quantity + (request.shippingCost || 0)) : 0),
+          paymentTerms: request.paymentTerms || '',
+          deliveryDeadline: request.deliveryDeadline || '',
+          notes: '',
+          selected: true,
+        }];
+
+    return [{
+      itemId: 'item-main',
+      itemName: request.title,
+      itemQuantity: request.quantity,
+      itemUnit: request.unit,
+      quotes: quotesList,
+    }];
+  });
+
   const [purchaseDate, setPurchaseDate] = useState(
     request.purchaseDate || new Date().toISOString().split('T')[0]
   );
@@ -52,34 +137,100 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   const sectorColor = getSectorColor(request.sector);
   const releaseInfo = getRequestPurchaseReleaseInfo(request);
 
-  // Auto calculate total when unit price or shipping changes (unless manually edited)
-  const handleUnitPriceChange = (val: string) => {
-    setUnitPrice(val);
-    const numUnit = parseFloat(val);
-    const numShip = parseFloat(String(shippingCost)) || 0;
-    if (!isNaN(numUnit) && numUnit >= 0) {
-      const calculated = (numUnit * request.quantity) + numShip;
-      setTotalPrice(calculated.toFixed(2));
-    }
+  // Helper to update a quote field
+  const handleQuoteChange = (
+    itemIndex: number,
+    quoteIndex: number,
+    field: keyof ProductQuote,
+    value: any
+  ) => {
+    setItemsQuotes(prev => {
+      const copy = prev.map((item, iIdx) => {
+        if (iIdx !== itemIndex) return item;
+        const newQuotes = item.quotes.map((quote, qIdx) => {
+          if (qIdx !== quoteIndex) return quote;
+          const updated = { ...quote, [field]: value };
+          if (field === 'unitPrice' || field === 'shippingCost') {
+            const uPrice = field === 'unitPrice' ? (parseFloat(value) || 0) : (quote.unitPrice || 0);
+            const ship = field === 'shippingCost' ? (parseFloat(value) || 0) : (quote.shippingCost || 0);
+            updated.totalPrice = (uPrice * item.itemQuantity) + ship;
+          }
+          return updated;
+        });
+        return { ...item, quotes: newQuotes };
+      });
+      return copy;
+    });
   };
 
-  const handleShippingChange = (val: string) => {
-    setShippingCost(val);
-    const numUnit = parseFloat(String(unitPrice));
-    const numShip = parseFloat(val) || 0;
-    if (!isNaN(numUnit) && numUnit >= 0) {
-      const calculated = (numUnit * request.quantity) + numShip;
-      setTotalPrice(calculated.toFixed(2));
-    }
+  // Helper to select a winning quote for an item
+  const handleSelectQuote = (itemIndex: number, quoteIndex: number) => {
+    setItemsQuotes(prev => {
+      return prev.map((item, iIdx) => {
+        if (iIdx !== itemIndex) return item;
+        const newQuotes = item.quotes.map((q, qIdx) => ({
+          ...q,
+          selected: qIdx === quoteIndex,
+        }));
+        return { ...item, quotes: newQuotes };
+      });
+    });
   };
+
+  // Helper to add another quote for an item
+  const handleAddQuote = (itemIndex: number) => {
+    setItemsQuotes(prev => {
+      return prev.map((item, iIdx) => {
+        if (iIdx !== itemIndex) return item;
+        const newQuote: ProductQuote = {
+          id: generateQuoteId(),
+          itemId: item.itemId,
+          supplier: '',
+          unitPrice: 0,
+          shippingCost: 0,
+          totalPrice: 0,
+          paymentTerms: '',
+          deliveryDeadline: '',
+          notes: '',
+          selected: item.quotes.length === 0, // auto-select if first
+        };
+        return {
+          ...item,
+          quotes: [...item.quotes, newQuote],
+        };
+      });
+    });
+  };
+
+  // Helper to remove a quote
+  const handleRemoveQuote = (itemIndex: number, quoteIndex: number) => {
+    setItemsQuotes(prev => {
+      return prev.map((item, iIdx) => {
+        if (iIdx !== itemIndex) return item;
+        if (item.quotes.length <= 1) return item;
+        const quoteToRemove = item.quotes[quoteIndex];
+        const filtered = item.quotes.filter((_, qIdx) => qIdx !== quoteIndex);
+        if (quoteToRemove.selected && filtered.length > 0) {
+          filtered[0].selected = true;
+        }
+        return { ...item, quotes: filtered };
+      });
+    });
+  };
+
+  // Compute consolidated values from selected quotes
+  const selectedQuotes = itemsQuotes.map(it => it.quotes.find(q => q.selected) || it.quotes[0]);
+  const consolidatedTotalPrice = selectedQuotes.reduce((acc, q) => acc + (q?.totalPrice || 0), 0);
+  const primarySupplier = selectedQuotes.map(q => q?.supplier?.trim()).filter(Boolean).join(', ') || '';
+  const primaryPaymentTerms = selectedQuotes.map(q => q?.paymentTerms?.trim()).filter(Boolean).join(' | ') || '';
+  const primaryDeliveryDeadline = selectedQuotes.map(q => q?.deliveryDeadline?.trim()).filter(Boolean).join(' | ') || '';
+
+  // Flattened quotes for storage
+  const allQuotes = itemsQuotes.flatMap(it => it.quotes);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    const numTotal = parseFloat(String(totalPrice));
-    const numUnit = parseFloat(String(unitPrice));
-    const numShip = parseFloat(String(shippingCost)) || 0;
 
     // Trava de segurança: Solicitação precisa estar liberada para compra após aprovação
     if (status === 'compra_realizada' && !releaseInfo.isReleased && buyer.role !== 'master') {
@@ -89,8 +240,12 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
 
     // Na Central de Compras sempre tem que ter valor definido pelos compradores
     if (status !== 'cancelado') {
-      if (isNaN(numTotal) || numTotal <= 0) {
-        setError('Na Central de Compras é obrigatório informar o valor dos produtos.');
+      if (consolidatedTotalPrice <= 0) {
+        setError('Na Central de Compras é obrigatório informar ao menos um orçamento com valor válido.');
+        return;
+      }
+      if (!primarySupplier.trim()) {
+        setError('Por favor, informe a Razão Social / Fornecedor do orçamento vencedor.');
         return;
       }
     }
@@ -102,17 +257,31 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
       }
     }
 
+    // Prepare updated items with their respective quotes
+    const updatedItems: RequestItem[] | undefined = request.items
+      ? request.items.map((it, idx) => ({
+          ...it,
+          quotes: itemsQuotes[idx]?.quotes || [],
+        }))
+      : undefined;
+
+    const firstSelected = selectedQuotes[0];
+
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status,
         purchaseOrderNumber: request.purchaseOrderNumber,
-        supplier: supplier.trim(),
-        unitPrice: isNaN(numUnit) ? undefined : numUnit,
-        totalPrice: isNaN(numTotal) ? undefined : numTotal,
-        shippingCost: isNaN(numShip) ? 0 : numShip,
+        supplier: primarySupplier,
+        unitPrice: firstSelected?.unitPrice || undefined,
+        totalPrice: consolidatedTotalPrice,
+        shippingCost: firstSelected?.shippingCost || 0,
+        paymentTerms: primaryPaymentTerms || undefined,
+        deliveryDeadline: primaryDeliveryDeadline || undefined,
         purchaseDate: purchaseDate || undefined,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
         purchasingNotes: purchasingNotes.trim(),
+        quotes: allQuotes,
+        items: updatedItems,
       });
 
       onSave();
@@ -122,27 +291,71 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     }
   };
 
+  const handleSendToApprovers = () => {
+    setError('');
+    if (consolidatedTotalPrice <= 0) {
+      setError('Para enviar à alçada de aprovadores, preencha o valor da cotação.');
+      return;
+    }
+    if (!primarySupplier.trim()) {
+      setError('Por favor, preencha o fornecedor do orçamento escolhido antes de enviar para aprovação.');
+      return;
+    }
+
+    const updatedItems: RequestItem[] | undefined = request.items
+      ? request.items.map((it, idx) => ({
+          ...it,
+          quotes: itemsQuotes[idx]?.quotes || [],
+        }))
+      : undefined;
+
+    const firstSelected = selectedQuotes[0];
+
+    try {
+      storage.updatePurchasingDetails(request.id, buyer, {
+        status: 'em_aprovacao',
+        purchaseOrderNumber: request.purchaseOrderNumber,
+        supplier: primarySupplier,
+        unitPrice: firstSelected?.unitPrice || undefined,
+        totalPrice: consolidatedTotalPrice,
+        shippingCost: firstSelected?.shippingCost || 0,
+        paymentTerms: primaryPaymentTerms || undefined,
+        deliveryDeadline: primaryDeliveryDeadline || undefined,
+        purchaseDate: purchaseDate || undefined,
+        expectedDeliveryDate: expectedDeliveryDate || undefined,
+        purchasingNotes: purchasingNotes.trim(),
+        quotes: allQuotes,
+        items: updatedItems,
+      });
+
+      onSave();
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao enviar pedido para aprovação.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6">
-      <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-cyan-900 text-white">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-cyan-800 flex items-center justify-center text-cyan-200 shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-cyan-800 flex items-center justify-center text-cyan-200 shadow-inner">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold">
-                  Central de Compras • Gestão do Pedido
+                  Central de Compras • Gestão de Cotações & Pedido
                 </h2>
                 <span className="text-xs px-2 py-0.5 rounded bg-cyan-800 text-cyan-100 font-mono">
                   {request.code}
                 </span>
               </div>
               <p className="text-xs text-cyan-200">
-                Comprador responsável: {buyer.name}
+                Comprador responsável: <strong>{buyer.name}</strong> • Registro de múltiplos orçamentos por produto
               </p>
             </div>
           </div>
@@ -158,7 +371,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         <div className="px-6 py-2.5 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Impacto no Solicitante e no Setor:</strong> O valor inserido aqui será refletido automaticamente no painel do usuário solicitante (<strong>{request.requesterName}</strong>) e computado no dashboard de gastos mensais do setor de <strong>{request.sector}</strong>.
+            <strong>Gestão de Cotações:</strong> Cadastre um ou mais orçamentos para cada produto, especifique <strong>prazo de pagamento</strong> e <strong>prazo de entrega</strong>, e selecione o vencedor. O orçamento selecionado alimentará o valor oficial para o solicitante (<strong>{request.requesterName}</strong>) e para os aprovadores.
           </span>
         </div>
 
@@ -173,7 +386,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
             </div>
           )}
 
-          {/* BANNER PROMINENTE: Liberação para Compra após Aprovação */}
+          {/* BANNER: Liberação para Compra após Aprovação */}
           {releaseInfo.isReleased ? (
             <div 
               id="purchasing-modal-liberada-banner"
@@ -217,14 +430,14 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-amber-800 mt-0.5">
-                    {releaseInfo.description} A compra definitiva requer a aprovação integral prévia.
+                    {releaseInfo.description} Realize as cotações com fornecedores e envie para a alçada de aprovação.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Summary of Original Request */}
+          {/* Original Request Summary */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -232,12 +445,12 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   Setor: {request.sector}
                 </span>
                 <span className="text-xs text-slate-500 font-medium">
-                  Solicitado por: <strong>{request.requesterName}</strong> em {formatDate(request.createdAt)}
+                  Solicitante: <strong>{request.requesterName}</strong> • {formatDate(request.createdAt)}
                 </span>
               </div>
-              <div className="text-xs sm:text-sm bg-slate-200/90 px-2.5 py-1 rounded-md text-slate-900 font-bold border border-slate-300">
+              <div className="text-xs bg-slate-200/90 px-2.5 py-1 rounded-md text-slate-900 font-bold border border-slate-300">
                 {request.items && request.items.length > 1
-                  ? `Total: ${request.items.length} itens (${request.quantity} ${request.unit})`
+                  ? `${request.items.length} itens solicitados`
                   : `Qtd: ${request.quantity} ${request.unit}`}
               </div>
             </div>
@@ -246,55 +459,13 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               {request.title}
             </div>
 
-            {request.items && request.items.length > 0 ? (
-              <div className="space-y-2 pt-1">
-                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5 text-cyan-700" />
-                  Itens da Solicitação ({request.items.length})
-                </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {request.items.map((item, idx) => (
-                    <div key={item.id || idx} className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="font-semibold text-slate-800">
-                          <span className="text-cyan-700 font-bold mr-1">#{idx + 1}</span> {item.name}
-                        </div>
-                        <span className="shrink-0 font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px]">
-                          {item.quantity} {item.unit}
-                        </span>
-                      </div>
-                      {item.description && (
-                        <p className="text-slate-600 mt-1 whitespace-pre-line text-[11px] leading-relaxed">
-                          {item.description}
-                        </p>
-                      )}
-                      {item.linkUrl && (
-                        <div className="mt-1.5 pt-1.5 border-t border-slate-100">
-                          <a
-                            href={item.linkUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-medium hover:underline break-all"
-                          >
-                            <ExternalLink className="w-3 h-3 shrink-0" /> Link de referência
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200">
-                {request.description}
+            {request.reason && (
+              <div className="text-xs text-slate-500 flex items-start gap-1">
+                <strong className="text-slate-700">Justificativa:</strong> {request.reason}
               </div>
             )}
-
-            <div className="text-xs text-slate-500 flex items-start gap-1">
-              <strong className="text-slate-700">Justificativa:</strong> {request.reason}
-            </div>
-
-            {(!request.items || request.items.length === 0) && request.linkUrl && (
+            
+            {request.linkUrl && (!request.items || request.items.length === 0) && (
               <div className="pt-1">
                 <a
                   href={request.linkUrl}
@@ -302,226 +473,390 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline break-all"
                 >
-                  <ExternalLink className="w-3 h-3" /> Acessar link de referência indicado pelo solicitante
+                  <ExternalLink className="w-3 h-3" /> Link de referência indicado pelo solicitante
                 </a>
               </div>
             )}
           </div>
 
-          {/* Approvers Pipeline Status Banner */}
-          {request.approvals && (
-            <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileCheck2 className="w-4 h-4 text-purple-700" />
-                  Aprovadores
-                </span>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
-                  {request.approvals.currentApprover === 'concluido'
-                    ? 'Aprovado 100%'
-                    : request.approvals.currentApprover === 'reprovado'
-                    ? 'Reprovado na Alçada'
-                    : `Na vez de ${request.approvals.currentApprover}`}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className={`p-2 rounded-lg border ${
-                  request.approvals.fernando?.status === 'aprovado'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                    : request.approvals.fernando?.status === 'reprovado'
-                    ? 'bg-rose-50 border-rose-300 text-rose-800'
-                    : request.approvals.currentApprover === 'Fernando'
-                    ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
-                    : 'bg-slate-100 border-slate-200 text-slate-500'
-                }`}>
-                  <div className="font-bold">1º Fernando</div>
-                  <div className="text-[11px] capitalize">{request.approvals.fernando?.status || 'Aguardando'}</div>
-                </div>
+          {/* Status Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Status Operacional do Pedido <span className="text-rose-500">*</span>
+            </label>
+            <select
+              id="buyer-order-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as PurchaseOrderStatus)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
+            >
+              <option value="recebido_em_compras">Recebido em Compras (Aguardando Cotação)</option>
+              <option value="em_cotacao">Em Cotação com Fornecedores</option>
+              <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
+              <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
+              <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
+              <option value="em_transito">Em Trânsito / Em Transporte</option>
+              <option value="entregue">Entregue no Setor Solicitante</option>
+              <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
+              <option value="cancelado">Cancelado / Sem Fornecedor</option>
+            </select>
+          </div>
 
-                <div className={`p-2 rounded-lg border ${
-                  request.approvals.eduardo?.status === 'aprovado'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                    : request.approvals.eduardo?.status === 'reprovado'
-                    ? 'bg-rose-50 border-rose-300 text-rose-800'
-                    : request.approvals.currentApprover === 'Eduardo'
-                    ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-bold'
-                    : 'bg-slate-100 border-slate-200 text-slate-500'
-                }`}>
-                  <div className="font-bold">2º Eduardo</div>
-                  <div className="text-[11px] capitalize">{request.approvals.eduardo?.status || 'Aguardando'}</div>
-                </div>
-
-                <div className={`p-2 rounded-lg border ${
-                  request.approvals.luiz?.status === 'aprovado'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                    : request.approvals.luiz?.status === 'reprovado'
-                    ? 'bg-rose-50 border-rose-300 text-rose-800'
-                    : request.approvals.currentApprover === 'Luiz'
-                    ? 'bg-purple-50 border-purple-300 text-purple-900 font-bold'
-                    : 'bg-slate-100 border-slate-200 text-slate-500'
-                }`}>
-                  <div className="font-bold">3º Luiz</div>
-                  <div className="text-[11px] capitalize">{request.approvals.luiz?.status || 'Aguardando'}</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Purchasing Form Fields */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
-              <FileCheck2 className="w-4 h-4 text-cyan-700" />
-              Controle Operacional de Compras & Valores
-            </h3>
-
-            {/* Status Selector */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Status do Pedido de Compra <span className="text-rose-500">*</span>
-              </label>
-              <select
-                id="buyer-order-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as PurchaseOrderStatus)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
-              >
-                <option value="em_cotacao">Em Cotação com Fornecedores</option>
-                <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
-                <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
-                <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
-                <option value="em_transito">Em Trânsito / Em Transporte</option>
-                <option value="entregue">Entregue no Setor Solicitante</option>
-                <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
-                <option value="cancelado">Cancelado / Sem Fornecedor</option>
-              </select>
+          {/* SECTION: PRODUTOS E MÚLTIPLOS ORÇAMENTOS POR PRODUTO */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Package className="w-4 h-4 text-cyan-700" />
+                Cotações por Produto ({itemsQuotes.length} {itemsQuotes.length === 1 ? 'produto' : 'produtos'})
+              </h3>
+              <span className="text-xs text-cyan-800 font-semibold bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-600" />
+                Permite múltiplos orçamentos concorrentes
+              </span>
             </div>
 
-            {/* Supplier */}
+            {itemsQuotes.map((item, itemIdx) => {
+              // Find best price among quotes for this item
+              const validPrices = item.quotes.map(q => q.totalPrice).filter(p => p > 0);
+              const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : null;
+
+              return (
+                <div 
+                  key={item.itemId || itemIdx} 
+                  className="bg-slate-50/80 rounded-2xl border-2 border-slate-200 p-4 space-y-4"
+                >
+                  {/* Product Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-cyan-800 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        {itemIdx + 1}
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">
+                          {item.itemName}
+                        </h4>
+                        <span className="text-xs text-slate-500">
+                          Quantidade a cotar: <strong className="text-slate-800">{item.itemQuantity} {item.itemUnit}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-700">
+                        {item.quotes.length} {item.quotes.length === 1 ? 'orçamento' : 'orçamentos cadastrados'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuote(itemIdx)}
+                        className="flex items-center gap-1 px-3 py-1 text-xs font-bold text-cyan-800 bg-cyan-100 hover:bg-cyan-200 border border-cyan-300 rounded-lg transition-colors cursor-pointer"
+                        title="Incluir mais um orçamento para este produto"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Adicionar Orçamento</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Multiple Quotes List for this product */}
+                  <div className="space-y-4">
+                    {item.quotes.map((quote, quoteIdx) => {
+                      const isWinning = quote.selected;
+                      const isBestPrice = minPrice !== null && quote.totalPrice > 0 && quote.totalPrice === minPrice && item.quotes.length > 1;
+
+                      return (
+                        <div 
+                          key={quote.id || quoteIdx}
+                          className={`rounded-xl p-4 transition-all border-2 ${
+                            isWinning
+                              ? 'bg-emerald-50/50 border-emerald-400 shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {/* Quote Header / Winner Selection */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                Orçamento #{quoteIdx + 1}
+                              </span>
+
+                              {isWinning ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  <Award className="w-3.5 h-3.5 text-emerald-600" />
+                                  Orçamento Vencedor / Escolhido
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectQuote(itemIdx, quoteIdx)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 border border-slate-300 hover:border-emerald-300 transition-colors cursor-pointer"
+                                >
+                                  <Check className="w-3 h-3 text-slate-400" />
+                                  <span>Definir como Vencedor</span>
+                                </button>
+                              )}
+
+                              {isBestPrice && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                  Menor Preço
+                                </span>
+                              )}
+                            </div>
+
+                            {item.quotes.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveQuote(itemIdx, quoteIdx)}
+                                className="text-slate-400 hover:text-rose-600 p-1 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Excluir este orçamento"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Inputs: Supplier, Prices, Payment Terms, Delivery Deadline */}
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                              
+                              {/* Fornecedor */}
+                              <div className="sm:col-span-6">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                  Fornecedor / Razão Social <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={quote.supplier}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'supplier', e.target.value)}
+                                  placeholder="ex: Kalunga, Dell Computadores, SKF..."
+                                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
+                                />
+                              </div>
+
+                              {/* Preço Unitário */}
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                  Unitário (R$)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={quote.unitPrice || ''}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'unitPrice', e.target.value)}
+                                  placeholder="0,00"
+                                  className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                                />
+                              </div>
+
+                              {/* Frete */}
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                  Frete (R$)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={quote.shippingCost || ''}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'shippingCost', e.target.value)}
+                                  placeholder="0,00"
+                                  className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                                />
+                              </div>
+
+                              {/* Total do Orçamento */}
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs font-bold text-cyan-950 mb-1">
+                                  Total (R$)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={quote.totalPrice || ''}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'totalPrice', parseFloat(e.target.value) || 0)}
+                                  placeholder="0,00"
+                                  className="w-full px-2.5 py-2 text-xs bg-white border-2 border-cyan-600 rounded-lg font-bold text-cyan-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                                />
+                              </div>
+                            </div>
+
+                            {/* NOVO: PRAZO DE PAGAMENTO & PRAZO DE ENTREGA */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                              
+                              {/* Campo de Prazo de Pagamento */}
+                              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                  <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                                  Prazo de Pagamento
+                                </label>
+                                <input
+                                  type="text"
+                                  value={quote.paymentTerms || ''}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', e.target.value)}
+                                  placeholder="ex: 30 dias, Boleto 28 DDL, À vista..."
+                                  className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                                />
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <span className="text-[10px] text-slate-400 font-medium">Sugestões:</span>
+                                  {QUICK_PAYMENT_TERMS.map(term => (
+                                    <button
+                                      key={term}
+                                      type="button"
+                                      onClick={() => handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', term)}
+                                      className="text-[10px] px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer"
+                                    >
+                                      {term}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Campo de Prazo de Entrega */}
+                              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                  Prazo de Entrega
+                                </label>
+                                <input
+                                  type="text"
+                                  value={quote.deliveryDeadline || ''}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'deliveryDeadline', e.target.value)}
+                                  placeholder="ex: 5 dias úteis, 15 dias corridos, Pronta entrega..."
+                                  className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                                />
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <span className="text-[10px] text-slate-400 font-medium">Sugestões:</span>
+                                  {QUICK_DELIVERY_TERMS.map(term => (
+                                    <button
+                                      key={term}
+                                      type="button"
+                                      onClick={() => handleQuoteChange(itemIdx, quoteIdx, 'deliveryDeadline', term)}
+                                      className="text-[10px] px-1.5 py-0.5 rounded bg-white hover:bg-amber-50 text-amber-800 border border-slate-200 hover:border-amber-300 transition-colors cursor-pointer"
+                                    >
+                                      {term}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                            </div>
+
+                            {/* Observações da Cotação / Link de proposta */}
+                            <div>
+                              <input
+                                type="text"
+                                value={quote.notes || ''}
+                                onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'notes', e.target.value)}
+                                placeholder="Observações desta cotação (ex: desconto concedido, frete CIF incluso, link da proposta)..."
+                                className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md text-slate-700 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                              />
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Quote Button for this item */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAddQuote(itemIdx)}
+                      className="w-full py-2 border-2 border-dashed border-cyan-300 hover:border-cyan-500 bg-cyan-50/50 hover:bg-cyan-50 text-cyan-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-cyan-700" />
+                      <span>Incluir Mais um Orçamento para este Produto</span>
+                    </button>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+
+          {/* CONSOLIDATED FINANCIAL SUMMARY */}
+          <div className="bg-cyan-900 text-white p-4 rounded-2xl shadow-md space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-800 pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-cyan-200 flex items-center gap-1.5">
+                <DollarSign className="w-4 h-4 text-cyan-300" />
+                Resumo da Cotação Vencedora (Valor Oficial do Pedido)
+              </span>
+              <span className="text-[11px] bg-cyan-800 text-cyan-100 px-2.5 py-0.5 rounded-full font-semibold">
+                Refletido ao Solicitante e Aprovadores
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="text-cyan-300 block text-[11px]">Fornecedor Selecionado:</span>
+                <span className="font-bold text-sm text-white truncate block">
+                  {primarySupplier || 'Aguardando seleção de fornecedor'}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-cyan-300 block text-[11px]">Condições Comerciais:</span>
+                <div className="space-y-0.5 text-cyan-100 font-medium">
+                  <div>Pagamento: <strong>{primaryPaymentTerms || 'Não especificado'}</strong></div>
+                  <div>Prazo de Entrega: <strong>{primaryDeliveryDeadline || 'Não especificado'}</strong></div>
+                </div>
+              </div>
+
+              <div className="sm:text-right">
+                <span className="text-cyan-300 block text-[11px]">Valor Total de Compra:</span>
+                <span className="text-2xl font-black text-emerald-400 tracking-tight">
+                  {formatCurrency(consolidatedTotalPrice)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Operational Dates & Logistics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Fornecedor / Razão Social
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                Data da Compra / Faturamento
               </label>
               <input
-                id="buyer-supplier-name"
-                type="text"
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
-                placeholder="ex: Kalunga SA, Dell do Brasil, SKF Rolamentos..."
+                id="buyer-purchase-date"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
               />
             </div>
 
-            {/* Pricing Section (Valor de Compra) */}
-            <div className="bg-cyan-50/50 p-4 rounded-xl border border-cyan-200 space-y-3">
-              <div className="text-xs font-bold text-cyan-900 uppercase tracking-wider flex items-center gap-1.5">
-                <DollarSign className="w-4 h-4 text-cyan-700" />
-                Definição do Valor da Compra (R$)
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Preço Unitário (R$)
-                  </label>
-                  <input
-                    id="buyer-unit-price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={unitPrice}
-                    onChange={(e) => handleUnitPriceChange(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-                  />
-                  <div className="mt-1.5 text-xs sm:text-sm font-bold text-slate-700">
-                    Qtd: <span className="text-cyan-950 font-extrabold text-sm sm:text-base">{request.quantity} {request.unit}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Frete / Encargos (R$)
-                  </label>
-                  <input
-                    id="buyer-shipping-cost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={shippingCost}
-                    onChange={(e) => handleShippingChange(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-cyan-950 mb-1">
-                    Valor Total da Compra (R$) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="buyer-total-price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={totalPrice}
-                    onChange={(e) => setTotalPrice(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full px-3 py-2 bg-white border-2 border-cyan-600 rounded-lg text-sm font-bold text-cyan-900 focus:ring-2 focus:ring-cyan-500 outline-hidden shadow-xs"
-                  />
-                  <span className="text-[10px] text-cyan-800 font-semibold">
-                    Refletido ao solicitante: {formatCurrency(parseFloat(String(totalPrice)) || 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Dates: Purchase Date & Expected Delivery Date */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  Data da Compra / Faturamento
-                </label>
-                <input
-                  id="buyer-purchase-date"
-                  type="date"
-                  value={purchaseDate}
-                  onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5" />
-                  Previsão de Entrega no Setor
-                </label>
-                <input
-                  id="buyer-delivery-date"
-                  type="date"
-                  value={expectedDeliveryDate}
-                  onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* Purchasing Notes / Nota Fiscal */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Observações de Compras, Condições de Pagamento ou NF
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Truck className="w-3.5 h-3.5" />
+                Previsão de Entrega no Setor
               </label>
-              <textarea
-                id="buyer-notes"
-                rows={2}
-                value={purchasingNotes}
-                onChange={(e) => setPurchasingNotes(e.target.value)}
-                placeholder="ex: Negociado 28 dias no boleto, faturado NF 92.124, código de rastreio Correios..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden resize-none"
+              <input
+                id="buyer-delivery-date"
+                type="date"
+                value={expectedDeliveryDate}
+                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
               />
             </div>
+          </div>
 
+          {/* Purchasing Notes / Nota Fiscal */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Observações Gerais de Compras ou NF
+            </label>
+            <textarea
+              id="buyer-notes"
+              rows={2}
+              value={purchasingNotes}
+              onChange={(e) => setPurchasingNotes(e.target.value)}
+              placeholder="ex: Faturado com nota fiscal 92.124, código de rastreio Correios..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden resize-none"
+            />
           </div>
 
           {/* Footer Actions */}
@@ -530,27 +865,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               <button
                 id="send-to-approvers-action-button"
                 type="button"
-                onClick={() => {
-                  const numTotal = parseFloat(String(totalPrice));
-                  if (isNaN(numTotal) || numTotal <= 0) {
-                    setError('Para enviar à alçada de aprovadores, preencha o valor da cotação.');
-                    return;
-                  }
-                  const numUnit = parseFloat(String(unitPrice));
-                  const numShip = parseFloat(String(shippingCost)) || 0;
-                  storage.updatePurchasingDetails(request.id, buyer, {
-                    status: 'em_aprovacao',
-                    purchaseOrderNumber: request.purchaseOrderNumber,
-                    supplier: supplier.trim(),
-                    unitPrice: isNaN(numUnit) ? undefined : numUnit,
-                    totalPrice: numTotal,
-                    shippingCost: numShip,
-                    purchaseDate: purchaseDate || undefined,
-                    expectedDeliveryDate: expectedDeliveryDate || undefined,
-                    purchasingNotes: purchasingNotes.trim(),
-                  });
-                  onSave();
-                }}
+                onClick={handleSendToApprovers}
                 className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 <FileCheck2 className="w-4 h-4 text-purple-700" />

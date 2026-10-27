@@ -31,7 +31,9 @@ import {
   AlertCircle,
   Package,
   ShieldCheck,
-  Lock
+  Lock,
+  CreditCard,
+  Award
 } from 'lucide-react';
 
 interface OrderDetailsModalProps {
@@ -355,23 +357,43 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
 
             {/* Financial Breakdown if filled */}
             {request.totalPrice !== undefined && request.totalPrice > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 mt-2 border-t border-emerald-200/80 text-xs">
-                <div>
-                  <span className="text-[11px] text-emerald-800">Preço Unitário:</span>
-                  <div className="font-semibold text-emerald-950">{formatCurrency(request.unitPrice)}</div>
+              <div className="pt-3 mt-2 border-t border-emerald-200/80 space-y-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <span className="text-[11px] text-emerald-800">Preço Unitário:</span>
+                    <div className="font-semibold text-emerald-950">{formatCurrency(request.unitPrice)}</div>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-emerald-800">Frete / Encargos:</span>
+                    <div className="font-semibold text-emerald-950">{formatCurrency(request.shippingCost || 0)}</div>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-emerald-800">Fornecedor:</span>
+                    <div className="font-semibold text-emerald-950 truncate" title={request.supplier}>{request.supplier || 'Não informado'}</div>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-emerald-800">Nº Pedido (OC):</span>
+                    <div className="font-mono font-bold text-emerald-950">{request.purchaseOrderNumber || 'Em emissão'}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[11px] text-emerald-800">Frete / Encargos:</span>
-                  <div className="font-semibold text-emerald-950">{formatCurrency(request.shippingCost || 0)}</div>
-                </div>
-                <div>
-                  <span className="text-[11px] text-emerald-800">Fornecedor:</span>
-                  <div className="font-semibold text-emerald-950 truncate">{request.supplier || 'Não informado'}</div>
-                </div>
-                <div>
-                  <span className="text-[11px] text-emerald-800">Nº Pedido (OC):</span>
-                  <div className="font-mono font-bold text-emerald-950">{request.purchaseOrderNumber || 'Em emissão'}</div>
-                </div>
+
+                {/* Prazo de Pagamento & Prazo de Entrega */}
+                {(request.paymentTerms || request.deliveryDeadline) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-emerald-200/60 text-xs">
+                    {request.paymentTerms && (
+                      <div className="flex items-center gap-1.5 text-emerald-950 bg-emerald-100/70 px-2.5 py-1.5 rounded-lg border border-emerald-300">
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                        <span>Prazo de Pagamento: <strong>{request.paymentTerms}</strong></span>
+                      </div>
+                    )}
+                    {request.deliveryDeadline && (
+                      <div className="flex items-center gap-1.5 text-emerald-950 bg-emerald-100/70 px-2.5 py-1.5 rounded-lg border border-emerald-300">
+                        <Clock className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                        <span>Prazo de Entrega: <strong>{request.deliveryDeadline}</strong></span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -475,6 +497,134 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* COTAÇÕES E ORÇAMENTOS REGISTRADOS PELA CENTRAL DE COMPRAS */}
+          {((request.quotes && request.quotes.length > 0) || (request.items && request.items.some(i => i.quotes && i.quotes.length > 0))) && (
+            <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-cyan-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-cyan-700" />
+                  Orçamentos & Cotações Realizadas por Compras
+                </span>
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-200 text-cyan-900">
+                  Transparência & Compliance
+                </span>
+              </div>
+
+              {/* Se os itens têm cotações específicas */}
+              {request.items && request.items.some(i => i.quotes && i.quotes.length > 0) ? (
+                <div className="space-y-3">
+                  {request.items.map((it, idx) => (
+                    <div key={it.id || idx} className="bg-white p-3 rounded-lg border border-cyan-200 text-xs space-y-2">
+                      <div className="font-bold text-slate-800 flex items-center justify-between">
+                        <span>Item #{idx + 1}: {it.name} ({it.quantity} {it.unit})</span>
+                        <span className="text-slate-500 font-normal">{it.quotes?.length || 0} cotações</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {it.quotes?.map((q, qIdx) => (
+                          <div
+                            key={q.id || qIdx}
+                            className={`p-2.5 rounded-lg border text-xs space-y-1 ${
+                              q.selected
+                                ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold truncate">{q.supplier}</span>
+                              {q.selected && (
+                                <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-black flex items-center gap-0.5">
+                                  <Award className="w-3 h-3 text-emerald-700" />
+                                  Vencedor
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-bold text-sm text-slate-900">
+                              {formatCurrency(q.totalPrice)}
+                              {q.shippingCost ? <span className="text-[10px] text-slate-500 font-normal"> (Frete: {formatCurrency(q.shippingCost)})</span> : null}
+                            </div>
+                            {q.paymentTerms && (
+                              <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                                <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
+                                <span>Pagamento: <strong>{q.paymentTerms}</strong></span>
+                              </div>
+                            )}
+                            {q.deliveryDeadline && (
+                              <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>Entrega: <strong>{q.deliveryDeadline}</strong></span>
+                              </div>
+                            )}
+                            {q.notes && (
+                              <div className="text-[10px] text-slate-500 italic mt-0.5">
+                                "{q.notes}"
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Cotações do produto / requisição geral */
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {request.quotes?.map((q, qIdx) => (
+                    <div
+                      key={q.id || qIdx}
+                      className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                        q.selected
+                          ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 truncate" title={q.supplier}>{q.supplier || 'Fornecedor s/ nome'}</span>
+                        {q.selected ? (
+                          <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-black flex items-center gap-0.5">
+                            <Award className="w-3 h-3 text-emerald-700" />
+                            Vencedor
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">Orçamento #{qIdx + 1}</span>
+                        )}
+                      </div>
+
+                      <div className="text-base font-extrabold text-slate-900">
+                        {formatCurrency(q.totalPrice)}
+                      </div>
+
+                      {q.unitPrice ? (
+                        <div className="text-[11px] text-slate-500">
+                          Unit: {formatCurrency(q.unitPrice)} {q.shippingCost ? `+ Frete ${formatCurrency(q.shippingCost)}` : ''}
+                        </div>
+                      ) : null}
+
+                      {q.paymentTerms && (
+                        <div className="text-[11px] text-slate-700 flex items-center gap-1 pt-1 border-t border-slate-100">
+                          <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
+                          <span>Prazo Pagto: <strong>{q.paymentTerms}</strong></span>
+                        </div>
+                      )}
+
+                      {q.deliveryDeadline && (
+                        <div className="text-[11px] text-slate-700 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>Prazo Entrega: <strong>{q.deliveryDeadline}</strong></span>
+                        </div>
+                      )}
+
+                      {q.notes && (
+                        <div className="text-[10px] text-slate-500 italic pt-1">
+                          "{q.notes}"
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Manager Approval Record */}
           <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">

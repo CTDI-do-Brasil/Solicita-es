@@ -1,5 +1,6 @@
-import { User, UserRole, PurchaseRequest, SectorType, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName } from './types';
+import { User, UserRole, PurchaseRequest, SectorType, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem } from './types';
 import { INITIAL_USERS, INITIAL_REQUESTS } from './mockData';
+import { api } from './services/api';
 
 const USERS_STORAGE_KEY = 'compras_app_users_v1';
 const REQUESTS_STORAGE_KEY = 'compras_app_requests_v1';
@@ -296,6 +297,7 @@ export const storage = {
 
     const updated = [newRequest, ...all];
     this.saveRequests(updated);
+    api.createRequest(newRequest).catch(() => {});
     return newRequest;
   },
 
@@ -360,9 +362,13 @@ export const storage = {
       unitPrice?: number;
       totalPrice?: number;
       shippingCost?: number;
+      paymentTerms?: string;
+      deliveryDeadline?: string;
       purchaseDate?: string;
       expectedDeliveryDate?: string;
       purchasingNotes?: string;
+      quotes?: ProductQuote[];
+      items?: RequestItem[];
     }
   ): boolean {
     const all = this.getAllRequests();
@@ -402,15 +408,20 @@ export const storage = {
       unitPrice: data.unitPrice !== undefined ? data.unitPrice : all[index].unitPrice,
       totalPrice: data.totalPrice !== undefined ? data.totalPrice : all[index].totalPrice,
       shippingCost: data.shippingCost !== undefined ? data.shippingCost : all[index].shippingCost,
+      paymentTerms: data.paymentTerms !== undefined ? data.paymentTerms : all[index].paymentTerms,
+      deliveryDeadline: data.deliveryDeadline !== undefined ? data.deliveryDeadline : all[index].deliveryDeadline,
       purchaseDate: data.purchaseDate || all[index].purchaseDate,
       expectedDeliveryDate: data.expectedDeliveryDate || all[index].expectedDeliveryDate,
       purchasedBy: `${buyer.name} (Compras)`,
       purchasingNotes: data.purchasingNotes !== undefined ? data.purchasingNotes : all[index].purchasingNotes,
+      quotes: data.quotes !== undefined ? data.quotes : all[index].quotes,
+      items: data.items !== undefined ? data.items : all[index].items,
       approvals: newApprovals,
       updatedAt: new Date().toISOString(),
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 
@@ -781,5 +792,40 @@ export const storage = {
     window.dispatchEvent(new Event('storage-users-updated'));
     window.dispatchEvent(new Event('storage-requests-updated'));
     window.dispatchEvent(new Event('storage-versions-updated'));
+  },
+
+  async syncWithBackend(): Promise<boolean> {
+    try {
+      const [remoteRequests, remoteUsers, remoteVersions] = await Promise.all([
+        api.getRequests(),
+        api.getUsers(),
+        api.getVersions(),
+      ]);
+
+      let hasChanges = false;
+      if (remoteRequests && Array.isArray(remoteRequests) && remoteRequests.length > 0) {
+        localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(remoteRequests));
+        window.dispatchEvent(new Event('storage-requests-updated'));
+        hasChanges = true;
+      }
+      if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(remoteUsers));
+        window.dispatchEvent(new Event('storage-users-updated'));
+        hasChanges = true;
+      }
+      if (remoteVersions && Array.isArray(remoteVersions) && remoteVersions.length > 0) {
+        localStorage.setItem(VERSIONS_STORAGE_KEY, JSON.stringify(remoteVersions));
+        window.dispatchEvent(new Event('storage-versions-updated'));
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        console.log('[PostgreSQL SmartBuy] Sincronização inicial realizada com sucesso a partir da API.');
+      }
+      return hasChanges;
+    } catch (e) {
+      console.debug('[PostgreSQL SmartBuy] Operando com cache local enquanto o backend inicializa:', e);
+      return false;
+    }
   }
 };

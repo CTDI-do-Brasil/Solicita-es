@@ -9,7 +9,8 @@ import {
   getSectorColor,
   getRequestDelayInfo,
   getRequestPurchaseReleaseInfo,
-  getLatestRequestStatusInfo
+  getLatestRequestStatusInfo,
+  isRequestWaitingQuote
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
 import { 
@@ -57,7 +58,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const [selectedSector, setSelectedSector] = useState<SectorType | 'Todos'>('Todos');
   const [mobileSectorMenuOpen, setMobileSectorMenuOpen] = useState(false);
   const [mobileNavMenuOpen, setMobileNavMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'cotacao' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
 
@@ -78,6 +79,11 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     return allRequests.filter(
       r => r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
     );
+  }, [allRequests]);
+
+  // Solicitações ativas aguardando cotação de fornecedores ou definição de valor pela equipe de compras
+  const waitingQuoteRequests = useMemo(() => {
+    return allRequests.filter(r => isRequestWaitingQuote(r));
   }, [allRequests]);
 
   // Histórico de compras realizadas (concluídas e faturadas)
@@ -105,7 +111,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const approversCount = useMemo(() => {
     return allRequests.filter(
       r => (r.purchaseStatus === 'em_aprovacao' || r.approvals !== undefined) && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
-    );
+    ).length;
   }, [allRequests]);
 
   // Setor selecionado: contagens separadas de ativas e histórico
@@ -137,6 +143,9 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     if (activeTab === 'geral') {
       // Solicitações em Aberto: Pedidos comprados saem desta lista e vão para o Histórico de Compras!
       list = list.filter(r => r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado');
+    } else if (activeTab === 'cotacao') {
+      // Apenas solicitações aguardando cotação de fornecedores ou definição de valor
+      list = list.filter(r => isRequestWaitingQuote(r));
     } else if (activeTab === 'liberadas') {
       // Apenas solicitações liberadas que AINDA NÃO foram compradas!
       list = list.filter(r => {
@@ -156,7 +165,9 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
 
     // Filter by Status dropdown
     if (statusFilter !== 'todos') {
-      if (statusFilter === 'liberadas') {
+      if (statusFilter === 'aguardando_cotacao') {
+        list = list.filter(r => isRequestWaitingQuote(r));
+      } else if (statusFilter === 'liberadas') {
         list = list.filter(r => {
           const rel = getRequestPurchaseReleaseInfo(r);
           return rel.isReleased && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado';
@@ -253,6 +264,31 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                   activeTab === 'geral' ? 'bg-slate-800 text-amber-300' : 'bg-slate-100 text-slate-600'
                 }`}>
                   {activeRequests.length}
+                </span>
+              </button>
+
+              {/* Aguardando Cotação */}
+              <button
+                type="button"
+                id="purchasing-tab-cotacao"
+                onClick={() => {
+                  setActiveTab('cotacao');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'cotacao'
+                    ? 'bg-amber-600 text-white font-bold border-amber-600 shadow-xs'
+                    : 'text-slate-700 hover:bg-amber-50 hover:text-amber-900 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Clock className={`w-4 h-4 shrink-0 ${activeTab === 'cotacao' ? 'text-white' : 'text-amber-600'}`} />
+                  <span className="truncate">Aguardando Cotação</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                  activeTab === 'cotacao' ? 'bg-amber-700 text-amber-100' : 'bg-amber-100 text-amber-900'
+                }`}>
+                  {waitingQuoteRequests.length}
                 </span>
               </button>
 
@@ -567,6 +603,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             <div>
               <div className="flex items-center gap-2.5">
                 {activeTab === 'geral' && <Layers className="w-5 h-5 text-slate-700" />}
+                {activeTab === 'cotacao' && <Clock className="w-5 h-5 text-amber-600" />}
                 {activeTab === 'liberadas' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
                 {activeTab === 'aprovadores' && <ShieldCheck className="w-5 h-5 text-purple-600" />}
                 {activeTab === 'atrasadas' && <AlertTriangle className="w-5 h-5 text-rose-600" />}
@@ -575,6 +612,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 {activeTab === 'versoes' && <GitBranch className="w-5 h-5 text-amber-500" />}
                 <h1 className="text-base font-bold text-slate-900">
                   {activeTab === 'geral' && 'Solicitações em Aberto'}
+                  {activeTab === 'cotacao' && 'Solicitações Aguardando Cotação'}
                   {activeTab === 'liberadas' && 'Liberadas para Compra'}
                   {activeTab === 'aprovadores' && 'Em Aprovação'}
                   {activeTab === 'atrasadas' && 'Solicitações em Atraso (+48h)'}
@@ -585,6 +623,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {activeTab === 'geral' && 'Fila operacional de solicitações ativas em cotação e atendimento'}
+                {activeTab === 'cotacao' && 'Fila operacional de solicitações aguardando cotação de preços com fornecedores ou definição de valor'}
                 {activeTab === 'liberadas' && 'Solicitações autorizadas prontas para compra ou emissão de pedido'}
                 {activeTab === 'aprovadores' && 'Solicitações aguardando deliberação de gestores e diretoria'}
                 {activeTab === 'atrasadas' && 'Solicitações recebidas há mais de 48 horas aguardando atendimento'}
@@ -611,8 +650,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             )}
           </div>
 
-      {/* Tab Content: Requests List (Tabs 1, 2, 3, 4) */}
-      {(activeTab === 'geral' || activeTab === 'liberadas' || activeTab === 'aprovadores' || activeTab === 'atrasadas' || activeTab === 'faturados') && (
+      {/* Tab Content: Requests List (Tabs 1, 2, 3, 4, 5) */}
+      {(activeTab === 'geral' || activeTab === 'cotacao' || activeTab === 'liberadas' || activeTab === 'aprovadores' || activeTab === 'atrasadas' || activeTab === 'faturados') && (
         <div className="space-y-4">
           
           {/* Search & Filter Toolbar */}
@@ -639,6 +678,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 className="w-full sm:w-auto px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-cyan-500 outline-hidden"
               >
                 <option value="todos">Todos os Status Operacionais</option>
+                <option value="aguardando_cotacao">🟠 Aguardando Cotação (Pendente Compras)</option>
                 <option value="liberadas">🟢 Liberadas para Compra (Aprovação Concluída)</option>
                 <option value="aguardando_aprovacao">⏳ Aguardando Aprovação (Não Liberadas)</option>
                 <option value="em_atraso">Solicitação em atraso (+48h)</option>
@@ -777,6 +817,24 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                           </div>
                         )}
 
+                        {/* Callout de Aguardando Cotação */}
+                        {!releaseInfo.isReleased && isRequestWaitingQuote(req) && req.managerApprovalStatus === 'aprovado' && (
+                          <div 
+                            id={`callout-cotacao-${req.id}`}
+                            className="p-2.5 bg-amber-50/90 rounded-xl border border-amber-300 text-xs text-amber-950 mt-1 flex items-center justify-between gap-2 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>
+                                <strong>Aguardando Cotação:</strong> Aprovada pelo Gestor ({req.managerApprovedBy || req.sector}). Pendente equipe de Compras cotar com fornecedores e definir valor.
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded border border-amber-400 shrink-0">
+                              Cotação Pendente
+                            </span>
+                          </div>
+                        )}
+
                         {req.managerApprovalStatus === 'pendente' && (
                           <div 
                             id={`callout-pendente-gestor-${req.id}`}
@@ -844,9 +902,21 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                               <span className="text-lg font-extrabold text-emerald-800 tracking-tight">
                                 {formatCurrency(req.totalPrice)}
                               </span>
-                              <span className="block text-[10px] text-emerald-700 font-semibold">
-                                Definido por Compras
-                              </span>
+                              <div className="flex items-center gap-1 justify-end text-[10px] text-emerald-700 font-semibold">
+                                {((req.quotes && req.quotes.length > 0) || (req.items && req.items.some(i => i.quotes && i.quotes.length > 0))) && (
+                                  <span className="bg-cyan-100 text-cyan-800 px-1.5 py-0.2 rounded font-bold">
+                                    {req.quotes ? req.quotes.length : req.items?.reduce((acc, it) => acc + (it.quotes?.length || 0), 0)} orç.
+                                  </span>
+                                )}
+                                <span>Definido por Compras</span>
+                              </div>
+                              {(req.paymentTerms || req.deliveryDeadline) && (
+                                <div className="text-[10px] text-slate-500 font-medium">
+                                  {req.paymentTerms ? `Pagto: ${req.paymentTerms}` : ''}
+                                  {req.paymentTerms && req.deliveryDeadline ? ' • ' : ''}
+                                  {req.deliveryDeadline ? `Entrega: ${req.deliveryDeadline}` : ''}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div>
@@ -855,7 +925,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                                 <span>Aguardando Cotação</span>
                               </div>
                               <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
-                                Pendente Compras definir
+                                Pendente Compras cotar
                               </span>
                             </div>
                           )}
@@ -881,7 +951,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                             }`}
                           >
                             <DollarSign className="w-3.5 h-3.5" />
-                            <span>{hasPrice ? 'Gerenciar Pedido & Valor' : 'Inserir Valor de Compra'}</span>
+                            <span>{hasPrice ? 'Gerenciar Cotações & Pedido' : 'Inserir Cotação de Compra'}</span>
                           </button>
                         </div>
 

@@ -224,13 +224,13 @@ export function getLatestRequestStatusInfo(req: PurchaseRequest): {
   if (req.purchaseStatus === 'em_cotacao') {
     return {
       label: 'Em Cotação',
-      badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-200 font-semibold',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 font-semibold',
     };
   }
   if (req.purchaseStatus === 'recebido_em_compras') {
     return {
-      label: 'Recebido em Compras',
-      badgeClass: 'bg-blue-50 text-blue-800 border-blue-200 font-semibold',
+      label: 'Aguardando Cotação',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 font-semibold',
     };
   }
 
@@ -723,14 +723,30 @@ export function getRequestPurchaseReleaseInfo(request: PurchaseRequest): Request
     return {
       isReleased: false,
       status: 'aguardando_gestor',
-      badgeLabel: 'Aguardando Valor (Compras)',
+      badgeLabel: 'Aguardando Cotação',
       badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-semibold',
       dotColor: 'bg-amber-500',
-      title: 'Pendente de Definição de Valor por Compras',
+      title: 'Aguardando Cotação por Compras',
       description: request.managerApprovedBy
         ? `Aprovada pelo Gestor (${request.managerApprovedBy}), mas aguarda preenchimento de valor pelo Setor de Compras.`
         : 'Aprovada pelo Gestor, mas aguarda definição de valor por Compras.',
       approvalStageText: 'Aguardando Cotação por Compras',
+    };
+  }
+
+  // Se o status da compra ainda é recebido em compras ou em cotação, está em fase de cotação
+  if (request.purchaseStatus === 'recebido_em_compras' || request.purchaseStatus === 'em_cotacao') {
+    return {
+      isReleased: false,
+      status: 'aguardando_gestor',
+      badgeLabel: 'Aguardando Cotação',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-semibold',
+      dotColor: 'bg-amber-500',
+      title: 'Aguardando Cotação com Fornecedores',
+      description: request.purchaseStatus === 'em_cotacao'
+        ? 'Solicitação em processo ativo de cotação de preços com fornecedores pelo Setor de Compras.'
+        : 'Recebida no Setor de Compras. Aguardando propostas e cotações de fornecedores.',
+      approvalStageText: 'Em Cotação por Compras',
     };
   }
 
@@ -747,6 +763,34 @@ export function getRequestPurchaseReleaseInfo(request: PurchaseRequest): Request
       : 'Aprovada pelo Gestor da Área e valor definido por Compras. Liberada para compra.',
     approvalStageText: 'Aprovada pelo Gestor da Área',
   };
+}
+
+/**
+ * Determina se uma solicitação está aguardando cotação de fornecedores
+ * ou definição de valor pela equipe de compras.
+ */
+export function isRequestWaitingQuote(request: PurchaseRequest): boolean {
+  if (
+    request.purchaseStatus === 'compra_realizada' ||
+    request.purchaseStatus === 'entregue' ||
+    request.purchaseStatus === 'cancelado' ||
+    request.purchaseStatus === 'pedido_emitido' ||
+    request.purchaseStatus === 'em_transito'
+  ) {
+    return false;
+  }
+  if (request.purchaseStatus === 'em_aprovacao') {
+    return false;
+  }
+  // Se está explicitamente recebido em compras ou em cotação
+  if (request.purchaseStatus === 'recebido_em_compras' || request.purchaseStatus === 'em_cotacao') {
+    return true;
+  }
+  // Se não possui valor total definido por compras (> 0)
+  if (!request.totalPrice || request.totalPrice <= 0) {
+    return true;
+  }
+  return false;
 }
 
 

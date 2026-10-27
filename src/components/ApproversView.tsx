@@ -24,7 +24,8 @@ import {
   Award,
   Calendar,
   CalendarRange,
-  RotateCcw
+  RotateCcw,
+  CreditCard
 } from 'lucide-react';
 
 const MONTHS_LIST = [
@@ -954,7 +955,7 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                     </div>
 
                     {/* Purchasing Financial Summary */}
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shrink-0 text-right space-y-1">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shrink-0 text-right space-y-1.5">
                       <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Valor Total da Compra (Cotado)
                       </div>
@@ -964,6 +965,34 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                       <div className="text-xs text-slate-600 font-medium">
                         Fornecedor: <strong className="text-slate-800">{req.supplier || 'Não informado'}</strong>
                       </div>
+
+                      {/* Prazo de Pagamento & Prazo de Entrega */}
+                      {(req.paymentTerms || req.deliveryDeadline) && (
+                        <div className="pt-1.5 border-t border-slate-200 space-y-0.5 text-[11px] text-slate-600">
+                          {req.paymentTerms && (
+                            <div className="flex items-center justify-end gap-1">
+                              <CreditCard className="w-3 h-3 text-indigo-500" />
+                              <span>Pagamento: <strong className="text-slate-800">{req.paymentTerms}</strong></span>
+                            </div>
+                          )}
+                          {req.deliveryDeadline && (
+                            <div className="flex items-center justify-end gap-1">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              <span>Entrega: <strong className="text-slate-800">{req.deliveryDeadline}</strong></span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Quantidade de orçamentos */}
+                      {((req.quotes && req.quotes.length > 0) || (req.items && req.items.some(i => i.quotes && i.quotes.length > 0))) && (
+                        <div className="pt-1">
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">
+                            {req.quotes ? req.quotes.length : req.items?.reduce((acc, it) => acc + (it.quotes?.length || 0), 0)} orçamentos cotados
+                          </span>
+                        </div>
+                      )}
+
                       {req.purchaseOrderNumber && (
                         <div className="text-[11px] text-slate-400 font-mono">
                           Ordem de Compra: {req.purchaseOrderNumber}
