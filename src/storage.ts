@@ -117,6 +117,14 @@ export const storage = {
           }
         });
 
+        // Ensure all users have a default password
+        users.forEach(u => {
+          if (!u.password) {
+            u.password = '123456';
+            needsSave = true;
+          }
+        });
+
         if (needsSave) {
           localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
         }
@@ -125,8 +133,9 @@ export const storage = {
     } catch (e) {
       console.error('Failed to load users from localStorage', e);
     }
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-    return INITIAL_USERS;
+    const defaultUsers = INITIAL_USERS.map(u => ({ ...u, password: u.password || '123456' }));
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
+    return defaultUsers;
   },
 
   saveUsers(users: User[]) {
@@ -609,7 +618,7 @@ export const storage = {
     return true;
   },
 
-  createUserByManager(manager: User, userData: { name: string; email: string; position: string }): User {
+  createUserByManager(manager: User, userData: { name: string; email: string; position: string; password?: string }): User {
     const allUsers = this.getUsers();
     const newUser: User = {
       id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -618,16 +627,40 @@ export const storage = {
       role: 'colaborador',
       sector: manager.sector, // Strictly within the manager's sector
       position: userData.position || 'Colaborador do Setor',
+      password: userData.password?.trim() || '123456',
       createdAt: new Date().toISOString(),
     };
 
     const updated = [...allUsers, newUser];
     this.saveUsers(updated);
+    api.saveUser(newUser).catch(() => {});
     return newUser;
   },
 
+  updateUserPassword(userId: string, newPassword: string): boolean {
+    const allUsers = this.getUsers();
+    const index = allUsers.findIndex(u => u.id === userId);
+    if (index === -1) return false;
+
+    allUsers[index] = {
+      ...allUsers[index],
+      password: newPassword,
+    };
+
+    this.saveUsers(allUsers);
+
+    // If current logged-in user is this user, keep current user in sync
+    const current = this.getCurrentUser();
+    if (current && current.id === userId) {
+      this.setCurrentUser({ ...current, password: newPassword });
+    }
+
+    api.saveUser(allUsers[index]).catch(() => {});
+    return true;
+  },
+
   // MASTER DEVELOPER PRIVILEGED OPERATIONS
-  createMasterUser(data: { name: string; email: string; role: UserRole; sector: SectorType; position: string }): User {
+  createMasterUser(data: { name: string; email: string; role: UserRole; sector: SectorType; position: string; password?: string }): User {
     const allUsers = this.getUsers();
     const newUser: User = {
       id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -636,11 +669,13 @@ export const storage = {
       role: data.role,
       sector: data.sector,
       position: data.position || 'Colaborador',
+      password: data.password?.trim() || '123456',
       createdAt: new Date().toISOString(),
     };
 
     const updated = [...allUsers, newUser];
     this.saveUsers(updated);
+    api.saveUser(newUser).catch(() => {});
     return newUser;
   },
 
@@ -655,6 +690,7 @@ export const storage = {
     };
 
     this.saveUsers(allUsers);
+    api.saveUser(allUsers[index]).catch(() => {});
     return true;
   },
 

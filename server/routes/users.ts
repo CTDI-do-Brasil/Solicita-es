@@ -12,6 +12,7 @@ function mapRowToUser(row: any) {
     sector: row.sector,
     position: row.position,
     avatarUrl: row.avatar_url,
+    password: row.password || '123456',
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
 }
@@ -35,14 +36,15 @@ router.post('/', async (req: Request, res: Response) => {
     const now = new Date();
 
     const query = `
-      INSERT INTO users (id, name, email, role, sector, position, avatar_url, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (id, name, email, role, sector, position, avatar_url, password, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (email) DO UPDATE SET
         name = EXCLUDED.name,
         role = EXCLUDED.role,
         sector = EXCLUDED.sector,
         position = EXCLUDED.position,
-        avatar_url = EXCLUDED.avatar_url
+        avatar_url = EXCLUDED.avatar_url,
+        password = COALESCE(EXCLUDED.password, users.password)
       RETURNING *;
     `;
 
@@ -54,6 +56,7 @@ router.post('/', async (req: Request, res: Response) => {
       data.sector,
       data.position,
       data.avatarUrl || null,
+      data.password || '123456',
       data.createdAt || now
     ];
 
@@ -78,12 +81,13 @@ router.put('/:id', async (req: Request, res: Response) => {
         role = COALESCE($3, role),
         sector = COALESCE($4, sector),
         position = COALESCE($5, position),
-        avatar_url = COALESCE($6, avatar_url)
-      WHERE id = $7
+        avatar_url = COALESCE($6, avatar_url),
+        password = COALESCE($7, password)
+      WHERE id = $8
       RETURNING *;
     `;
 
-    const values = [data.name, data.email, data.role, data.sector, data.position, data.avatarUrl, id];
+    const values = [data.name, data.email, data.role, data.sector, data.position, data.avatarUrl, data.password, id];
     const result = await pool.query(query, values);
 
     if (result.rows.length === 0) {

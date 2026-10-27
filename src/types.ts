@@ -59,6 +59,7 @@ export interface User {
   sector: SectorType;
   position: string;
   avatarUrl?: string;
+  password?: string;
   createdAt: string;
 }
 

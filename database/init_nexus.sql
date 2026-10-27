@@ -17,8 +17,12 @@ CREATE TABLE IF NOT EXISTS users (
     sector VARCHAR(50) NOT NULL,
     position VARCHAR(255) NOT NULL,
     avatar_url TEXT,
+    password VARCHAR(255) DEFAULT '123456',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Garantir coluna password se tabela já existir
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '123456';
 
 -- 3. TABELA DE SOLICITAÇÕES DE COMPRA (PURCHASE REQUESTS)
 CREATE TABLE IF NOT EXISTS purchase_requests (

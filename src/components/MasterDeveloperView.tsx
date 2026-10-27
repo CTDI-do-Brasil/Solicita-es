@@ -33,7 +33,8 @@ import {
   Plus,
   GitBranch,
   Radio,
-  BarChart3
+  BarChart3,
+  KeyRound
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 import { ApproversView } from './ApproversView';
@@ -70,6 +71,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
   const [formSector, setFormSector] = useState<SectorType>('Produção');
   const [formRole, setFormRole] = useState<UserRole>('colaborador');
   const [formPosition, setFormPosition] = useState('');
+  const [formPassword, setFormPassword] = useState('');
   const [userFormError, setUserFormError] = useState('');
 
   // Request Management State
@@ -133,6 +135,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
     setFormSector('Produção');
     setFormRole('colaborador');
     setFormPosition('');
+    setFormPassword('');
     setUserFormError('');
     setShowUserModal(true);
   };
@@ -145,6 +148,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
     setFormSector(user.sector);
     setFormRole(user.role);
     setFormPosition(user.position);
+    setFormPassword('');
     setUserFormError('');
     setShowUserModal(true);
   };
@@ -166,6 +170,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
         sector: formSector,
         role: formRole,
         position: formPosition.trim(),
+        ...(formPassword.trim() ? { password: formPassword.trim() } : {}),
       });
     } else {
       storage.createMasterUser({
@@ -174,6 +179,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
         sector: formSector,
         role: formRole,
         position: formPosition.trim(),
+        password: formPassword.trim() || '123456',
       });
     }
 
@@ -592,10 +598,25 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                               {/* Edit */}
                               <button
                                 onClick={() => handleOpenEditUser(u)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                                 title="Editar dados do colaborador"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Reset Password */}
+                              <button
+                                onClick={() => {
+                                  const newPass = prompt(`Redefinir senha de ${u.name}:`, '123456');
+                                  if (newPass && newPass.trim()) {
+                                    storage.updateUserPassword(u.id, newPass.trim());
+                                    alert(`Senha do colaborador ${u.name} redefinida com sucesso para: "${newPass.trim()}"`);
+                                  }
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                title="Redefinir senha de acesso"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
                               </button>
 
                               {/* Delete */}
@@ -1031,6 +1052,19 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                   placeholder="ex: Engenheiro Mecânico, Analista Fiscal Pleno..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  Senha de Acesso {editingUser ? '(deixe em branco para manter atual)' : '(padrão: 123456)'}
+                </label>
+                <input
+                  type="text"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder={editingUser ? 'Manter senha atual' : '123456'}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden font-mono"
                 />
               </div>
 

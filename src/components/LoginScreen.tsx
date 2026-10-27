@@ -47,6 +47,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
     const cleanEmail = email.trim().toLowerCase();
     if (cleanEmail === 'dev@empresa.com' || cleanEmail === 'dev' || cleanEmail === 'master') {
+      const masterExpected = masterUser.password || '123456';
+      if (password.trim() && password.trim() !== masterExpected && password.trim() !== 'dev' && password.trim() !== 'master') {
+        setErrorMessage('Senha incorreta para o usuário Master.');
+        return;
+      }
       onLogin(masterUser);
       return;
     }
@@ -54,6 +59,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     const found = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (!found) {
       setErrorMessage('Usuário não encontrado com este e-mail. Utilize um dos botões de acesso rápido abaixo para testar.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMessage('Por favor, informe a senha de acesso (padrão inicial: 123456).');
+      return;
+    }
+
+    const expectedPassword = found.password || '123456';
+    if (password.trim() !== expectedPassword) {
+      setErrorMessage('Senha incorreta. Solicite a redefinição de senha ao gestor do seu setor.');
       return;
     }
 
@@ -148,9 +164,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Senha de Acesso
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Senha de Acesso
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  Padrão: <strong className="text-slate-700 font-mono">123456</strong>
+                </span>
+              </div>
               <div className="relative rounded-lg shadow-2xs">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <Lock className="w-4 h-4" />
@@ -164,6 +185,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-hidden transition-all placeholder:text-slate-400"
                 />
               </div>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Esqueceu a senha? Solicite ao gestor responsável pelo seu setor.
+              </p>
             </div>
 
             {errorMessage && (
