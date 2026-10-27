@@ -29,6 +29,7 @@ export default function App() {
 
   // Synchronize storage events
   useEffect(() => {
+    document.title = 'Nexus';
     // Sincronizar com o banco de dados PostgreSQL
     storage.syncWithBackend();
 

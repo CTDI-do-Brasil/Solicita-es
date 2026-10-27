@@ -1,5 +1,5 @@
 {
-  "name": "SmartBuy",
+  "name": "Nexus",
   "description": "Sistema de gestão e solicitação de compras corporativas por setor, com aprovação gerencial, emissão de pedidos de compra, controle orçamentário e dashboard de gastos mensais.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
