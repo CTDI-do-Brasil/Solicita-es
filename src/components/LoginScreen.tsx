@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, SectorType } from '../types';
 import { storage } from '../storage';
-import { getSectorColor } from '../utils';
+import { getSectorColor, isLocalEnvironment } from '../utils';
+import { DEMO_USERS } from '../mockData';
 import { 
   Building2, 
   Lock, 
@@ -20,6 +21,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+  const isLocal = isLocalEnvironment();
   const users = storage.getUsers();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +60,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
     const found = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (!found) {
-      setErrorMessage('Usuário não encontrado com este e-mail. Utilize um dos botões de acesso rápido abaixo para testar.');
+      setErrorMessage(
+        isLocal 
+          ? 'Usuário não encontrado com este e-mail. Utilize um dos botões de acesso rápido abaixo para testar.' 
+          : 'Usuário não encontrado com este e-mail. Verifique os dados digitados ou contate o administrador.'
+      );
       return;
     }
 
@@ -80,10 +86,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     onLogin(user);
   };
 
-  const aprovadoresUsers = users.filter(u => u.role === 'aprovador' || u.id.startsWith('user-aprovador-'));
-  const comprasUsers = users.filter(u => u.role === 'compras');
-  const gestoresUsers = users.filter(u => u.role === 'gestor');
-  const colaboradoresUsers = users.filter(u => u.role === 'colaborador');
+  const demoSourceUsers = users.length > 1 ? users : DEMO_USERS;
+  const aprovadoresUsers = demoSourceUsers.filter(u => u.role === 'aprovador' || u.id.startsWith('user-aprovador-'));
+  const comprasUsers = demoSourceUsers.filter(u => u.role === 'compras');
+  const gestoresUsers = demoSourceUsers.filter(u => u.role === 'gestor');
+  const colaboradoresUsers = demoSourceUsers.filter(u => u.role === 'colaborador');
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
@@ -206,18 +213,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          {/* Quick Access Divider */}
-          <div className="mt-8 pt-6 border-t border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Acesso Rápido para Demonstração
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Clique diretamente em qualquer perfil para testar as permissões e o fluxo
-                </p>
+          {/* Quick Access Divider - Apenas visível em ambiente local para testes */}
+          {isLocal && (
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Acesso Rápido para Demonstração
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                      Modo Teste Local
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Atalhos visíveis apenas em desenvolvimento local para teste de fluxo e permissões.
+                  </p>
+                </div>
               </div>
-            </div>
 
             {/* Quick Access Category Tabs */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-semibold">
@@ -466,6 +479,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             )}
 
           </div>
+          )}
 
           {/* System Highlights */}
           <div className="mt-8 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">

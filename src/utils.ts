@@ -793,5 +793,15 @@ export function isRequestWaitingQuote(request: PurchaseRequest): boolean {
   return false;
 }
 
+/**
+ * Detecta se a aplicação está rodando em ambiente local (desenvolvimento / teste local)
+ * ou em ambiente oficial na Web (produção).
+ */
+export function isLocalEnvironment(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || Boolean(import.meta.env?.DEV);
+}
+
 
 

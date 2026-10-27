@@ -1,16 +1,24 @@
 import { User, PurchaseRequest, SectorType } from './types';
 
+export const MASTER_USER: User = {
+  id: 'user-master-dev',
+  name: 'Desenvolvedor Master',
+  email: 'dev@empresa.com',
+  role: 'master',
+  sector: 'TI',
+  position: 'Desenvolvedor & Administrador Geral do Sistema',
+  password: 'dev',
+  createdAt: '2026-01-01T00:00:00Z',
+};
+
+// Em ambiente oficial/limpo: apenas o usuário Master existe inicialmente
 export const INITIAL_USERS: User[] = [
-  // Acesso Master / Desenvolvedor (Controle Total de todos os setores e colaboradores)
-  {
-    id: 'user-master-dev',
-    name: 'Desenvolvedor Master',
-    email: 'dev@empresa.com',
-    role: 'master',
-    sector: 'TI',
-    position: 'Desenvolvedor & Administrador Geral do Sistema',
-    createdAt: '2026-01-01T00:00:00Z',
-  },
+  MASTER_USER,
+];
+
+// Dados de demonstração (utilizados apenas em ambiente local para testes)
+export const DEMO_USERS: User[] = [
+  MASTER_USER,
   // Gestores dos 9 setores
   {
     id: 'user-gestor-prod',
@@ -191,7 +199,11 @@ export const INITIAL_USERS: User[] = [
   }
 ];
 
-export const INITIAL_REQUESTS: PurchaseRequest[] = [
+// Em ambiente oficial/limpo: nenhuma solicitação simulada existe inicialmente
+export const INITIAL_REQUESTS: PurchaseRequest[] = [];
+
+// Solicitações de demonstração (utilizadas apenas em ambiente local para testes)
+export const DEMO_REQUESTS: PurchaseRequest[] = [
   // 1. TI - Pedido Realizado e com Valor Refletido
   {
     id: 'req-001',

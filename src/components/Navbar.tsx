@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, SectorType, ALL_SECTORS } from '../types';
 import { storage } from '../storage';
-import { getSectorColor } from '../utils';
+import { getSectorColor, isLocalEnvironment } from '../utils';
 import { 
   Building2, 
   LogOut, 
@@ -40,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectAppArea,
 }) => {
   const [showSwitchDropdown, setShowSwitchDropdown] = useState(false);
+  const isLocal = isLocalEnvironment();
   const users = storage.getUsers();
   const isMaster = currentUser.role === 'master';
   const displaySector = isMaster && masterViewMode === 'setor' ? simulatedSector : currentUser.sector;
@@ -174,9 +175,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Current User & Actions */}
           <div className="flex items-center gap-3 shrink-0">
             
-            {/* Quick User Switcher Dropdown */}
-            <div className="relative">
-              <button
+            {/* Quick User Switcher Dropdown - Visível apenas em ambiente local para testes */}
+            {isLocal && (
+              <div className="relative">
+                <button
                 id="quick-user-switch-button"
                 onClick={() => setShowSwitchDropdown(!showSwitchDropdown)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium transition-colors"
@@ -412,6 +414,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </>
               )}
             </div>
+            )}
 
             {/* Current User Badge Card */}
             <div className="flex items-center gap-3 pl-2 sm:pl-3 sm:border-l border-slate-200">

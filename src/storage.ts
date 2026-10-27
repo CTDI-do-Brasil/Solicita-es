@@ -1,11 +1,20 @@
 import { User, UserRole, PurchaseRequest, SectorType, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem } from './types';
-import { INITIAL_USERS, INITIAL_REQUESTS } from './mockData';
+import { INITIAL_USERS, INITIAL_REQUESTS, MASTER_USER } from './mockData';
 import { api } from './services/api';
 
-const USERS_STORAGE_KEY = 'compras_app_users_v1';
-const REQUESTS_STORAGE_KEY = 'compras_app_requests_v1';
-const CURRENT_USER_KEY = 'compras_app_current_user_v1';
-const VERSIONS_STORAGE_KEY = 'compras_app_versions_v1';
+const USERS_STORAGE_KEY = 'compras_app_users_v2';
+const REQUESTS_STORAGE_KEY = 'compras_app_requests_v2';
+const CURRENT_USER_KEY = 'compras_app_current_user_v2';
+const VERSIONS_STORAGE_KEY = 'compras_app_versions_v2';
+
+// Limpeza de caches legados com dados de simulação
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('compras_app_users_v1');
+    localStorage.removeItem('compras_app_requests_v1');
+    localStorage.removeItem('compras_app_current_user_v1');
+  } catch {}
+}
 
 export const INITIAL_REVIEWERS: VersionReviewer[] = [
   {
@@ -92,30 +101,9 @@ export const storage = {
         // Ensure master dev user is always present
         let needsSave = false;
         if (!users.some(u => u.role === 'master' || u.id === 'user-master-dev')) {
-          const masterUser = INITIAL_USERS.find(u => u.role === 'master');
-          if (masterUser) {
-            users.unshift(masterUser);
-            needsSave = true;
-          }
-        }
-        // Ensure purchasing coordinator has gestor role
-        const coord = users.find(u => u.id === 'user-compras-coord');
-        if (coord && coord.role !== 'gestor') {
-          coord.role = 'gestor';
+          users.unshift(MASTER_USER);
           needsSave = true;
         }
-
-        // Ensure the 3 approvers (Fernando, Eduardo, Luiz) exist
-        const approverIds = ['user-aprovador-fernando', 'user-aprovador-eduardo', 'user-aprovador-luiz'];
-        approverIds.forEach(id => {
-          if (!users.some(u => u.id === id)) {
-            const initialAppr = INITIAL_USERS.find(u => u.id === id);
-            if (initialAppr) {
-              users.push(initialAppr);
-              needsSave = true;
-            }
-          }
-        });
 
         // Ensure all users have a default password
         users.forEach(u => {
@@ -195,50 +183,6 @@ export const storage = {
           return migrated;
         }
         
-        // Ensure mock requests with approvals exist
-        if (!requests.some(r => r.id === 'req-012' || r.approvals)) {
-          const mockWithApprovals = INITIAL_REQUESTS.filter(ir => ir.approvals);
-          const merged = [...requests, ...mockWithApprovals.filter(m => !requests.some(r => r.id === m.id))];
-          localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(merged));
-          return merged;
-        }
-
-        // Ensure all requests in Compras have prices populated
-        let priceUpdated = false;
-        const withPrices = requests.map(r => {
-          if (r.id === 'req-007' && (!r.totalPrice || r.totalPrice <= 0)) {
-            priceUpdated = true;
-            return {
-              ...r,
-              purchaseOrderNumber: r.purchaseOrderNumber || 'OC-2026-0208',
-              supplier: 'Distribuidora Rolamentos SKF Brasil Ltda',
-              unitPrice: 485.00,
-              totalPrice: 1940.00,
-              shippingCost: 80.00,
-              purchasedBy: 'Alexandre Fontes (Compras)',
-              purchasingNotes: 'Cotação realizada e valor definido pelo setor de Compras.',
-            };
-          }
-          if (r.id === 'req-002' && (!r.totalPrice || r.totalPrice <= 0)) {
-            priceUpdated = true;
-            return {
-              ...r,
-              supplier: 'Terabyte E-commerce de Informática Ltda',
-              unitPrice: 650.00,
-              totalPrice: 2600.00,
-              shippingCost: 35.00,
-              purchasedBy: 'Juliana Paes Correia (Compras)',
-              purchasingNotes: 'Cotação preliminar registrada pelo setor de Compras.',
-            };
-          }
-          return r;
-        });
-
-        if (priceUpdated) {
-          localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(withPrices));
-          return withPrices;
-        }
-
         return requests;
       }
     } catch (e) {
@@ -839,7 +783,7 @@ export const storage = {
       ]);
 
       let hasChanges = false;
-      if (remoteRequests && Array.isArray(remoteRequests) && remoteRequests.length > 0) {
+      if (remoteRequests && Array.isArray(remoteRequests)) {
         localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(remoteRequests));
         window.dispatchEvent(new Event('storage-requests-updated'));
         hasChanges = true;
