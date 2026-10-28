@@ -375,6 +375,17 @@ export function getSectorColor(sector: SectorType): {
         border: 'border-cyan-200',
         accent: '#0891b2',
       };
+    case 'Diretor':
+    case 'Diretoria':
+      return {
+        badge: 'bg-purple-100 text-purple-900 border-purple-200',
+        tag: 'bg-purple-600',
+        dot: 'bg-purple-600',
+        bg: 'bg-purple-100',
+        text: 'text-purple-900',
+        border: 'border-purple-200',
+        accent: '#9333ea',
+      };
     default:
       return {
         badge: 'bg-slate-100 text-slate-800 border-slate-200',

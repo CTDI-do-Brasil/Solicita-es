@@ -8,7 +8,9 @@ export type SectorType =
   | 'Engenharia'
   | 'TI'
   | 'Administrativo'
-  | 'Compras';
+  | 'Compras'
+  | 'Diretor'
+  | 'Diretoria';
 
 export const ALL_SECTORS: SectorType[] = [
   'Produção',
@@ -19,7 +21,8 @@ export const ALL_SECTORS: SectorType[] = [
   'Manutenção',
   'Engenharia',
   'TI',
-  'Administrativo'
+  'Administrativo',
+  'Diretor'
 ];
 
 export type UserRole = 'gestor' | 'colaborador' | 'compras' | 'master' | 'aprovador';
