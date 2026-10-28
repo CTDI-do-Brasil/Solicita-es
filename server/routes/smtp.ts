@@ -106,16 +106,31 @@ router.post('/test', async (req: Request, res: Response) => {
     };
 
     if (!testConfig.testRecipient) {
-      return res.status(400).json({
+      return res.json({
         success: false,
         error: 'Informe o E-mail Destinatário de Teste para prosseguir com a verificação.',
+      });
+    }
+
+    if (!testConfig.host) {
+      return res.json({
+        success: false,
+        error: 'Informe o Host / Servidor SMTP.',
+      });
+    }
+
+    // Alerta caso a porta seja autenticada (587 ou 465) e não haja senha fornecida
+    if ((testConfig.port === 587 || testConfig.port === 465) && (!testConfig.user || !testConfig.pass)) {
+      return res.json({
+        success: false,
+        error: `Para a porta ${testConfig.port}, é obrigatório informar o Usuário e a Senha da conta do Poste.io. Digite a senha antes de testar.`,
       });
     }
 
     // 1. Testa a conexão e autenticação com o servidor SMTP
     const verifyResult = await verifySmtpConnection(testConfig);
     if (!verifyResult.ok) {
-      return res.status(400).json({
+      return res.json({
         success: false,
         error: `Falha ao conectar ao servidor SMTP (${testConfig.host}:${testConfig.port}): ${verifyResult.message}`,
         details: verifyResult.details,
@@ -171,19 +186,19 @@ router.post('/test', async (req: Request, res: Response) => {
     );
 
     if (!emailSent) {
-      return res.status(500).json({
+      return res.json({
         success: false,
-        error: `Conexão SMTP verificada, mas o envio do e-mail de teste para ${testConfig.testRecipient} falhou.`,
+        error: `Conexão SMTP validada, mas a entrega do e-mail de teste para ${testConfig.testRecipient} falhou. Verifique se o endereço é permitido pelo servidor.`,
       });
     }
 
     res.json({
       success: true,
-      message: `Conexão com servidor ${testConfig.host}:${testConfig.port} confirmada e e-mail de teste enviado para ${testConfig.testRecipient}!`,
+      message: `Conexão com servidor ${testConfig.host}:${testConfig.port} confirmada e e-mail de teste entregue para ${testConfig.testRecipient}!`,
     });
   } catch (error: any) {
     console.error('[SMTP Config] Erro ao testar SMTP:', error.message);
-    res.status(500).json({
+    res.json({
       success: false,
       error: `Erro durante o teste de SMTP: ${error.message}`,
     });

@@ -33,6 +33,7 @@ RUN npm install --omit=dev
 # Copia o build estático do frontend e o código do servidor
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
+COPY --from=build /app/database ./database
 COPY --from=build /app/tsconfig.json ./
 
 # Configurações de ambiente para CapRover

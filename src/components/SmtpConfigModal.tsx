@@ -151,7 +151,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
 
       const data = await safeParseResponse(res);
 
-      if (res.ok && data.success) {
+      if (data.success) {
         setFeedback({
           type: 'success',
           message: data.message || 'Conexão estabelecida e e-mail de teste enviado com sucesso!',
@@ -161,7 +161,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
         setFeedback({
           type: 'error',
           message: errorMsg,
-          details: data.details ? (typeof data.details === 'object' ? JSON.stringify(data.details, null, 2) : String(data.details)) : data.raw,
+          details: data.details ? (typeof data.details === 'object' ? JSON.stringify(data.details, null, 2) : String(data.details)) : (data.raw && data.raw !== errorMsg ? data.raw : undefined),
         });
       }
     } catch (err: any) {
