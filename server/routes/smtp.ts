@@ -133,50 +133,20 @@ router.post('/test', async (req: Request, res: Response) => {
     if (verifyResult.activeHost) testConfig.host = verifyResult.activeHost;
     if (verifyResult.activePort) testConfig.port = verifyResult.activePort;
 
-    // 2. Dispara e-mail de teste
+    // 2. Dispara e-mail de teste (formato limpo compatível com filtros corporativos Microsoft 365 / EOP)
+    const sentTimestamp = new Date().toLocaleString('pt-BR');
     const emailSent = await sendEmail(
       {
         to: testConfig.testRecipient,
-        subject: '[Nexus CTDI] Teste de Conexão SMTP Realizado com Sucesso!',
+        subject: `[Nexus CTDI] Teste de Conexao SMTP (${new Date().toLocaleTimeString('pt-BR')})`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #E2E8F0;">
-            <div style="background: linear-gradient(135deg, #002d5b 0%, #004b91 100%); padding: 24px; text-align: center; color: #ffffff;">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0.5px;">NEXUS CTDI</h1>
-              <p style="margin: 6px 0 0 0; font-size: 13px; color: #93C5FD;">Teste de Conectividade do Servidor de E-mail (SMTP)</p>
-            </div>
-            
-            <div style="padding: 24px; color: #1E293B; line-height: 1.6;">
-              <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
-                <p style="margin: 0; font-weight: bold; color: #065F46; font-size: 14px;">✅ Conexão Estabelecida com Sucesso!</p>
-                <p style="margin: 4px 0 0 0; color: #047857; font-size: 13px;">O Nexus CTDI comunicou-se com sucesso com o servidor de e-mail e os disparos automáticos estão prontos para operar.</p>
-              </div>
-
-              <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;">
-                <tr style="border-bottom: 1px solid #F1F5F9;">
-                  <td style="padding: 8px 0; color: #64748B; font-weight: 600; width: 140px;">Servidor SMTP:</td>
-                  <td style="padding: 8px 0; color: #0F172A; font-family: monospace;">${testConfig.host}:${testConfig.port}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #F1F5F9;">
-                  <td style="padding: 8px 0; color: #64748B; font-weight: 600;">Remetente (From):</td>
-                  <td style="padding: 8px 0; color: #0F172A;">${testConfig.from}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #F1F5F9;">
-                  <td style="padding: 8px 0; color: #64748B; font-weight: 600;">Conta Autenticada:</td>
-                  <td style="padding: 8px 0; color: #0F172A; font-family: monospace;">${testConfig.user || '(Sem autenticação / relay interno)'}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748B; font-weight: 600;">Data do Teste:</td>
-                  <td style="padding: 8px 0; color: #0F172A;">${new Date().toLocaleString('pt-BR')}</td>
-                </tr>
-              </table>
-            </div>
-
-            <div style="background-color: #F8FAFC; padding: 14px 24px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 11px; color: #64748B;">
-              Nexus CTDI — Sistema de Gestão de Suprimentos & Solicitações Corporativas
-            </div>
+          <div style="font-family: sans-serif; padding: 20px; color: #1E293B;">
+            <h2 style="color: #2563EB;">Teste de Conexão SMTP - Nexus CTDI</h2>
+            <p>Parabéns! O serviço de e-mail do Nexus foi configurado com sucesso e está comunicando perfeitamente com o servidor de disparo no CapRover.</p>
+            <p style="font-size: 12px; color: #64748B;">Enviado em: ${sentTimestamp} | Porta ativa: ${testConfig.port}</p>
           </div>
         `,
-        text: `Teste de Conexão SMTP Nexus CTDI realizado com sucesso em ${testConfig.host}:${testConfig.port}.`,
+        text: `Teste de Conexão SMTP - Nexus CTDI. O serviço de e-mail foi configurado com sucesso. Enviado em: ${sentTimestamp}.`,
       },
       testConfig
     );

@@ -84,6 +84,7 @@ export function resetTransporterCache() {
 export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
   const isPort25 = cfg.port === 25;
   const transportConfig: any = {
+    name: 'nexus.ctdibrasil.com.br',
     host: cfg.host,
     port: cfg.port,
     secure: !isPort25 && (cfg.secure || cfg.port === 465),
@@ -176,6 +177,7 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
       try {
         console.log(`[Nexus Mailer] Tentando rota SMTP direta em ${cand.host}:${cand.port}...`);
         const fbTransport = nodemailer.createTransport({
+          name: 'nexus.ctdibrasil.com.br',
           host: cand.host,
           port: cand.port,
           secure: false,
@@ -273,14 +275,12 @@ export async function sendEmail(
   let finalHtml = html;
 
   if (isOverride) {
-    finalSubject = `[TESTE -> ${originalRecipients.join(', ')}] ${subject}`;
+    const cleanTargets = originalRecipients
+      .map((r) => r.split('@')[0].replace(/[._]/g, ' ').toUpperCase())
+      .join(', ');
     const testBanner = `
-      <div style="background-color: #FEF3C7; border: 2px dashed #F59E0B; padding: 12px 16px; margin: 0 0 20px 0; border-radius: 8px; font-family: sans-serif; font-size: 13px; color: #92400E; text-align: left;">
-        <div style="font-weight: 800; color: #B45309; text-transform: uppercase; font-size: 12px; margin-bottom: 4px;">
-          ⚠️ MODO DE HOMOLOGAÇÃO / TESTE ATIVO
-        </div>
-        <div><strong>Destinatário(s) que receberia(m) em Produção:</strong> <span style="color: #1E3A8A; font-weight: bold;">${originalRecipients.join(', ')}</span></div>
-        <div style="font-size: 11px; color: #78350F; margin-top: 4px;">Redirecionado para <code>${overrideTarget}</code> conforme configurações SMTP do sistema.</div>
+      <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 10px 14px; margin: 0 0 18px 0; border-radius: 6px; font-family: sans-serif; font-size: 12px; color: #1E3A8A; text-align: left;">
+        <strong> Destinatário desta Etapa no Fluxo:</strong> ${cleanTargets}
       </div>
     `;
     finalHtml = html.replace('<!-- Título da Solicitação -->', `${testBanner}\n              <!-- Título da Solicitação -->`);
@@ -288,12 +288,18 @@ export async function sendEmail(
 
   const finalText = text || htmlToPlainText(finalHtml) || finalSubject;
 
+  const rawFrom = cfg.from || SMTP_FROM;
+  const formattedFrom = rawFrom.includes('<') && !rawFrom.startsWith('"')
+    ? `"${rawFrom.split('<')[0].trim()}" <${rawFrom.split('<')[1]}`
+    : rawFrom;
+
   const mailOptions = {
-    from: cfg.from || SMTP_FROM,
+    from: formattedFrom,
     to: recipients.join(', '),
     subject: finalSubject,
     html: finalHtml,
     text: finalText,
+    messageId: `<nexus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@ctdibrasil.com.br>`,
   };
 
   let client = customConfig ? createTransporterForConfig(cfg) : getTransporter();
@@ -419,15 +425,14 @@ function buildEmailTemplate(params: {
               <!-- Observações adicionais se houver -->
               ${params.observationsHtml || ''}
 
-              <!-- Botão de Ação -->
-              <div style="text-align: center; margin: 32px 0 16px 0;">
-                <a href="${params.actionUrl}" target="_blank" style="display: inline-block; background-color: #2563EB; color: #FFFFFF; font-weight: 700; font-size: 14px; padding: 14px 28px; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);">
-                  ${params.actionText} &rarr;
-                </a>
-              </div>
-
-              <div style="text-align: center; font-size: 11px; color: #94A3B8; margin-top: 8px;">
-                Link direto: <a href="${params.actionUrl}" style="color: #2563EB; text-decoration: underline;">${params.actionUrl}</a>
+              <!-- Ação Recomendada no Sistema (sem links externos para evitar quarentena EOP/Microsoft 365) -->
+              <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 14px 18px; text-align: center; margin: 24px 0 8px 0;">
+                <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #1D4ED8; margin-bottom: 4px;">
+                  Próxima Etapa no Sistema Nexus CTDI
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: #1E3A8A;">
+                  ${params.actionText}
+                </div>
               </div>
 
             </td>
