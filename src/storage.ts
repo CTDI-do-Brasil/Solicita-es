@@ -275,6 +275,7 @@ export const storage = {
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 
@@ -302,6 +303,7 @@ export const storage = {
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 
@@ -411,6 +413,7 @@ export const storage = {
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 
@@ -499,6 +502,7 @@ export const storage = {
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 
@@ -559,6 +563,7 @@ export const storage = {
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 
@@ -668,6 +673,7 @@ export const storage = {
     };
 
     this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
     return true;
   },
 

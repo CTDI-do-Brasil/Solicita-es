@@ -34,7 +34,9 @@ import {
   GitBranch,
   Radio,
   BarChart3,
-  KeyRound
+  KeyRound,
+  Mail,
+  Send
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 import { ApproversView } from './ApproversView';
@@ -78,6 +80,37 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
   const [reqSearch, setReqSearch] = useState('');
   const [reqSectorFilter, setReqSectorFilter] = useState<string>('todos');
   const [reqStatusFilter, setReqStatusFilter] = useState<string>('todos');
+
+  // Email test states
+  const [emailTestLoading, setEmailTestLoading] = useState(false);
+  const [emailTestFeedback, setEmailTestFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleTriggerTestEmails = async () => {
+    setEmailTestLoading(true);
+    setEmailTestFeedback(null);
+    try {
+      const res = await fetch('/api/mail/test-full-flow', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setEmailTestFeedback({
+          type: 'success',
+          message: data.message || 'E-mails de teste disparados com sucesso!',
+        });
+      } else {
+        setEmailTestFeedback({
+          type: 'error',
+          message: data.error || data.details || 'Falha ao disparar e-mails.',
+        });
+      }
+    } catch (err: any) {
+      setEmailTestFeedback({
+        type: 'error',
+        message: 'Erro ao conectar com a API de e-mails: ' + err.message,
+      });
+    } finally {
+      setEmailTestLoading(false);
+    }
+  };
 
   // Load all users and all requests
   const users = useMemo(() => {
@@ -930,11 +963,42 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                     window.location.reload();
                   }
                 }}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Restaurar Dados Iniciais
               </button>
+            </div>
+
+            {/* Teste de E-mails Automáticos */}
+            <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-200 space-y-3 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-blue-950 font-bold text-sm">
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  <span>Disparo de E-mails Automáticos (Teste de Todas as Etapas)</span>
+                </div>
+                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full">
+                  SMTP CapRover
+                </span>
+              </div>
+              <p className="text-xs text-blue-800">
+                Dispara em sequência todos os modelos de e-mail (Gestor da Área, Compras e Aprovadores da Diretoria) para verificar a entrega direta no e-mail configurado.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleTriggerTestEmails}
+                  disabled={emailTestLoading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {emailTestLoading ? 'Disparando E-mails...' : 'Disparar E-mails de Teste para apongeluppi@ctdi.com'}
+                </button>
+              </div>
+              {emailTestFeedback && (
+                <div className={`p-2.5 rounded-lg text-xs font-medium ${emailTestFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'}`}>
+                  {emailTestFeedback.message}
+                </div>
+              )}
             </div>
 
           </div>

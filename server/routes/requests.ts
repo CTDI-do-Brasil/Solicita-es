@@ -1,7 +1,26 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import {
+  notifyManagerNewRequest,
+  notifyPurchasingManagerApproved,
+  notifyCurrentApprover,
+  notifyPurchasingFullyApproved,
+  notifyRequestRejected,
+} from '../mailer';
 
 const router = Router();
+
+function parseJsonSafe(val: any, fallback: any = null) {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return fallback;
+    }
+  }
+  return val;
+}
 
 // Mapeador de linha do banco para formato TypeScript frontend
 function mapRowToRequest(row: any) {
@@ -15,7 +34,7 @@ function mapRowToRequest(row: any) {
     quantity: Number(row.quantity),
     unit: row.unit,
     priority: row.priority,
-    items: row.items || [],
+    items: parseJsonSafe(row.items, []),
     requesterId: row.requester_id,
     requesterName: row.requester_name,
     sector: row.sector,
@@ -24,7 +43,7 @@ function mapRowToRequest(row: any) {
     managerApprovedAt: row.manager_approved_at ? new Date(row.manager_approved_at).toISOString() : undefined,
     managerApprovedBy: row.manager_approved_by,
     managerNotes: row.manager_notes,
-    approvals: row.approvals,
+    approvals: parseJsonSafe(row.approvals, undefined),
     purchaseStatus: row.purchase_status,
     purchaseOrderNumber: row.purchase_order_number,
     supplier: row.supplier,
@@ -37,7 +56,7 @@ function mapRowToRequest(row: any) {
     expectedDeliveryDate: row.expected_delivery_date,
     purchasedBy: row.purchased_by,
     purchasingNotes: row.purchasing_notes,
-    quotes: row.quotes || [],
+    quotes: parseJsonSafe(row.quotes, []),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
   };
 }
@@ -158,7 +177,16 @@ router.post('/', async (req: Request, res: Response) => {
     ];
 
     const result = await pool.query(query, values);
-    res.status(201).json(mapRowToRequest(result.rows[0]));
+    const createdReq = mapRowToRequest(result.rows[0]);
+
+    // GATILHO 1: Colaborador solicita -> Gestor do setor recebe email de aviso
+    if (createdReq.managerApprovalStatus === 'pendente') {
+      notifyManagerNewRequest(createdReq).catch((err) => {
+        console.error('[Nexus Mailer] Erro ao disparar e-mail de nova solicitação:', err.message);
+      });
+    }
+
+    res.status(201).json(createdReq);
   } catch (error: any) {
     console.error('Erro ao criar solicitação:', error);
     res.status(500).json({ error: error.message });
@@ -171,6 +199,10 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const data = req.body;
     const now = new Date();
+
+    // 1. Obter estado atual antes da atualização para detectar transição de status
+    const oldResult = await pool.query('SELECT * FROM purchase_requests WHERE id = $1', [id]);
+    const oldRow = oldResult.rows[0];
 
     const query = `
       UPDATE purchase_requests SET
@@ -240,7 +272,85 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Solicitação não encontrada' });
     }
-    res.json(mapRowToRequest(result.rows[0]));
+    const updatedReq = mapRowToRequest(result.rows[0]);
+
+    // 2. DISPAROS AUTOMÁTICOS BASEADOS NA TRANSIÇÃO DE ESTADO
+    if (oldRow) {
+      const oldReq = mapRowToRequest(oldRow);
+
+      // GATILHO 2: Gestor aprova -> Compras recebe um email de aviso
+      const justApprovedByManager = 
+        oldReq.managerApprovalStatus !== 'aprovado' && updatedReq.managerApprovalStatus === 'aprovado';
+      if (justApprovedByManager) {
+        notifyPurchasingManagerApproved(updatedReq).catch((err) => {
+          console.error('[Nexus Mailer] Erro ao disparar e-mail de aprovação do gestor:', err.message);
+        });
+      }
+
+      // Notificação caso o gestor reprove
+      const justRejectedByManager =
+        oldReq.managerApprovalStatus !== 'reprovado' && updatedReq.managerApprovalStatus === 'reprovado';
+      if (justRejectedByManager) {
+        notifyRequestRejected(
+          updatedReq,
+          updatedReq.managerApprovedBy || 'Gestor do Setor',
+          updatedReq.managerNotes || 'Sem justificativa informada.'
+        ).catch(() => {});
+      }
+
+      // GATILHO 3: Compras envia a solicitação para os Aprovadores -> Aprovador da vez recebe email
+      // Submissão inicial para esteira executiva (1º Aprovador: Fernando)
+      const justSentToApprovers = 
+        oldReq.purchaseStatus !== 'em_aprovacao' && updatedReq.purchaseStatus === 'em_aprovacao';
+      if (justSentToApprovers) {
+        const firstApprover = updatedReq.approvals?.currentApprover || 'Fernando';
+        notifyCurrentApprover(updatedReq, firstApprover).catch((err) => {
+          console.error('[Nexus Mailer] Erro ao disparar e-mail para 1º aprovador:', err.message);
+        });
+      }
+
+      // GATILHO 3 (Avanço sequencial dos aprovadores - Opção A):
+      // Quando um aprovador aprova e a vez passa para o próximo (Eduardo ou Luiz)
+      const oldCurrentApprover = oldReq.approvals?.currentApprover;
+      const newCurrentApprover = updatedReq.approvals?.currentApprover;
+
+      if (oldCurrentApprover && newCurrentApprover && oldCurrentApprover !== newCurrentApprover) {
+        if (newCurrentApprover === 'Eduardo') {
+          notifyCurrentApprover(updatedReq, 'Eduardo').catch((err) => {
+            console.error('[Nexus Mailer] Erro ao disparar e-mail para Eduardo (2º Aprovador):', err.message);
+          });
+        } else if (newCurrentApprover === 'Luiz') {
+          notifyCurrentApprover(updatedReq, 'Luiz').catch((err) => {
+            console.error('[Nexus Mailer] Erro ao disparar e-mail para Luiz (3º Aprovador):', err.message);
+          });
+        }
+      }
+
+      // GATILHO 4: Aprovadores aprovam (100% concluído) -> Compras recebe um email de aviso
+      const justFullyApproved = 
+        (oldCurrentApprover !== 'concluido' && newCurrentApprover === 'concluido') ||
+        (oldReq.purchaseStatus !== 'pedido_emitido' && updatedReq.purchaseStatus === 'pedido_emitido');
+
+      if (justFullyApproved) {
+        notifyPurchasingFullyApproved(updatedReq).catch((err) => {
+          console.error('[Nexus Mailer] Erro ao disparar e-mail de aprovação final para Compras:', err.message);
+        });
+      }
+
+      // Reprovação na esteira de aprovadores executivos
+      const justRejectedByApprover =
+        (oldCurrentApprover !== 'reprovado' && newCurrentApprover === 'reprovado') ||
+        (oldReq.purchaseStatus !== 'reprovado_aprovadores' && updatedReq.purchaseStatus === 'reprovado_aprovadores');
+
+      if (justRejectedByApprover) {
+        const lastAction = updatedReq.approvals?.history?.[updatedReq.approvals.history.length - 1];
+        const rejectedBy = lastAction?.by || 'Aprovador da Diretoria';
+        const reason = lastAction?.notes || 'Reprovado durante a esteira de aprovação executiva.';
+        notifyRequestRejected(updatedReq, rejectedBy, reason).catch(() => {});
+      }
+    }
+
+    res.json(updatedReq);
   } catch (error: any) {
     console.error('Erro ao atualizar solicitação:', error);
     res.status(500).json({ error: error.message });
