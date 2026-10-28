@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User, PurchaseRequest, SectorType, ALL_SECTORS } from '../types';
+import { User, PurchaseRequest, SectorType, ALL_SECTORS, ProjectType, ALL_PROJECTS } from '../types';
 import { storage } from '../storage';
 import { 
   formatCurrency, 
@@ -7,6 +7,7 @@ import {
   getPurchaseStatusInfo, 
   getManagerApprovalInfo, 
   getSectorColor,
+  getProjectColor,
   getRequestDelayInfo,
   getRequestPurchaseReleaseInfo,
   getLatestRequestStatusInfo,
@@ -61,6 +62,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const [activeTab, setActiveTab] = useState<'geral' | 'cotacao' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [projectFilter, setProjectFilter] = useState<string>('todos');
 
   // Setor de Compras has access to ALL requests from all sectors
   const allRequests = useMemo(() => {
@@ -185,6 +187,11 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
       }
     }
 
+    // Filter by Project dropdown
+    if (projectFilter !== 'todos') {
+      list = list.filter(r => r.project === projectFilter);
+    }
+
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -193,6 +200,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
           r.title.toLowerCase().includes(q) ||
           r.code.toLowerCase().includes(q) ||
           r.sector.toLowerCase().includes(q) ||
+          (r.project && r.project.toLowerCase().includes(q)) ||
           r.requesterName.toLowerCase().includes(q) ||
           r.description.toLowerCase().includes(q) ||
           (r.supplier && r.supplier.toLowerCase().includes(q)) ||
@@ -201,7 +209,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     }
 
     return list;
-  }, [allRequests, selectedSector, activeTab, statusFilter, searchQuery]);
+  }, [allRequests, selectedSector, activeTab, statusFilter, projectFilter, searchQuery]);
 
   return (
     <div className="space-y-6">
@@ -669,27 +677,42 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
               />
             </div>
 
-            {/* Status Selector */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full sm:w-auto px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-cyan-500 outline-hidden"
-              >
-                <option value="todos">Todos os Status Operacionais</option>
-                <option value="aguardando_cotacao">🟠 Aguardando Cotação (Pendente Compras)</option>
-                <option value="liberadas">🟢 Liberadas para Compra (Aprovação Concluída)</option>
-                <option value="aguardando_aprovacao">⏳ Aguardando Aprovação (Não Liberadas)</option>
-                <option value="em_atraso">Solicitação em atraso (+48h)</option>
-                <option value="recebido_em_compras">Recebido em Compras</option>
-                <option value="em_cotacao">Em Cotação com Fornecedores</option>
-                <option value="em_aprovacao">Em Aprovação Diretoria</option>
-                <option value="pedido_emitido">Pedido de Compra Emitido</option>
-                <option value="compra_realizada">Compra Realizada</option>
-                <option value="em_transito">Em Trânsito / Transporte</option>
-                <option value="entregue">Entregue no Setor</option>
-              </select>
+            {/* Status & Project Selectors */}
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                >
+                  <option value="todos">Todos os Status Operacionais</option>
+                  <option value="aguardando_cotacao">🟠 Aguardando Cotação (Pendente Compras)</option>
+                  <option value="liberadas">🟢 Liberadas para Compra (Aprovação Concluída)</option>
+                  <option value="aguardando_aprovacao">⏳ Aguardando Aprovação (Não Liberadas)</option>
+                  <option value="em_atraso">Solicitação em atraso (+48h)</option>
+                  <option value="recebido_em_compras">Recebido em Compras</option>
+                  <option value="em_cotacao">Em Cotação com Fornecedores</option>
+                  <option value="em_aprovacao">Em Aprovação Diretoria</option>
+                  <option value="pedido_emitido">Pedido de Compra Emitido</option>
+                  <option value="compra_realizada">Compra Realizada</option>
+                  <option value="em_transito">Em Trânsito / Transporte</option>
+                  <option value="entregue">Entregue no Setor</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <select
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-semibold focus:ring-2 focus:ring-cyan-500 outline-hidden"
+                >
+                  <option value="todos">Todos os Projetos</option>
+                  {ALL_PROJECTS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -740,6 +763,12 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                           <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${sectorColor.badge}`}>
                             Setor: {req.sector}
                           </span>
+
+                          {req.project && (
+                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getProjectColor(req.project).badge}`}>
+                              {req.project}
+                            </span>
+                          )}
 
                           <span className={`text-xs px-2.5 py-0.5 rounded-full border ${latestStatus.badgeClass}`}>
                             {latestStatus.label}

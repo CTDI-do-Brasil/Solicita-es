@@ -23,12 +23,14 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Garantir coluna password se tabela já existir
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '123456';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_projects TEXT;
 
 -- 3. TABELA DE SOLICITAÇÕES DE COMPRA (PURCHASE REQUESTS)
 CREATE TABLE IF NOT EXISTS purchase_requests (
     id VARCHAR(100) PRIMARY KEY,
     code VARCHAR(50) NOT NULL UNIQUE,
     title VARCHAR(255) NOT NULL,
+    project VARCHAR(100),
     description TEXT,
     reason TEXT,
     link_url TEXT,
@@ -74,6 +76,7 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(255);
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS delivery_deadline VARCHAR(255);
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS quotes JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS project VARCHAR(100);
 
 -- 4. TABELA DE REVISORES DE RELEASE
 CREATE TABLE IF NOT EXISTS version_reviewers (

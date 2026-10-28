@@ -4,6 +4,14 @@ import { pool } from '../db';
 const router = Router();
 
 function mapRowToUser(row: any) {
+  let allowedProjects: string[] = ['Manutenção/Engenharia'];
+  if (row.allowed_projects) {
+    try {
+      allowedProjects = typeof row.allowed_projects === 'string' ? JSON.parse(row.allowed_projects) : row.allowed_projects;
+    } catch {
+      allowedProjects = String(row.allowed_projects).split(',').map((s: string) => s.trim());
+    }
+  }
   return {
     id: row.id,
     name: row.name,
@@ -13,6 +21,7 @@ function mapRowToUser(row: any) {
     position: row.position,
     avatarUrl: row.avatar_url,
     password: row.password || '123456',
+    allowedProjects: allowedProjects,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
 }

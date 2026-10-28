@@ -8,6 +8,7 @@ import {
   getPurchaseStatusInfo, 
   getManagerApprovalInfo, 
   getSectorColor,
+  getProjectColor,
   getRequestDelayInfo,
   getApproverFromUser,
   getRequestPurchaseReleaseInfo
@@ -177,6 +178,12 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${sectorColor.badge}`}>
                   Setor: {request.sector}
                 </span>
+
+                {request.project && (
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getProjectColor(request.project).badge}`}>
+                    Projeto: {request.project}
+                  </span>
+                )}
 
                 {/* Badge de Liberação para Compra após Aprovação */}
                 <span 

@@ -38,6 +38,7 @@ function mapRowToRequest(row: any) {
     requesterId: row.requester_id,
     requesterName: row.requester_name,
     sector: row.sector,
+    project: row.project,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     managerApprovalStatus: row.manager_approval_status,
     managerApprovedAt: row.manager_approved_at ? new Date(row.manager_approved_at).toISOString() : undefined,
@@ -153,18 +154,18 @@ router.post('/', async (req: Request, res: Response) => {
     const query = `
       INSERT INTO purchase_requests (
         id, code, title, description, reason, link_url, quantity, unit, priority,
-        requester_id, requester_name, sector, created_at,
+        requester_id, requester_name, sector, project, created_at,
         manager_approval_status, manager_approved_at, manager_approved_by, manager_notes,
         purchase_status, purchase_order_number, supplier, unit_price, total_price, shipping_cost,
         payment_terms, delivery_deadline, purchase_date, expected_delivery_date, purchased_by,
         purchasing_notes, items, quotes, approvals, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9,
-        $10, $11, $12, $13,
-        $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23,
-        $24, $25, $26, $27, $28,
-        $29, $30, $31, $32, $33
+        $10, $11, $12, $13, $14,
+        $15, $16, $17, $18,
+        $19, $20, $21, $22, $23, $24,
+        $25, $26, $27, $28, $29,
+        $30, $31, $32, $33, $34
       ) RETURNING *;
     `;
 
@@ -182,6 +183,7 @@ router.post('/', async (req: Request, res: Response) => {
       safeRequesterId,
       data.requesterName || '',
       data.sector || '',
+      data.project || null,
       data.createdAt || now,
       data.managerApprovalStatus || 'pendente',
       data.managerApprovedAt || null,
@@ -261,8 +263,9 @@ router.put('/:id', async (req: Request, res: Response) => {
         items = COALESCE($24, items),
         quotes = COALESCE($25, quotes),
         approvals = COALESCE($26, approvals),
-        updated_at = $27
-      WHERE id = $28
+        project = COALESCE($27, project),
+        updated_at = $28
+      WHERE id = $29
       RETURNING *;
     `;
 
@@ -293,6 +296,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       data.items ? JSON.stringify(data.items) : null,
       data.quotes ? JSON.stringify(data.quotes) : null,
       data.approvals ? JSON.stringify(data.approvals) : null,
+      data.project,
       now,
       id
     ];

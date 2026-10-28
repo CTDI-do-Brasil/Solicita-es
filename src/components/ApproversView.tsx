@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { User, PurchaseRequest, ApproverName, APPROVAL_CHAIN } from '../types';
 import { storage } from '../storage';
-import { formatCurrency, formatDate, formatDateTime, getSectorColor, getApproverFromUser } from '../utils';
+import { formatCurrency, formatDate, formatDateTime, getSectorColor, getProjectColor, getApproverFromUser } from '../utils';
 import { 
   ShieldCheck, 
   CheckCircle2, 
@@ -908,6 +908,11 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${sectorColor.bg} ${sectorColor.text} ${sectorColor.border}`}>
                       {req.sector}
                     </span>
+                    {req.project && (
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getProjectColor(req.project).badge}`}>
+                        {req.project}
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">
                       Solicitado em {formatDate(req.createdAt)} por <strong>{req.requesterName}</strong>
                     </span>
