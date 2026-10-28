@@ -71,6 +71,28 @@ export async function verifySmtpConnection(): Promise<{ ok: boolean; message: st
     return { ok: true, message: 'Conexão SMTP estabelecida com sucesso!' };
   } catch (error: any) {
     console.error('[Nexus Mailer] Erro ao verificar conexão SMTP:', error.message);
+
+    // Se falhou por autenticação na porta 25 (rede interna Docker), tenta testar modo relay sem auth
+    if (SMTP_PORT === 25 && (error.code === 'EAUTH' || error.responseCode === 535 || error.message?.includes('AUTH'))) {
+      try {
+        console.log('[Nexus Mailer] Tentando fallback para relay interno sem autenticação na porta 25...');
+        const noAuthTransport = nodemailer.createTransport({
+          host: SMTP_HOST,
+          port: 25,
+          secure: false,
+          ignoreTLS: true,
+          connectionTimeout: 10000,
+          greetingTimeout: 8000,
+          socketTimeout: 15000,
+        });
+        await noAuthTransport.verify();
+        transporter = noAuthTransport;
+        return { ok: true, message: 'Conexão SMTP estabelecida com sucesso (modo relay interno sem autenticação na porta 25)!' };
+      } catch (innerErr: any) {
+        console.error('[Nexus Mailer] Fallback sem auth também falhou:', innerErr.message);
+      }
+    }
+
     return {
       ok: false,
       message: `Erro ao conectar ao SMTP (${SMTP_HOST}:${SMTP_PORT}): ${error.message}`,
