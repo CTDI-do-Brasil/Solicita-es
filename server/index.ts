@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import requestsRouter from './routes/requests';
 import usersRouter from './routes/users';
 import versionsRouter from './routes/versions';
+import smtpRouter from './routes/smtp';
 import { pool, testConnection } from './db';
 import { runAutoMigrations } from './migrate';
 import { isSmtpConfigured, verifySmtpConnection, sendEmail } from './mailer';
@@ -161,6 +162,7 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
 app.use('/api/requests', requestsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/versions', versionsRouter);
+app.use('/api/smtp-config', smtpRouter);
 
 // Servir frontend compilado em ambiente de produção (CapRover / Docker)
 const distPath = path.resolve(__dirname, '../dist');

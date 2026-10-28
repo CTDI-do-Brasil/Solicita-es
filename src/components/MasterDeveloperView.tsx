@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 import { ApproversView } from './ApproversView';
+import { SmtpConfigModal } from './SmtpConfigModal';
 
 interface MasterDeveloperViewProps {
   currentUser: User;
@@ -82,6 +83,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
   const [reqStatusFilter, setReqStatusFilter] = useState<string>('todos');
 
   // Email test states
+  const [showSmtpModal, setShowSmtpModal] = useState(false);
   const [emailTestLoading, setEmailTestLoading] = useState(false);
   const [emailTestFeedback, setEmailTestFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -277,6 +279,15 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowSmtpModal(true)}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-xs"
+              title="Configuração do Servidor de E-mail (SMTP)"
+            >
+              <Mail className="w-4 h-4 text-cyan-300" />
+              <span>Configuração SMTP</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('aprovadores')}
               className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-xs"
@@ -986,6 +997,13 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <button
+                  onClick={() => setShowSmtpModal(true)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Mail className="w-3.5 h-3.5 text-cyan-300" />
+                  Configurar Servidor SMTP
+                </button>
+                <button
                   onClick={handleTriggerTestEmails}
                   disabled={emailTestLoading}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -1153,6 +1171,12 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* SMTP CONFIGURATION MODAL */}
+      <SmtpConfigModal 
+        isOpen={showSmtpModal} 
+        onClose={() => setShowSmtpModal(false)} 
+      />
 
     </div>
   );

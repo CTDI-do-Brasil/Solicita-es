@@ -5,79 +5,156 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configurações do SMTP a partir do .env
-const SMTP_HOST = process.env.SMTP_HOST || '';
+// Configurações do SMTP a partir do .env (valores padrão)
+const SMTP_HOST = process.env.SMTP_HOST || 'mail.ctdibrasil.com.br';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || `"Nexus Compras" <${SMTP_USER || 'nao-responda@nexus.ctdibrasil.com.br'}>`;
+const SMTP_FROM = process.env.SMTP_FROM || `"Nexus CTDI" <${SMTP_USER || 'nexus@ctdibrasil.com.br'}>`;
 const APP_URL = process.env.APP_URL || 'https://nexus.ctdibrasil.com.br';
 const EMAIL_COMPRAS_FALLBACK = process.env.EMAIL_COMPRAS || '';
 const EMAIL_OVERRIDE_TO = process.env.EMAIL_OVERRIDE_TO || '';
 
+export interface SmtpConfig {
+  id?: string;
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  from: string;
+  testRecipient: string;
+}
+
+let cachedConfig: SmtpConfig | null = null;
 let transporter: Transporter | null = null;
 
+export async function getActiveSmtpConfig(forceReload = false): Promise<SmtpConfig> {
+  if (cachedConfig && !forceReload) {
+    return cachedConfig;
+  }
+
+  // Tentar carregar as configurações salvas na tabela smtp_settings do PostgreSQL
+  try {
+    const res = await pool.query('SELECT * FROM smtp_settings WHERE id = $1 LIMIT 1', ['default']);
+    if (res.rows && res.rows.length > 0) {
+      const row = res.rows[0];
+      cachedConfig = {
+        enabled: row.enabled ?? true,
+        host: row.host || SMTP_HOST,
+        port: parseInt(row.port || String(SMTP_PORT), 10),
+        secure: Boolean(row.secure),
+        user: row.user_account || SMTP_USER,
+        pass: row.pass_account || SMTP_PASS,
+        from: row.from_name || SMTP_FROM,
+        testRecipient: row.test_recipient || EMAIL_OVERRIDE_TO || 'apongeluppi@ctdi.com',
+      };
+      return cachedConfig;
+    }
+  } catch (err: any) {
+    // Se tabela ainda não existir ou banco inacessível no momento, usa fallback
+  }
+
+  cachedConfig = {
+    enabled: process.env.SMTP_ENABLED !== 'false',
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+    from: SMTP_FROM,
+    testRecipient: EMAIL_OVERRIDE_TO || 'apongeluppi@ctdi.com',
+  };
+  return cachedConfig;
+}
+
+export function resetTransporterCache() {
+  cachedConfig = null;
+  transporter = null;
+}
+
+export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
+  const transportConfig: any = {
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure || cfg.port === 465,
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
+    tls: {
+      rejectUnauthorized: false, // Compatibilidade com certificados internos do CapRover
+    },
+  };
+
+  if (cfg.user && cfg.pass) {
+    transportConfig.auth = {
+      user: cfg.user,
+      pass: cfg.pass,
+    };
+  }
+
+  if (cfg.port === 25 || process.env.SMTP_IGNORE_TLS === 'true') {
+    transportConfig.ignoreTLS = true;
+  }
+
+  return nodemailer.createTransport(transportConfig);
+}
+
 export function isSmtpConfigured(): boolean {
-  return Boolean(SMTP_HOST && SMTP_USER);
+  if (cachedConfig) {
+    return Boolean(cachedConfig.host && (cachedConfig.port === 25 || cachedConfig.user));
+  }
+  return Boolean(SMTP_HOST && (SMTP_PORT === 25 || SMTP_USER));
 }
 
 export function getTransporter(): Transporter | null {
-  if (!isSmtpConfigured()) {
-    return null;
-  }
-  if (!transporter) {
-    const transportConfig: any = {
+  if (transporter) return transporter;
+  if (!cachedConfig) {
+    cachedConfig = {
+      enabled: process.env.SMTP_ENABLED !== 'false',
       host: SMTP_HOST,
       port: SMTP_PORT,
       secure: SMTP_SECURE,
-      connectionTimeout: 10000,
-      greetingTimeout: 8000,
-      socketTimeout: 15000,
-      tls: {
-        rejectUnauthorized: false, // Compatibilidade com certificados internos do CapRover
-      },
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+      from: SMTP_FROM,
+      testRecipient: EMAIL_OVERRIDE_TO || 'apongeluppi@ctdi.com',
     };
-
-    if (SMTP_USER && SMTP_PASS) {
-      transportConfig.auth = {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      };
-    }
-
-    if (SMTP_PORT === 25 || process.env.SMTP_IGNORE_TLS === 'true') {
-      transportConfig.ignoreTLS = true;
-    }
-
-    transporter = nodemailer.createTransport(transportConfig);
   }
+  if (!cachedConfig.host) return null;
+  transporter = createTransporterForConfig(cachedConfig);
   return transporter;
 }
 
 // Verificação de conexão com o servidor SMTP
-export async function verifySmtpConnection(): Promise<{ ok: boolean; message: string; details?: any }> {
-  if (!isSmtpConfigured()) {
+export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{ ok: boolean; message: string; details?: any }> {
+  const cfg = customConfig || await getActiveSmtpConfig();
+  if (!cfg.host) {
     return {
       ok: false,
-      message: 'SMTP não configurado. Preencha SMTP_HOST e SMTP_USER.',
+      message: 'SMTP não configurado. Preencha o campo Host / Servidor SMTP.',
     };
   }
 
+  const client = createTransporterForConfig(cfg);
+
   try {
-    const client = getTransporter();
-    if (!client) throw new Error('Não foi possível inicializar o transporte SMTP');
     await client.verify();
-    return { ok: true, message: 'Conexão SMTP estabelecida com sucesso!' };
+    if (!customConfig) {
+      transporter = client;
+    }
+    return { ok: true, message: `Conexão SMTP com ${cfg.host}:${cfg.port} estabelecida com sucesso!` };
   } catch (error: any) {
-    console.error('[Nexus Mailer] Erro ao verificar conexão SMTP:', error.message);
+    console.error(`[Nexus Mailer] Erro ao verificar conexão SMTP (${cfg.host}:${cfg.port}):`, error.message);
 
     // Se falhou por autenticação na porta 25 (rede interna Docker), tenta testar modo relay sem auth
-    if (SMTP_PORT === 25 && (error.code === 'EAUTH' || error.responseCode === 535 || error.message?.includes('AUTH'))) {
+    if (cfg.port === 25 && (error.code === 'EAUTH' || error.responseCode === 535 || error.message?.includes('AUTH'))) {
       try {
         console.log('[Nexus Mailer] Tentando fallback para relay interno sem autenticação na porta 25...');
         const noAuthTransport = nodemailer.createTransport({
-          host: SMTP_HOST,
+          host: cfg.host,
           port: 25,
           secure: false,
           ignoreTLS: true,
@@ -86,7 +163,9 @@ export async function verifySmtpConnection(): Promise<{ ok: boolean; message: st
           socketTimeout: 15000,
         });
         await noAuthTransport.verify();
-        transporter = noAuthTransport;
+        if (!customConfig) {
+          transporter = noAuthTransport;
+        }
         return { ok: true, message: 'Conexão SMTP estabelecida com sucesso (modo relay interno sem autenticação na porta 25)!' };
       } catch (innerErr: any) {
         console.error('[Nexus Mailer] Fallback sem auth também falhou:', innerErr.message);
@@ -95,12 +174,12 @@ export async function verifySmtpConnection(): Promise<{ ok: boolean; message: st
 
     return {
       ok: false,
-      message: `Erro ao conectar ao SMTP (${SMTP_HOST}:${SMTP_PORT}): ${error.message}`,
+      message: `Erro ao conectar ao SMTP (${cfg.host}:${cfg.port}): ${error.message}`,
       details: {
-        host: SMTP_HOST,
-        port: SMTP_PORT,
-        secure: SMTP_SECURE,
-        user: SMTP_USER,
+        host: cfg.host,
+        port: cfg.port,
+        secure: cfg.secure,
+        user: cfg.user,
         error: error.message,
         code: error.code,
         command: error.command,
@@ -116,16 +195,27 @@ interface SendEmailParams {
   text?: string;
 }
 
-export async function sendEmail({ to, subject, html, text }: SendEmailParams): Promise<boolean> {
+export async function sendEmail(
+  { to, subject, html, text }: SendEmailParams,
+  customConfig?: SmtpConfig
+): Promise<boolean> {
+  const cfg = customConfig || await getActiveSmtpConfig();
+
+  if (!cfg.enabled) {
+    console.log('[Nexus Mailer] Disparo externo de e-mails desabilitado nas configurações SMTP.');
+    return false;
+  }
+
   const originalRecipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
   if (originalRecipients.length === 0) {
     console.warn('[Nexus Mailer] Nenhum destinatário especificado para o e-mail:', subject);
     return false;
   }
 
-  // Modo de teste / homologação: redireciona todos os e-mails para o destinatário de teste configurado
-  const isOverride = Boolean(EMAIL_OVERRIDE_TO);
-  const recipients = isOverride ? [EMAIL_OVERRIDE_TO] : originalRecipients;
+  // Modo de teste / homologação: redireciona todos os e-mails para o destinatário configurado
+  const overrideTarget = process.env.EMAIL_OVERRIDE_TO || cfg.testRecipient;
+  const isOverride = Boolean(overrideTarget);
+  const recipients = isOverride ? [overrideTarget] : originalRecipients;
 
   let finalSubject = subject;
   let finalHtml = html;
@@ -135,26 +225,24 @@ export async function sendEmail({ to, subject, html, text }: SendEmailParams): P
     const testBanner = `
       <div style="background-color: #FEF3C7; border: 2px dashed #F59E0B; padding: 12px 16px; margin: 0 0 20px 0; border-radius: 8px; font-family: sans-serif; font-size: 13px; color: #92400E; text-align: left;">
         <div style="font-weight: 800; color: #B45309; text-transform: uppercase; font-size: 12px; margin-bottom: 4px;">
-          ⚠️ MODO DE HOMOLOGAÇÃO / TESTE LOCAL ATIVO
+          ⚠️ MODO DE HOMOLOGAÇÃO / TESTE ATIVO
         </div>
         <div><strong>Destinatário(s) que receberia(m) em Produção:</strong> <span style="color: #1E3A8A; font-weight: bold;">${originalRecipients.join(', ')}</span></div>
-        <div style="font-size: 11px; color: #78350F; margin-top: 4px;">Redirecionado para <code>${EMAIL_OVERRIDE_TO}</code> via variável <code>EMAIL_OVERRIDE_TO</code>.</div>
+        <div style="font-size: 11px; color: #78350F; margin-top: 4px;">Redirecionado para <code>${overrideTarget}</code> conforme configurações SMTP do sistema.</div>
       </div>
     `;
     finalHtml = html.replace('<!-- Título da Solicitação -->', `${testBanner}\n              <!-- Título da Solicitação -->`);
   }
 
-  const client = getTransporter();
+  let client = customConfig ? createTransporterForConfig(cfg) : getTransporter();
   if (!client) {
-    console.log(
-      `[Nexus Mailer] [SIMULAÇÃO - SMTP NÃO CONFIGURADO]\n  Para: ${recipients.join(', ')}${isOverride ? ` (Original: ${originalRecipients.join(', ')})` : ''}\n  Assunto: ${finalSubject}`
-    );
-    return false;
+    client = createTransporterForConfig(cfg);
+    if (!customConfig) transporter = client;
   }
 
   try {
     const info = await client.sendMail({
-      from: SMTP_FROM,
+      from: cfg.from || SMTP_FROM,
       to: recipients.join(', '),
       subject: finalSubject,
       html: finalHtml,
