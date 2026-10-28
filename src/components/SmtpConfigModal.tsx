@@ -21,8 +21,8 @@ interface SmtpConfigModalProps {
 
 export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClose }) => {
   const [enabled, setEnabled] = useState(true);
-  const [host, setHost] = useState('mail.ctdibrasil.com.br');
-  const [port, setPort] = useState(587);
+  const [host, setHost] = useState('srv-captain--mail');
+  const [port, setPort] = useState(25);
   const [user, setUser] = useState('nexus@ctdibrasil.com.br');
   const [pass, setPass] = useState('');
   const [from, setFrom] = useState('Nexus CTDI <nexus@ctdibrasil.com.br>');
@@ -80,7 +80,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
       const payload: any = {
         enabled,
         host,
-        port: Number(port) || 587,
+        port: Number(port) || 25,
         secure: Number(port) === 465,
         user,
         from,
@@ -132,7 +132,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
       const payload: any = {
         enabled,
         host,
-        port: Number(port) || 587,
+        port: Number(port) || 25,
         secure: Number(port) === 465,
         user,
         from,

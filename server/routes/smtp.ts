@@ -41,8 +41,8 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       enabled = true,
-      host = 'mail.ctdibrasil.com.br',
-      port = 587,
+      host = 'srv-captain--mail',
+      port = 25,
       secure = false,
       user = '',
       pass = '',
@@ -70,7 +70,7 @@ router.post('/', async (req: Request, res: Response) => {
          from_name = EXCLUDED.from_name,
          test_recipient = EXCLUDED.test_recipient,
          updated_at = NOW()`,
-      [Boolean(enabled), host, parseInt(String(port), 10) || 587, Boolean(secure), user, finalPass, from, testRecipient]
+      [Boolean(enabled), host, parseInt(String(port), 10) || 25, Boolean(secure), user, finalPass, from, testRecipient]
     );
 
     // Invalida cache de transporte do Nodemailer para usar as novas configurações
@@ -96,8 +96,8 @@ router.post('/test', async (req: Request, res: Response) => {
 
     const testConfig: SmtpConfig = {
       enabled: true,
-      host: body.host || current.host || 'mail.ctdibrasil.com.br',
-      port: parseInt(String(body.port || current.port || 587), 10),
+      host: body.host || current.host || 'srv-captain--mail',
+      port: parseInt(String(body.port || current.port || 25), 10),
       secure: body.secure !== undefined ? Boolean(body.secure) : current.secure,
       user: body.user !== undefined ? body.user : current.user,
       pass: body.pass !== undefined && body.pass !== '' ? body.pass : current.pass,
@@ -119,15 +119,7 @@ router.post('/test', async (req: Request, res: Response) => {
       });
     }
 
-    // Alerta caso a porta seja autenticada (587 ou 465) e não haja senha fornecida
-    if ((testConfig.port === 587 || testConfig.port === 465) && (!testConfig.user || !testConfig.pass)) {
-      return res.json({
-        success: false,
-        error: `Para a porta ${testConfig.port}, é obrigatório informar o Usuário e a Senha da conta do Poste.io. Digite a senha antes de testar.`,
-      });
-    }
-
-    // 1. Testa a conexão e autenticação com o servidor SMTP
+    // 1. Testa a conexão com o servidor SMTP (com fallback automático para porta 25 se 587 dar timeout)
     const verifyResult = await verifySmtpConnection(testConfig);
     if (!verifyResult.ok) {
       return res.json({
@@ -137,7 +129,7 @@ router.post('/test', async (req: Request, res: Response) => {
       });
     }
 
-    // Se o teste detectou um container interno alternativo (ex: srv-captain--mail ou porta 25), utiliza ele
+    // Se o teste detectou um container/porta ativa (ex: srv-captain--mail:25 ou mail.ctdibrasil.com.br:25), utiliza ela
     if (verifyResult.activeHost) testConfig.host = verifyResult.activeHost;
     if (verifyResult.activePort) testConfig.port = verifyResult.activePort;
 
@@ -196,8 +188,32 @@ router.post('/test', async (req: Request, res: Response) => {
       });
     }
 
+    // Salva automaticamente a rota validada no banco para garantir funcionamento imediato
+    try {
+      await pool.query(
+        `INSERT INTO smtp_settings (id, enabled, host, port, secure, user_account, pass_account, from_name, test_recipient, updated_at)
+         VALUES ('default', $1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           enabled = EXCLUDED.enabled,
+           host = EXCLUDED.host,
+           port = EXCLUDED.port,
+           secure = EXCLUDED.secure,
+           user_account = EXCLUDED.user_account,
+           pass_account = EXCLUDED.pass_account,
+           from_name = EXCLUDED.from_name,
+           test_recipient = EXCLUDED.test_recipient,
+           updated_at = NOW()`,
+        [true, testConfig.host, testConfig.port, testConfig.secure, testConfig.user, testConfig.pass, testConfig.from, testConfig.testRecipient]
+      );
+      resetTransporterCache();
+    } catch {
+      // Ignora erro silenciosamente caso o banco não esteja acessível no momento
+    }
+
     res.json({
       success: true,
+      activeHost: testConfig.host,
+      activePort: testConfig.port,
       message: `Conexão com servidor ${testConfig.host}:${testConfig.port} confirmada e e-mail de teste entregue para ${testConfig.testRecipient}!`,
     });
   } catch (error: any) {

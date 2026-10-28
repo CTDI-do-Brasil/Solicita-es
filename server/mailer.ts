@@ -5,11 +5,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configurações do SMTP a partir do .env (valores padrão)
-const SMTP_HOST = process.env.SMTP_HOST || 'mail.ctdibrasil.com.br';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+// Configurações do SMTP a partir do .env (valores padrão otimizados para CapRover / Poste.io)
+const SMTP_HOST = process.env.SMTP_HOST || 'srv-captain--mail';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '25', 10);
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
-const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_USER = process.env.SMTP_USER || 'nexus@ctdibrasil.com.br';
 const SMTP_PASS = process.env.SMTP_PASS || '';
 const SMTP_FROM = process.env.SMTP_FROM || `"Nexus CTDI" <${SMTP_USER || 'nexus@ctdibrasil.com.br'}>`;
 const APP_URL = process.env.APP_URL || 'https://nexus.ctdibrasil.com.br';
@@ -41,11 +41,17 @@ export async function getActiveSmtpConfig(forceReload = false): Promise<SmtpConf
     const res = await pool.query('SELECT * FROM smtp_settings WHERE id = $1 LIMIT 1', ['default']);
     if (res.rows && res.rows.length > 0) {
       const row = res.rows[0];
+      const dbHost = row.host || SMTP_HOST;
+      const dbPort = parseInt(row.port || String(SMTP_PORT), 10);
+
+      // Se o banco estava com o seed antigo (mail.ctdibrasil.com.br:587) que sofre timeout no Haraka, ajusta para a porta 25 / .env
+      const isLegacySeed = dbHost === 'mail.ctdibrasil.com.br' && dbPort === 587;
+
       cachedConfig = {
         enabled: row.enabled ?? true,
-        host: row.host || SMTP_HOST,
-        port: parseInt(row.port || String(SMTP_PORT), 10),
-        secure: Boolean(row.secure),
+        host: isLegacySeed ? SMTP_HOST : dbHost,
+        port: isLegacySeed ? SMTP_PORT : dbPort,
+        secure: isLegacySeed ? false : Boolean(row.secure),
         user: row.user_account || SMTP_USER,
         pass: row.pass_account || SMTP_PASS,
         from: row.from_name || SMTP_FROM,
@@ -76,27 +82,26 @@ export function resetTransporterCache() {
 }
 
 export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
+  const isPort25 = cfg.port === 25;
   const transportConfig: any = {
     host: cfg.host,
     port: cfg.port,
-    secure: cfg.secure || cfg.port === 465,
-    connectionTimeout: 10000,
-    greetingTimeout: 8000,
-    socketTimeout: 15000,
+    secure: !isPort25 && (cfg.secure || cfg.port === 465),
+    connectionTimeout: 8000,
+    greetingTimeout: 6000,
+    socketTimeout: 12000,
     tls: {
       rejectUnauthorized: false, // Compatibilidade com certificados internos do CapRover
     },
   };
 
-  if (cfg.user && cfg.pass) {
+  if (isPort25 || process.env.SMTP_IGNORE_TLS === 'true') {
+    transportConfig.ignoreTLS = true;
+  } else if (cfg.user && cfg.pass) {
     transportConfig.auth = {
       user: cfg.user,
       pass: cfg.pass,
     };
-  }
-
-  if (cfg.port === 25 || process.env.SMTP_IGNORE_TLS === 'true') {
-    transportConfig.ignoreTLS = true;
   }
 
   return nodemailer.createTransport(transportConfig);
@@ -154,77 +159,50 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
   } catch (error: any) {
     console.error(`[Nexus Mailer] Erro ao verificar conexão SMTP (${cfg.host}:${cfg.port}):`, error.message);
 
-    // Se falhou por autenticação na porta 25 (rede interna Docker), tenta testar modo relay sem auth
-    if (cfg.port === 25 && (error.code === 'EAUTH' || error.responseCode === 535 || error.message?.includes('AUTH'))) {
+    // Tenta candidatos alternativos na porta 25 (funciona tanto dentro do CapRover via srv-captain--mail quanto externamente via mail.ctdibrasil.com.br)
+    const candidates = [
+      { host: cfg.host, port: 25 },
+      { host: 'srv-captain--mail', port: 25 },
+      { host: 'mail.ctdibrasil.com.br', port: 25 },
+      { host: 'srv-captain--mailserver', port: 25 },
+    ];
+
+    const seen = new Set<string>();
+    for (const cand of candidates) {
+      const key = `${cand.host}:${cand.port}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
       try {
-        console.log('[Nexus Mailer] Tentando fallback para relay interno sem autenticação na porta 25...');
-        const noAuthTransport = nodemailer.createTransport({
-          host: cfg.host,
-          port: 25,
+        console.log(`[Nexus Mailer] Tentando rota SMTP direta em ${cand.host}:${cand.port}...`);
+        const fbTransport = nodemailer.createTransport({
+          host: cand.host,
+          port: cand.port,
           secure: false,
           ignoreTLS: true,
-          connectionTimeout: 10000,
-          greetingTimeout: 8000,
-          socketTimeout: 15000,
+          connectionTimeout: 6000,
+          greetingTimeout: 5000,
+          socketTimeout: 10000,
+          tls: { rejectUnauthorized: false },
         });
-        await noAuthTransport.verify();
+        await fbTransport.verify();
+        console.log(`[Nexus Mailer] Rota SMTP ${cand.host}:${cand.port} CONECTADA COM SUCESSO!`);
         if (!customConfig) {
-          transporter = noAuthTransport;
+          transporter = fbTransport;
+          if (cachedConfig) {
+            cachedConfig.host = cand.host;
+            cachedConfig.port = cand.port;
+            cachedConfig.secure = false;
+          }
         }
-        return { 
-          ok: true, 
-          message: 'Conexão SMTP estabelecida com sucesso (modo relay interno sem autenticação na porta 25)!',
-          activeHost: cfg.host,
-          activePort: 25,
+        return {
+          ok: true,
+          message: `Conexão SMTP estabelecida com sucesso (${cand.host}:${cand.port})!`,
+          activeHost: cand.host,
+          activePort: cand.port,
         };
-      } catch (innerErr: any) {
-        console.error('[Nexus Mailer] Fallback sem auth também falhou:', innerErr.message);
-      }
-    }
-
-    // Se falhou por timeout ou erro de rede (comum no CapRover quando se tenta host externo em vez de container interno)
-    const isNetworkError = error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.message?.includes('Timeout');
-    if (isNetworkError) {
-      const candidates = [
-        { host: 'srv-captain--mail', port: 25 },
-        { host: 'srv-captain--mailserver', port: 25 },
-        { host: 'mail.ctdibrasil.com.br', port: 25 },
-        { host: 'srv-captain--mail', port: 587 },
-        { host: 'srv-captain--mailserver', port: 587 },
-      ];
-
-      for (const cand of candidates) {
-        if (cand.host === cfg.host && cand.port === cfg.port) continue;
-        try {
-          console.log(`[Nexus Mailer] Tentando fallback automático para container interno ${cand.host}:${cand.port}...`);
-          const fbConfig: any = {
-            host: cand.host,
-            port: cand.port,
-            secure: false,
-            ignoreTLS: true,
-            connectionTimeout: 5000,
-            greetingTimeout: 4000,
-            socketTimeout: 8000,
-            tls: { rejectUnauthorized: false },
-          };
-          if (cand.port !== 25 && cfg.user && cfg.pass) {
-            fbConfig.auth = { user: cfg.user, pass: cfg.pass };
-          }
-          const fbTransport = nodemailer.createTransport(fbConfig);
-          await fbTransport.verify();
-          console.log(`[Nexus Mailer] Fallback automático para ${cand.host}:${cand.port} CONECTADO COM SUCESSO!`);
-          if (!customConfig) {
-            transporter = fbTransport;
-          }
-          return {
-            ok: true,
-            message: `Conexão SMTP estabelecida com sucesso via rede interna do CapRover (${cand.host}:${cand.port})!`,
-            activeHost: cand.host,
-            activePort: cand.port,
-          };
-        } catch {
-          // Continua testando o próximo candidato
-        }
+      } catch {
+        // Continua testando o próximo candidato
       }
     }
 
@@ -242,6 +220,20 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
       },
     };
   }
+}
+
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|li|h1|h2|h3)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&bull;/gi, '•')
+    .replace(/&rarr;/gi, '->')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n\n')
+    .trim();
 }
 
 interface SendEmailParams {
@@ -270,8 +262,12 @@ export async function sendEmail(
 
   // Modo de teste / homologação: redireciona todos os e-mails para o destinatário configurado
   const overrideTarget = process.env.EMAIL_OVERRIDE_TO || cfg.testRecipient;
-  const isOverride = Boolean(overrideTarget);
-  const recipients = isOverride ? [overrideTarget] : originalRecipients;
+  const isSameAsOverride =
+    originalRecipients.length === 1 &&
+    overrideTarget &&
+    originalRecipients[0].toLowerCase().trim() === overrideTarget.toLowerCase().trim();
+  const isOverride = Boolean(overrideTarget) && !isSameAsOverride;
+  const recipients = overrideTarget ? [overrideTarget] : originalRecipients;
 
   let finalSubject = subject;
   let finalHtml = html;
@@ -290,6 +286,16 @@ export async function sendEmail(
     finalHtml = html.replace('<!-- Título da Solicitação -->', `${testBanner}\n              <!-- Título da Solicitação -->`);
   }
 
+  const finalText = text || htmlToPlainText(finalHtml) || finalSubject;
+
+  const mailOptions = {
+    from: cfg.from || SMTP_FROM,
+    to: recipients.join(', '),
+    subject: finalSubject,
+    html: finalHtml,
+    text: finalText,
+  };
+
   let client = customConfig ? createTransporterForConfig(cfg) : getTransporter();
   if (!client) {
     client = createTransporterForConfig(cfg);
@@ -297,17 +303,29 @@ export async function sendEmail(
   }
 
   try {
-    const info = await client.sendMail({
-      from: cfg.from || SMTP_FROM,
-      to: recipients.join(', '),
-      subject: finalSubject,
-      html: finalHtml,
-      text: text || finalSubject,
-    });
-    console.log(`[Nexus Mailer] E-mail enviado com sucesso! ID: ${info.messageId} | Para: ${recipients.join(', ')}${isOverride ? ` (Original: ${originalRecipients.join(', ')})` : ''}`);
+    const info = await client.sendMail(mailOptions);
+    console.log(`[Nexus Mailer] E-mail enviado com sucesso! ID: ${info.messageId} | Resp: ${info.response} | Para: ${recipients.join(', ')}${isOverride ? ` (Original: ${originalRecipients.join(', ')})` : ''}`);
     return true;
   } catch (error: any) {
-    console.error(`[Nexus Mailer] Falha ao enviar e-mail para ${recipients.join(', ')}:`, error.message);
+    console.warn(`[Nexus Mailer] Primeira tentativa falhou (${cfg.host}:${cfg.port} - ${error.message}). Tentando rota alternativa na porta 25...`);
+    try {
+      const verifyRes = await verifySmtpConnection(customConfig);
+      if (verifyRes.ok && verifyRes.activeHost && verifyRes.activePort) {
+        const fallbackCfg: SmtpConfig = {
+          ...cfg,
+          host: verifyRes.activeHost,
+          port: verifyRes.activePort,
+          secure: false,
+        };
+        const fbClient = createTransporterForConfig(fallbackCfg);
+        if (!customConfig) transporter = fbClient;
+        const retryInfo = await fbClient.sendMail(mailOptions);
+        console.log(`[Nexus Mailer] E-mail enviado via fallback (${fallbackCfg.host}:${fallbackCfg.port})! ID: ${retryInfo.messageId} | Para: ${recipients.join(', ')}`);
+        return true;
+      }
+    } catch (retryErr: any) {
+      console.error(`[Nexus Mailer] Falha definitiva ao enviar e-mail para ${recipients.join(', ')}:`, retryErr.message);
+    }
     return false;
   }
 }
@@ -454,7 +472,8 @@ export async function getManagerEmailsBySector(sector: string): Promise<string[]
   }
 
   // Fallback se não houver gestor cadastrado no banco ainda (ou em modo de teste)
-  if (EMAIL_OVERRIDE_TO) {
+  const cfg = await getActiveSmtpConfig();
+  if (EMAIL_OVERRIDE_TO || cfg.testRecipient) {
     return [`gestor.${sector.toLowerCase().replace(/\s+/g, '')}@ctdibrasil.com.br`];
   }
   return [];
@@ -475,7 +494,8 @@ export async function getPurchasingEmails(): Promise<string[]> {
   if (EMAIL_COMPRAS_FALLBACK) {
     return [EMAIL_COMPRAS_FALLBACK];
   }
-  if (EMAIL_OVERRIDE_TO) {
+  const cfg = await getActiveSmtpConfig();
+  if (EMAIL_OVERRIDE_TO || cfg.testRecipient) {
     return ['compras@ctdibrasil.com.br'];
   }
   return [];
@@ -500,7 +520,8 @@ export async function getApproverEmailByName(approverName: string): Promise<stri
   const fallback = process.env[envKey];
   if (fallback) return [fallback];
 
-  if (EMAIL_OVERRIDE_TO) {
+  const cfg = await getActiveSmtpConfig();
+  if (EMAIL_OVERRIDE_TO || cfg.testRecipient) {
     return [`${approverName.toLowerCase()}.aprovador@ctdibrasil.com.br`];
   }
   return [];
@@ -524,11 +545,11 @@ export async function getRequesterEmail(requesterId?: string): Promise<string | 
 /**
  * GATILHO 1: Colaborador solicita -> Gestor do setor recebe e-mail de aviso
  */
-export async function notifyManagerNewRequest(request: any) {
+export async function notifyManagerNewRequest(request: any): Promise<boolean> {
   const gestorEmails = await getManagerEmailsBySector(request.sector);
   if (gestorEmails.length === 0) {
     console.warn(`[Nexus Mailer] Nenhum gestor cadastrado para o setor "${request.sector}".`);
-    return;
+    return false;
   }
 
   const itemsList = Array.isArray(request.items) && request.items.length > 0
@@ -585,7 +606,7 @@ export async function notifyManagerNewRequest(request: any) {
     actionUrl: `${APP_URL}`,
   });
 
-  await sendEmail({
+  return await sendEmail({
     to: gestorEmails,
     subject: `[Nexus] Nova Solicitação de Compra ${request.code} - Setor ${request.sector}`,
     html,
@@ -595,11 +616,11 @@ export async function notifyManagerNewRequest(request: any) {
 /**
  * GATILHO 2: Gestor aprova -> Compras recebe e-mail de aviso
  */
-export async function notifyPurchasingManagerApproved(request: any) {
+export async function notifyPurchasingManagerApproved(request: any): Promise<boolean> {
   const purchasingEmails = await getPurchasingEmails();
   if (purchasingEmails.length === 0) {
     console.warn('[Nexus Mailer] Nenhum usuário de compras encontrado para notificação.');
-    return;
+    return false;
   }
 
   const itemsList = Array.isArray(request.items) && request.items.length > 0
@@ -660,7 +681,7 @@ export async function notifyPurchasingManagerApproved(request: any) {
     actionUrl: `${APP_URL}`,
   });
 
-  await sendEmail({
+  return await sendEmail({
     to: purchasingEmails,
     subject: `[Nexus] Solicitação Aprovada ${request.code} - Pronta para Cotação (${request.sector})`,
     html,
@@ -671,11 +692,11 @@ export async function notifyPurchasingManagerApproved(request: any) {
  * GATILHO 3: Compras faz a solicitação / avança esteira -> Aprovadores recebem e-mail na sua vez
  * (Opção A: Fernando -> Eduardo -> Luiz)
  */
-export async function notifyCurrentApprover(request: any, approverName: string) {
+export async function notifyCurrentApprover(request: any, approverName: string): Promise<boolean> {
   const approverEmails = await getApproverEmailByName(approverName);
   if (approverEmails.length === 0) {
     console.warn(`[Nexus Mailer] Nenhum e-mail encontrado para o aprovador ${approverName}.`);
-    return;
+    return false;
   }
 
   const roleText = 
@@ -737,7 +758,7 @@ export async function notifyCurrentApprover(request: any, approverName: string) 
     ` : undefined,
   });
 
-  await sendEmail({
+  return await sendEmail({
     to: approverEmails,
     subject: `[Nexus] Pedido para Aprovação de Diretoria ${request.code} - ${approverName}`,
     html,
@@ -747,11 +768,11 @@ export async function notifyCurrentApprover(request: any, approverName: string) 
 /**
  * GATILHO 4: Aprovadores aprovam (100% concluído) -> Compras recebe e-mail de aviso
  */
-export async function notifyPurchasingFullyApproved(request: any) {
+export async function notifyPurchasingFullyApproved(request: any): Promise<boolean> {
   const purchasingEmails = await getPurchasingEmails();
   if (purchasingEmails.length === 0) {
     console.warn('[Nexus Mailer] Nenhum e-mail de compras encontrado para notificação final.');
-    return;
+    return false;
   }
 
   const detailsHtml = `
@@ -791,7 +812,7 @@ export async function notifyPurchasingFullyApproved(request: any) {
     actionUrl: `${APP_URL}`,
   });
 
-  await sendEmail({
+  return await sendEmail({
     to: purchasingEmails,
     subject: `[Nexus] Pedido 100% APROVADO ${request.code} - Liberado para Emissão de Compra`,
     html,
@@ -801,7 +822,7 @@ export async function notifyPurchasingFullyApproved(request: any) {
 /**
  * Notificação em caso de reprovação (Gestor ou Aprovadores)
  */
-export async function notifyRequestRejected(request: any, rejectedBy: string, reason: string) {
+export async function notifyRequestRejected(request: any, rejectedBy: string, reason: string): Promise<boolean> {
   const recipients: string[] = [];
   
   // Avisar o solicitante
@@ -814,7 +835,7 @@ export async function notifyRequestRejected(request: any, rejectedBy: string, re
     recipients.push(...purchasingEmails);
   }
 
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) return false;
 
   const detailsHtml = `
     <tr>
@@ -849,7 +870,7 @@ export async function notifyRequestRejected(request: any, rejectedBy: string, re
     actionUrl: `${APP_URL}`,
   });
 
-  await sendEmail({
+  return await sendEmail({
     to: recipients,
     subject: `[Nexus] Solicitação Reprovada ${request.code} - ${request.title}`,
     html,

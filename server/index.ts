@@ -119,38 +119,49 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
 
   try {
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const results: boolean[] = [];
 
     // 1. Gestor da Área
-    await notifyManagerNewRequest(mockRequest);
-    await sleep(1500);
+    results.push(await notifyManagerNewRequest(mockRequest));
+    await sleep(1200);
 
     // 2. Compras (Aprovado pelo Gestor)
-    await notifyPurchasingManagerApproved({
+    results.push(await notifyPurchasingManagerApproved({
       ...mockRequest,
       managerApprovalStatus: 'aprovado',
       managerApprovedBy: 'Marcelo Santos (Gestor de TI)',
       managerNotes: 'Aprovado integralmente com prioridade alta.',
-    });
-    await sleep(1500);
+    }));
+    await sleep(1200);
 
     // 3. 1º Aprovador (Fernando)
-    await notifyCurrentApprover(mockRequest, 'Fernando');
-    await sleep(1500);
+    results.push(await notifyCurrentApprover(mockRequest, 'Fernando'));
+    await sleep(1200);
 
     // 4. 2º Aprovador (Eduardo)
-    await notifyCurrentApprover(mockRequest, 'Eduardo');
-    await sleep(1500);
+    results.push(await notifyCurrentApprover(mockRequest, 'Eduardo'));
+    await sleep(1200);
 
     // 5. 3º Aprovador (Luiz)
-    await notifyCurrentApprover(mockRequest, 'Luiz');
-    await sleep(1500);
+    results.push(await notifyCurrentApprover(mockRequest, 'Luiz'));
+    await sleep(1200);
 
     // 6. Compras (100% Concluído)
-    await notifyPurchasingFullyApproved(mockRequest);
+    results.push(await notifyPurchasingFullyApproved(mockRequest));
+
+    const sentCount = results.filter(Boolean).length;
+    if (sentCount === 0) {
+      return res.status(400).json({
+        error: 'Falha ao entregar os e-mails ao servidor SMTP.',
+        details: 'O servidor SMTP recusou ou falhou no envio das etapas.',
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Todos os e-mails das etapas foram disparados com sucesso!',
+      sentCount,
+      total: results.length,
+      message: `Todos os ${sentCount} e-mails das etapas foram disparados e aceitos na fila do servidor SMTP com sucesso!`,
       target: process.env.EMAIL_OVERRIDE_TO || 'Destinatários padrão',
     });
   } catch (err: any) {
