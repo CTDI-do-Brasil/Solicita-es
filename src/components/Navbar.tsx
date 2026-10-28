@@ -13,8 +13,11 @@ import {
   Sparkles,
   ShieldAlert,
   SlidersHorizontal,
-  GitBranch
+  GitBranch,
+  KeyRound,
+  Lock
 } from 'lucide-react';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 interface NavbarProps {
   currentUser: User;
@@ -40,6 +43,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectAppArea,
 }) => {
   const [showSwitchDropdown, setShowSwitchDropdown] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const isLocal = isLocalEnvironment();
   const users = storage.getUsers();
   const isMaster = currentUser.role === 'master';
@@ -416,62 +421,153 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             )}
 
-            {/* Current User Badge Card */}
-            <div className="flex items-center gap-3 pl-2 sm:pl-3 sm:border-l border-slate-200">
-              <div className="w-9 h-9 rounded-full bg-slate-800 text-white font-semibold flex items-center justify-center text-sm shadow-xs">
-                {currentUser.name
-                  .split(' ')
-                  .map(n => n[0])
-                  .slice(0, 2)
-                  .join('')}
-              </div>
+            {/* Current User Profile Menu & Actions */}
+            <div className="relative flex items-center gap-2 pl-2 sm:pl-3 sm:border-l border-slate-200">
+              
+              {/* Profile Card Trigger Button */}
+              <button
+                id="user-profile-menu-button"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2.5 sm:gap-3 p-1.5 -m-1.5 rounded-xl hover:bg-slate-100/80 transition-colors text-left cursor-pointer group"
+                title="Opções do seu perfil e alterar senha"
+              >
+                <div className="w-9 h-9 rounded-full bg-slate-800 text-white font-semibold flex items-center justify-center text-sm shadow-xs group-hover:ring-2 group-hover:ring-indigo-500/30 transition-all shrink-0">
+                  {currentUser.name
+                    .split(' ')
+                    .map(n => n[0])
+                    .slice(0, 2)
+                    .join('')}
+                </div>
 
-              <div className="hidden lg:block text-left">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-900 leading-tight">
-                    {currentUser.name}
-                  </span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sectorColor.badge}`}>
-                    {currentUser.sector}
-                  </span>
+                <div className="hidden lg:block text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+                      {currentUser.name}
+                    </span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sectorColor.badge}`}>
+                      {currentUser.sector}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    {currentUser.role === 'master' ? (
+                      <span className="flex items-center gap-1 text-amber-700 font-bold">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-600" /> Desenvolvedor Master (Total)
+                      </span>
+                    ) : currentUser.role === 'compras' ? (
+                      <span className="flex items-center gap-1 text-cyan-700 font-medium">
+                        <Sparkles className="w-3 h-3" /> Central de Compras
+                      </span>
+                    ) : currentUser.role === 'gestor' ? (
+                      <span className="flex items-center gap-1 text-indigo-700 font-medium">
+                        <ShieldCheck className="w-3 h-3" /> Gestor Responsável
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-slate-600">
+                        <UserCheck className="w-3 h-3" /> Colaborador
+                      </span>
+                    )}
+                    <span>• {currentUser.position}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  {currentUser.role === 'master' ? (
-                    <span className="flex items-center gap-1 text-amber-700 font-bold">
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-600" /> Desenvolvedor Master (Total)
-                    </span>
-                  ) : currentUser.role === 'compras' ? (
-                    <span className="flex items-center gap-1 text-cyan-700 font-medium">
-                      <Sparkles className="w-3 h-3" /> Central de Compras
-                    </span>
-                  ) : currentUser.role === 'gestor' ? (
-                    <span className="flex items-center gap-1 text-indigo-700 font-medium">
-                      <ShieldCheck className="w-3 h-3" /> Gestor Responsável
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-slate-600">
-                      <UserCheck className="w-3 h-3" /> Colaborador
-                    </span>
-                  )}
-                  <span>• {currentUser.position}</span>
-                </div>
-              </div>
+
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Direct Quick Action: Alterar Senha */}
+              <button
+                id="navbar-change-password-btn"
+                onClick={() => setShowPasswordModal(true)}
+                className="p-2 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                title="Alterar minha senha"
+              >
+                <KeyRound className="w-5 h-5" />
+              </button>
 
               {/* Logout Button */}
               <button
                 id="logout-button"
                 onClick={onLogout}
-                className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                 title="Sair do sistema"
               >
                 <LogOut className="w-5 h-5" />
               </button>
+
+              {/* User Dropdown Menu */}
+              {showUserMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowUserMenu(false)} 
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                      <p className="text-xs font-bold text-slate-900 leading-tight">
+                        {currentUser.name}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                        {currentUser.email}
+                      </p>
+                      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sectorColor.badge}`}>
+                          {currentUser.sector}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-500">
+                          {currentUser.position}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-1">
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowPasswordModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                          <KeyRound className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div>Alterar Minha Senha</div>
+                          <div className="text-[10px] font-normal text-slate-400">Trocar senha de acesso</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onLogout();
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer mt-0.5"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                          <LogOut className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div>Sair do Sistema</div>
+                          <div className="text-[10px] font-normal text-rose-400">Encerrar sessão atual</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
             </div>
 
           </div>
 
         </div>
       </div>
+
+      {/* Modal de Alteração de Senha Pessoal */}
+      <ChangePasswordModal
+        currentUser={currentUser}
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </header>
   );
 };

@@ -48,6 +48,23 @@ export const api = {
     }
   },
 
+  async updateUserPassword(userId: string, newPassword: string, currentPassword?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/users/${userId}/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        return { success: false, error: data?.error || 'Erro ao atualizar senha no servidor.' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Falha na comunicação com o servidor.' };
+    }
+  },
+
   // Solicitações de Compra
   async getRequests(): Promise<PurchaseRequest[] | null> {
     try {

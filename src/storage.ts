@@ -605,7 +605,9 @@ export const storage = {
       this.setCurrentUser({ ...current, password: newPassword });
     }
 
-    api.saveUser(allUsers[index]).catch(() => {});
+    api.updateUserPassword(userId, newPassword).catch(() => {
+      api.saveUser(allUsers[index]).catch(() => {});
+    });
     return true;
   },
 
