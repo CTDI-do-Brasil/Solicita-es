@@ -304,11 +304,16 @@ export async function getManagerEmailsBySector(sector: string): Promise<string[]
       [sector]
     );
     const emails = res.rows.map((r: any) => r.email).filter(Boolean);
-    return emails;
+    if (emails.length > 0) return emails;
   } catch (err: any) {
     console.error('[Nexus Mailer] Erro ao consultar gestores do setor:', err.message);
-    return [];
   }
+
+  // Fallback se não houver gestor cadastrado no banco ainda (ou em modo de teste)
+  if (EMAIL_OVERRIDE_TO) {
+    return [`gestor.${sector.toLowerCase().replace(/\s+/g, '')}@ctdibrasil.com.br`];
+  }
+  return [];
 }
 
 // Busca e-mails de todos os usuários do Setor de Compras
@@ -318,16 +323,18 @@ export async function getPurchasingEmails(): Promise<string[]> {
       "SELECT email FROM users WHERE role = 'compras' OR sector = 'Compras'"
     );
     const emails = res.rows.map((r: any) => r.email).filter(Boolean);
-    
-    // Se nenhum usuário de compras estiver cadastrado no banco, usa o fallback do .env
-    if (emails.length === 0 && EMAIL_COMPRAS_FALLBACK) {
-      return [EMAIL_COMPRAS_FALLBACK];
-    }
-    return emails;
+    if (emails.length > 0) return emails;
   } catch (err: any) {
     console.error('[Nexus Mailer] Erro ao consultar usuários de compras:', err.message);
-    return EMAIL_COMPRAS_FALLBACK ? [EMAIL_COMPRAS_FALLBACK] : [];
   }
+
+  if (EMAIL_COMPRAS_FALLBACK) {
+    return [EMAIL_COMPRAS_FALLBACK];
+  }
+  if (EMAIL_OVERRIDE_TO) {
+    return ['compras@ctdibrasil.com.br'];
+  }
+  return [];
 }
 
 // Busca e-mail do aprovador específico (Fernando, Eduardo ou Luiz)
@@ -339,18 +346,20 @@ export async function getApproverEmailByName(approverName: string): Promise<stri
       [namePattern]
     );
     const emails = res.rows.map((r: any) => r.email).filter(Boolean);
-    
-    // Fallback por variável de ambiente se não encontrado no banco
-    if (emails.length === 0) {
-      const envKey = `EMAIL_APROVADOR_${approverName.toUpperCase()}`;
-      const fallback = process.env[envKey];
-      if (fallback) return [fallback];
-    }
-    return emails;
+    if (emails.length > 0) return emails;
   } catch (err: any) {
     console.error(`[Nexus Mailer] Erro ao consultar aprovador ${approverName}:`, err.message);
-    return [];
   }
+
+  // Fallback por variável de ambiente se não encontrado no banco
+  const envKey = `EMAIL_APROVADOR_${approverName.toUpperCase()}`;
+  const fallback = process.env[envKey];
+  if (fallback) return [fallback];
+
+  if (EMAIL_OVERRIDE_TO) {
+    return [`${approverName.toLowerCase()}.aprovador@ctdibrasil.com.br`];
+  }
+  return [];
 }
 
 // Busca e-mail do solicitante original
