@@ -76,20 +76,11 @@ app.post('/api/mail/test', async (req, res) => {
 });
 
 app.post('/api/mail/test-full-flow', async (_req, res) => {
-  const result = await verifySmtpConnection();
-  if (!result.ok) {
-    return res.status(400).json({
-      error: 'Conexão SMTP não configurada ou falhou.',
-      details: result.message,
-    });
-  }
-
   const {
     notifyManagerNewRequest,
     notifyPurchasingManagerApproved,
     notifyCurrentApprover,
     notifyPurchasingFullyApproved,
-    notifyRequestRejected,
   } = await import('./mailer');
 
   const mockRequest = {
@@ -123,7 +114,7 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
 
     // 1. Gestor da Área
     results.push(await notifyManagerNewRequest(mockRequest));
-    await sleep(1200);
+    await sleep(350);
 
     // 2. Compras (Aprovado pelo Gestor)
     results.push(await notifyPurchasingManagerApproved({
@@ -132,19 +123,19 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
       managerApprovedBy: 'Marcelo Santos (Gestor de TI)',
       managerNotes: 'Aprovado integralmente com prioridade alta.',
     }));
-    await sleep(1200);
+    await sleep(350);
 
     // 3. 1º Aprovador (Fernando)
     results.push(await notifyCurrentApprover(mockRequest, 'Fernando'));
-    await sleep(1200);
+    await sleep(350);
 
     // 4. 2º Aprovador (Eduardo)
     results.push(await notifyCurrentApprover(mockRequest, 'Eduardo'));
-    await sleep(1200);
+    await sleep(350);
 
     // 5. 3º Aprovador (Luiz)
     results.push(await notifyCurrentApprover(mockRequest, 'Luiz'));
-    await sleep(1200);
+    await sleep(350);
 
     // 6. Compras (100% Concluído)
     results.push(await notifyPurchasingFullyApproved(mockRequest));

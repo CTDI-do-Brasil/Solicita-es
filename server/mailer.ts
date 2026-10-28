@@ -77,6 +77,13 @@ export async function getActiveSmtpConfig(forceReload = false): Promise<SmtpConf
 }
 
 export function resetTransporterCache() {
+  if (transporter) {
+    try {
+      transporter.close();
+    } catch {
+      // ignora erro ao fechar pool antigo
+    }
+  }
   cachedConfig = null;
   transporter = null;
 }
@@ -84,13 +91,16 @@ export function resetTransporterCache() {
 export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
   const isPort25 = cfg.port === 25;
   const transportConfig: any = {
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 100,
     name: 'nexus.ctdibrasil.com.br',
     host: cfg.host,
     port: cfg.port,
     secure: !isPort25 && (cfg.secure || cfg.port === 465),
-    connectionTimeout: 8000,
-    greetingTimeout: 6000,
-    socketTimeout: 12000,
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
     tls: {
       rejectUnauthorized: false, // Compatibilidade com certificados internos do CapRover
     },
@@ -144,7 +154,7 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
     };
   }
 
-  const client = createTransporterForConfig(cfg);
+  const client = (!customConfig && transporter) ? transporter : createTransporterForConfig(cfg);
 
   try {
     await client.verify();
@@ -177,14 +187,17 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
       try {
         console.log(`[Nexus Mailer] Tentando rota SMTP direta em ${cand.host}:${cand.port}...`);
         const fbTransport = nodemailer.createTransport({
+          pool: true,
+          maxConnections: 1,
+          maxMessages: 100,
           name: 'nexus.ctdibrasil.com.br',
           host: cand.host,
           port: cand.port,
           secure: false,
           ignoreTLS: true,
-          connectionTimeout: 6000,
-          greetingTimeout: 5000,
-          socketTimeout: 10000,
+          connectionTimeout: 20000,
+          greetingTimeout: 15000,
+          socketTimeout: 30000,
           tls: { rejectUnauthorized: false },
         });
         await fbTransport.verify();
@@ -262,7 +275,7 @@ export async function sendEmail(
     return false;
   }
 
-  // Modo de teste / homologação: redireciona todos os e-mails para o destinatário configurado
+  // Modo de teste / homologação: redireciona todos os e-mails para o destinatário configurado mantendo o layout original intacto
   const overrideTarget = process.env.EMAIL_OVERRIDE_TO || cfg.testRecipient;
   const isSameAsOverride =
     originalRecipients.length === 1 &&
@@ -271,21 +284,8 @@ export async function sendEmail(
   const isOverride = Boolean(overrideTarget) && !isSameAsOverride;
   const recipients = overrideTarget ? [overrideTarget] : originalRecipients;
 
-  let finalSubject = subject;
-  let finalHtml = html;
-
-  if (isOverride) {
-    const cleanTargets = originalRecipients
-      .map((r) => r.split('@')[0].replace(/[._]/g, ' ').toUpperCase())
-      .join(', ');
-    const testBanner = `
-      <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 10px 14px; margin: 0 0 18px 0; border-radius: 6px; font-family: sans-serif; font-size: 12px; color: #1E3A8A; text-align: left;">
-        <strong> Destinatário desta Etapa no Fluxo:</strong> ${cleanTargets}
-      </div>
-    `;
-    finalHtml = html.replace('<!-- Título da Solicitação -->', `${testBanner}\n              <!-- Título da Solicitação -->`);
-  }
-
+  const finalSubject = subject;
+  const finalHtml = html;
   const finalText = text || htmlToPlainText(finalHtml) || finalSubject;
 
   const rawFrom = cfg.from || SMTP_FROM;
@@ -323,7 +323,7 @@ export async function sendEmail(
           port: verifyRes.activePort,
           secure: false,
         };
-        const fbClient = createTransporterForConfig(fallbackCfg);
+        const fbClient = (!customConfig && transporter) ? transporter : createTransporterForConfig(fallbackCfg);
         if (!customConfig) transporter = fbClient;
         const retryInfo = await fbClient.sendMail(mailOptions);
         console.log(`[Nexus Mailer] E-mail enviado via fallback (${fallbackCfg.host}:${fallbackCfg.port})! ID: ${retryInfo.messageId} | Para: ${recipients.join(', ')}`);
@@ -342,13 +342,14 @@ function formatCurrency(val?: number): string {
   return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Layout Base de E-mail HTML Responsivo
+// Layout Base de E-mail HTML 100% Compatível com Microsoft Outlook Desktop (Word Engine), Gmail e Webmail
 function buildEmailTemplate(params: {
   headerTitle: string;
   headerSubtitle: string;
   badgeText: string;
   badgeBgColor?: string;
   badgeTextColor?: string;
+  buttonBgColor?: string;
   requestTitle: string;
   requestCode: string;
   itemsHtml: string;
@@ -359,6 +360,7 @@ function buildEmailTemplate(params: {
 }): string {
   const badgeBg = params.badgeBgColor || '#3B82F6';
   const badgeColor = params.badgeTextColor || '#FFFFFF';
+  const buttonBg = params.buttonBgColor || '#2563EB';
 
   return `
 <!DOCTYPE html>
@@ -368,23 +370,23 @@ function buildEmailTemplate(params: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${params.headerTitle}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #F1F5F9; padding: 30px 10px;">
+<body style="margin: 0; padding: 0; background-color: #F1F5F9; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#F1F5F9" style="background-color: #F1F5F9;">
     <tr>
-      <td align="center">
+      <td align="center" style="padding: 30px 10px;">
         <!-- Container Principal -->
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#FFFFFF" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
           
-          <!-- Cabeçalho -->
+          <!-- Cabeçalho Azul Escuro (Compatível com Outlook Desktop via bgcolor="#1E3A8A") -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%); padding: 32px 30px; text-align: left;">
-              <div style="font-size: 13px; font-weight: 700; color: #93C5FD; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+            <td bgcolor="#1E3A8A" style="background-color: #1E3A8A; background-image: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%); padding: 28px 30px; text-align: left;">
+              <div style="font-size: 11px; font-weight: 700; color: #93C5FD; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-family: 'Segoe UI', Arial, sans-serif;">
                 NEXUS CTDI
               </div>
-              <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #FFFFFF; line-height: 1.3;">
+              <h1 style="margin: 0; font-size: 21px; font-weight: 800; color: #FFFFFF; line-height: 1.3; font-family: 'Segoe UI', Arial, sans-serif;">
                 ${params.headerTitle}
               </h1>
-              <p style="margin: 6px 0 0 0; font-size: 14px; color: #DBEAFE;">
+              <p style="margin: 6px 0 0 0; font-size: 13px; color: #DBEAFE; line-height: 1.4; font-family: 'Segoe UI', Arial, sans-serif;">
                 ${params.headerSubtitle}
               </p>
             </td>
@@ -392,30 +394,42 @@ function buildEmailTemplate(params: {
 
           <!-- Corpo do E-mail -->
           <tr>
-            <td style="padding: 28px 30px;">
+            <td bgcolor="#FFFFFF" style="background-color: #FFFFFF; padding: 26px 30px;">
               
-              <!-- Badge de Status e Código -->
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #E2E8F0; padding-bottom: 16px;">
-                <span style="font-size: 18px; font-weight: 800; color: #1E293B;">
-                  ${params.requestCode}
-                </span>
-                <span style="display: inline-block; padding: 6px 14px; background-color: ${badgeBg}; color: ${badgeColor}; border-radius: 9999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                  ${params.badgeText}
-                </span>
-              </div>
+              <!-- Linha de Código (Esquerda) e Badge de Status (Direita) em Tabela 2 Colunas para Outlook -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;">
+                <tr>
+                  <td align="left" valign="middle" style="padding-bottom: 14px; font-size: 18px; font-weight: 800; color: #0F172A; font-family: 'Segoe UI', Arial, sans-serif;">
+                    ${params.requestCode}
+                  </td>
+                  <td align="right" valign="middle" style="padding-bottom: 14px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td bgcolor="${badgeBg}" style="background-color: ${badgeBg}; color: ${badgeColor}; padding: 6px 14px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Segoe UI', Arial, sans-serif;">
+                          ${params.badgeText}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
 
-              <!-- Título da Solicitação -->
-              <div style="background-color: #F8FAFC; border-left: 4px solid #2563EB; border-radius: 6px; padding: 14px 18px; margin-bottom: 22px;">
-                <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 4px;">
-                  Título da Solicitação
-                </div>
-                <div style="font-size: 15px; font-weight: 700; color: #0F172A;">
-                  ${params.requestTitle}
-                </div>
-              </div>
+              <!-- Título da Solicitação em Tabela para fundo sólido no Outlook -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 18px;">
+                <tr>
+                  <td bgcolor="#F8FAFC" style="background-color: #F8FAFC; border-left: 4px solid #2563EB; padding: 12px 16px; border-radius: 0 6px 6px 0;">
+                    <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 4px; font-family: 'Segoe UI', Arial, sans-serif;">
+                      Título da Solicitação
+                    </div>
+                    <div style="font-size: 15px; font-weight: 700; color: #0F172A; font-family: 'Segoe UI', Arial, sans-serif;">
+                      ${params.requestTitle}
+                    </div>
+                  </td>
+                </tr>
+              </table>
 
               <!-- Tabela de Detalhes -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 22px; font-size: 13px; line-height: 1.6;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 18px; font-size: 13px; line-height: 1.5; font-family: 'Segoe UI', Arial, sans-serif;">
                 ${params.detailsHtml}
               </table>
 
@@ -425,14 +439,18 @@ function buildEmailTemplate(params: {
               <!-- Observações adicionais se houver -->
               ${params.observationsHtml || ''}
 
-              <!-- Ação Recomendada no Sistema (sem links externos para evitar quarentena EOP/Microsoft 365) -->
-              <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 14px 18px; text-align: center; margin: 24px 0 8px 0;">
-                <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #1D4ED8; margin-bottom: 4px;">
-                  Próxima Etapa no Sistema Nexus CTDI
-                </div>
-                <div style="font-size: 14px; font-weight: 700; color: #1E3A8A;">
-                  ${params.actionText}
-                </div>
+              <!-- Botão de Ação (Tabela com bgcolor e padding na <td> para renderização perfeita no Outlook Desktop) -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 24px auto 10px auto;">
+                <tr>
+                  <td align="center" bgcolor="${buttonBg}" style="background-color: ${buttonBg}; border-radius: 8px; padding: 12px 28px;">
+                    <a href="${params.actionUrl}" target="_blank" style="color: #FFFFFF; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-block; font-family: 'Segoe UI', Arial, sans-serif;">
+                      ${params.actionText} &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <div style="text-align: center; font-size: 11px; color: #94A3B8; margin-bottom: 6px; font-family: 'Segoe UI', Arial, sans-serif;">
+                Link direto: <a href="${params.actionUrl}" target="_blank" style="color: #2563EB; text-decoration: underline;">${params.actionUrl}</a>
               </div>
 
             </td>
@@ -440,12 +458,12 @@ function buildEmailTemplate(params: {
 
           <!-- Rodapé -->
           <tr>
-            <td style="background-color: #F8FAFC; padding: 20px 30px; border-top: 1px solid #E2E8F0; text-align: center; font-size: 12px; color: #64748B;">
-              <p style="margin: 0 0 6px 0; font-weight: 600; color: #475569;">
-                Nexus CTDI
+            <td bgcolor="#F8FAFC" style="background-color: #F8FAFC; padding: 18px 30px; border-top: 1px solid #E2E8F0; text-align: center; font-size: 11px; color: #64748B; font-family: 'Segoe UI', Arial, sans-serif;">
+              <p style="margin: 0 0 4px 0; font-weight: 700; color: #334155;">
+                Nexus &bull; Sistema Integrado de Compras e Suprimentos
               </p>
               <p style="margin: 0; font-size: 11px; color: #94A3B8;">
-                Este é um e-mail automático gerado pela plataforma Nexus da CTDI Brasil. Por favor, não responda diretamente a esta mensagem.
+                Mensagem gerada automaticamente pela CTDI Brasil. Não responda a este e-mail.
               </p>
             </td>
           </tr>
@@ -558,51 +576,56 @@ export async function notifyManagerNewRequest(request: any): Promise<boolean> {
   }
 
   const itemsList = Array.isArray(request.items) && request.items.length > 0
-    ? request.items.map((it: any) => `<li><strong>${it.name || 'Item'}</strong> &bull; Qtd: ${it.quantity} ${it.unit || 'un'} ${it.description ? `- <em>${it.description}</em>` : ''}</li>`).join('')
-    : `<li>${request.title} &bull; Qtd: ${request.quantity || 1} ${request.unit || 'un'}</li>`;
+    ? request.items.map((it: any) => `<li style="margin-bottom: 4px;"><strong>${it.name || 'Item'}</strong> &bull; Qtd: ${it.quantity} ${it.unit || 'un'} ${it.description ? `- <em>${it.description}</em>` : ''}</li>`).join('')
+    : `<li style="margin-bottom: 4px;">${request.title} &bull; Qtd: ${request.quantity || 1} ${request.unit || 'un'}</li>`;
 
   const detailsHtml = `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; width: 140px; font-weight: 600;">Código:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.code}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 150px; font-weight: 600;">Código:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.code}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Setor:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.sector}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Setor da Área:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #1D4ED8; font-weight: 600;">${request.sector}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Solicitante:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 600;">${request.requesterName}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Colaborador Solicitante:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 600;">${request.requesterName}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Prioridade:</td>
-      <td style="padding: 6px 0; color: #0F172A; text-transform: uppercase; font-weight: 700;">${request.priority || 'Média'}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Prioridade:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #B45309; text-transform: uppercase; font-weight: 700;">${request.priority || 'Média'}</td>
     </tr>
     ${request.reason ? `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Justificativa:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.reason}</td>
+      <td style="padding: 7px 0; color: #64748B; font-weight: 600;">Justificativa:</td>
+      <td style="padding: 7px 0; color: #334155;">${request.reason}</td>
     </tr>
     ` : ''}
   `;
 
   const itemsHtml = `
-    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 18px; margin-top: 14px;">
-      <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 8px;">
-        Itens da Solicitação
-      </div>
-      <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.6;">
-        ${itemsList}
-      </ul>
-    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 10px; margin-bottom: 16px;">
+      <tr>
+        <td bgcolor="#F8FAFC" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 18px;">
+          <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 8px; font-family: 'Segoe UI', Arial, sans-serif;">
+            Itens Solicitados
+          </div>
+          <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #334155; line-height: 1.6; font-family: 'Segoe UI', Arial, sans-serif;">
+            ${itemsList}
+          </ul>
+        </td>
+      </tr>
+    </table>
   `;
 
   const html = buildEmailTemplate({
     headerTitle: 'Nova Solicitação de Compra',
     headerSubtitle: `Um colaborador do setor de ${request.sector} abriu uma nova solicitação e aguarda sua aprovação.`,
-    badgeText: 'Aguardando Aprovação do Gestor',
-    badgeBgColor: '#EAB308',
-    badgeTextColor: '#000000',
+    badgeText: 'Aguardando Parecer do Gestor',
+    badgeBgColor: '#FBBF24',
+    badgeTextColor: '#0F172A',
+    buttonBgColor: '#2563EB',
     requestCode: request.code,
     requestTitle: request.title,
     detailsHtml,
@@ -629,55 +652,60 @@ export async function notifyPurchasingManagerApproved(request: any): Promise<boo
   }
 
   const itemsList = Array.isArray(request.items) && request.items.length > 0
-    ? request.items.map((it: any) => `<li><strong>${it.name || 'Item'}</strong> &bull; Qtd: ${it.quantity} ${it.unit || 'un'}</li>`).join('')
-    : `<li>${request.title} &bull; Qtd: ${request.quantity || 1} ${request.unit || 'un'}</li>`;
+    ? request.items.map((it: any) => `<li style="margin-bottom: 4px;"><strong>${it.name || 'Item'}</strong> &bull; Qtd: ${it.quantity} ${it.unit || 'un'}</li>`).join('')
+    : `<li style="margin-bottom: 4px;">${request.title} &bull; Qtd: ${request.quantity || 1} ${request.unit || 'un'}</li>`;
 
   const detailsHtml = `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; width: 140px; font-weight: 600;">Código:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.code}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 150px; font-weight: 600;">Código:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.code}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Setor Requisitante:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.sector}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Setor Requisitante:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 600;">${request.sector}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Solicitante:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.requesterName}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Solicitante:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #334155;">${request.requesterName}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Aprovado por:</td>
-      <td style="padding: 6px 0; color: #16A34A; font-weight: 700;">${request.managerApprovedBy || 'Gestor do Setor'}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Aprovado pelo Gestor:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #059669; font-weight: 700;">${request.managerApprovedBy || 'Gestor do Setor'}</td>
     </tr>
     ${request.managerNotes ? `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Parecer do Gestor:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-style: italic;">"${request.managerNotes}"</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Parecer do Gestor:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #475569; font-style: italic;">"${request.managerNotes}"</td>
     </tr>
     ` : ''}
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Prioridade:</td>
-      <td style="padding: 6px 0; color: #0F172A; text-transform: uppercase; font-weight: 700;">${request.priority || 'Média'}</td>
+      <td style="padding: 7px 0; color: #64748B; font-weight: 600;">Prioridade:</td>
+      <td style="padding: 7px 0; color: #DC2626; text-transform: uppercase; font-weight: 700;">${request.priority || 'Média'}</td>
     </tr>
   `;
 
   const itemsHtml = `
-    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 18px; margin-top: 14px;">
-      <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 8px;">
-        Itens a Cotar
-      </div>
-      <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.6;">
-        ${itemsList}
-      </ul>
-    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 10px; margin-bottom: 16px;">
+      <tr>
+        <td bgcolor="#F8FAFC" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 18px;">
+          <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 8px; font-family: 'Segoe UI', Arial, sans-serif;">
+            Itens Solicitados
+          </div>
+          <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #334155; line-height: 1.6; font-family: 'Segoe UI', Arial, sans-serif;">
+            ${itemsList}
+          </ul>
+        </td>
+      </tr>
+    </table>
   `;
 
   const html = buildEmailTemplate({
     headerTitle: 'Solicitação Aprovada pelo Gestor',
-    headerSubtitle: `A solicitação foi aprovada pela gerência do setor de ${request.sector}.`,
+    headerSubtitle: `A gerência de ${request.sector} aprovou a solicitação.`,
     badgeText: 'Recebido em Compras',
     badgeBgColor: '#0284C7',
     badgeTextColor: '#FFFFFF',
+    buttonBgColor: '#0284C7',
     requestCode: request.code,
     requestTitle: request.title,
     detailsHtml,
@@ -704,52 +732,53 @@ export async function notifyCurrentApprover(request: any, approverName: string):
     return false;
   }
 
-  const roleText = 
-    approverName === 'Fernando' ? '1º Aprovador (Suprimentos / Operações)' :
-    approverName === 'Eduardo' ? '2º Aprovador (Financeiro / Controladoria)' :
-    '3º Aprovador (Diretoria Executiva / CEO)';
+  const orderLabel =
+    approverName === 'Fernando' ? '1º Aprovador' :
+    approverName === 'Eduardo' ? '2º Aprovador' :
+    '3º Aprovador';
 
   const detailsHtml = `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; width: 140px; font-weight: 600;">Código:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.code}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 150px; font-weight: 600;">Código:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.code}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Setor:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.sector}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Setor:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 600;">${request.sector}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Fornecedor:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.supplier || 'Definido na Cotação'}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Fornecedor Selecionado:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.supplier || 'Definido na Cotação'}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Valor Total:</td>
-      <td style="padding: 6px 0; color: #047857; font-size: 16px; font-weight: 800;">${formatCurrency(request.totalPrice)}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Valor Total Cotado:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #059669; font-size: 15px; font-weight: 800;">${formatCurrency(request.totalPrice)}</td>
     </tr>
     ${request.paymentTerms ? `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Prazo Pagamento:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.paymentTerms}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Condição de Pagamento:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 500;">${request.paymentTerms}</td>
     </tr>
     ` : ''}
     ${request.deliveryDeadline ? `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Prazo Entrega:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.deliveryDeadline}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Prazo de Entrega:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #334155;">${request.deliveryDeadline}</td>
     </tr>
     ` : ''}
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Comprador:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.purchasedBy || 'Setor de Compras'}</td>
+      <td style="padding: 7px 0; color: #64748B; font-weight: 600;">Comprador Responsável:</td>
+      <td style="padding: 7px 0; color: #334155;">${request.purchasedBy || 'Setor de Compras'}</td>
     </tr>
   `;
 
   const html = buildEmailTemplate({
     headerTitle: `Solicitação para sua Aprovação (${approverName})`,
-    headerSubtitle: `O Setor de Compras formalizou a proposta comercial e a solicitação aguarda sua aprovação como ${roleText}.`,
-    badgeText: `Aguardando Parecer: ${approverName}`,
-    badgeBgColor: '#7C3AED',
+    headerSubtitle: 'O Setor de Compras formalizou a proposta comercial e o pedido aguarda sua análise executiva.',
+    badgeText: `Aguardando ${orderLabel} (${approverName})`,
+    badgeBgColor: '#9333EA',
     badgeTextColor: '#FFFFFF',
+    buttonBgColor: '#9333EA',
     requestCode: request.code,
     requestTitle: request.title,
     detailsHtml,
@@ -757,9 +786,13 @@ export async function notifyCurrentApprover(request: any, approverName: string):
     actionText: 'Avaliar e Aprovar no Nexus',
     actionUrl: `${APP_URL}`,
     observationsHtml: request.purchasingNotes ? `
-      <div style="background-color: #F8FAFC; border-left: 3px solid #7C3AED; padding: 10px 14px; margin-top: 14px; font-size: 12px; color: #475569;">
-        <strong>Observações de Compras:</strong> ${request.purchasingNotes}
-      </div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 10px; margin-bottom: 16px;">
+        <tr>
+          <td bgcolor="#F8FAFC" style="background-color: #F8FAFC; border-left: 4px solid #9333EA; padding: 12px 16px; font-size: 12px; color: #334155; font-family: 'Segoe UI', Arial, sans-serif;">
+            <strong>Observação:</strong> ${request.purchasingNotes}
+          </td>
+        </tr>
+      </table>
     ` : undefined,
   });
 
@@ -782,33 +815,34 @@ export async function notifyPurchasingFullyApproved(request: any): Promise<boole
 
   const detailsHtml = `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; width: 140px; font-weight: 600;">Código:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.code}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 150px; font-weight: 600;">Código:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.code}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Setor Solicitante:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.sector}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Setor Solicitante:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 600;">${request.sector}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Fornecedor:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.supplier || '-'}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Fornecedor Homologado:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.supplier || '-'}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Valor Total Aprovado:</td>
-      <td style="padding: 6px 0; color: #16A34A; font-size: 17px; font-weight: 800;">${formatCurrency(request.totalPrice)}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Valor Aprovado:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #059669; font-size: 16px; font-weight: 800;">${formatCurrency(request.totalPrice)}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Aprovado por:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">Fernando Silva, Eduardo Costa e Luiz Carlos</td>
+      <td style="padding: 7px 0; color: #64748B; font-weight: 600;">Aprovado por:</td>
+      <td style="padding: 7px 0; color: #0F172A; font-weight: 700;">Fernando Silva, Eduardo Costa e Luiz Carlos (100%)</td>
     </tr>
   `;
 
   const html = buildEmailTemplate({
     headerTitle: 'Pedido 100% Aprovado pela Diretoria!',
-    headerSubtitle: 'A cadeia de aprovação executiva foi concluída com sucesso. O pedido está liberado para emissão e compra.',
+    headerSubtitle: 'A cadeia de aprovação executiva foi concluída com sucesso. O pedido está liberado para compra.',
     badgeText: '100% Aprovado - Liberado',
-    badgeBgColor: '#16A34A',
+    badgeBgColor: '#059669',
     badgeTextColor: '#FFFFFF',
+    buttonBgColor: '#059669',
     requestCode: request.code,
     requestTitle: request.title,
     detailsHtml,
@@ -844,20 +878,20 @@ export async function notifyRequestRejected(request: any, rejectedBy: string, re
 
   const detailsHtml = `
     <tr>
-      <td style="padding: 6px 0; color: #64748B; width: 140px; font-weight: 600;">Código:</td>
-      <td style="padding: 6px 0; color: #0F172A; font-weight: 700;">${request.code}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; width: 150px; font-weight: 600;">Código:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A; font-weight: 700;">${request.code}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Setor:</td>
-      <td style="padding: 6px 0; color: #0F172A;">${request.sector}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Setor:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #0F172A;">${request.sector}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Reprovado por:</td>
-      <td style="padding: 6px 0; color: #DC2626; font-weight: 700;">${rejectedBy}</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #64748B; font-weight: 600;">Reprovado por:</td>
+      <td style="padding: 7px 0; border-bottom: 1px solid #F1F5F9; color: #DC2626; font-weight: 700;">${rejectedBy}</td>
     </tr>
     <tr>
-      <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Motivo:</td>
-      <td style="padding: 6px 0; color: #DC2626; font-style: italic;">"${reason}"</td>
+      <td style="padding: 7px 0; color: #64748B; font-weight: 600;">Motivo:</td>
+      <td style="padding: 7px 0; color: #DC2626; font-style: italic;">"${reason}"</td>
     </tr>
   `;
 
@@ -867,6 +901,7 @@ export async function notifyRequestRejected(request: any, rejectedBy: string, re
     badgeText: 'Reprovado',
     badgeBgColor: '#DC2626',
     badgeTextColor: '#FFFFFF',
+    buttonBgColor: '#DC2626',
     requestCode: request.code,
     requestTitle: request.title,
     detailsHtml,
