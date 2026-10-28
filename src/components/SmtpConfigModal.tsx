@@ -11,7 +11,8 @@ import {
   EyeOff, 
   Mail,
   HelpCircle,
-  BellRing
+  BellRing,
+  Sparkles
 } from 'lucide-react';
 
 interface SmtpConfigModalProps {
@@ -173,6 +174,39 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
       });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const [testingStep, setTestingStep] = useState<number | null>(null);
+
+  const handleTestStep = async (step: number) => {
+    setTestingStep(step);
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/mail/test-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step }),
+      });
+      const data = await safeParseResponse(res);
+      if (res.ok && data.success) {
+        setFeedback({
+          type: 'success',
+          message: data.message || `E-mail da etapa ${step} disparado com sucesso!`,
+        });
+      } else {
+        setFeedback({
+          type: 'error',
+          message: data.error || `Falha ao disparar e-mail da etapa ${step}.`,
+        });
+      }
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: 'Erro na comunicação: ' + err.message,
+      });
+    } finally {
+      setTestingStep(null);
     }
   };
 
@@ -370,6 +404,112 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                 <p className="text-[11px] text-blue-700">
                   O e-mail de teste e as notificações do sistema serão direcionados para este endereço.
                 </p>
+              </div>
+
+              {/* Painel de Testes Individuais por Etapa */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    Testar E-mails do Fluxo Individualmente (1 por 1)
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-500">
+                    Dispara somente a etapa selecionada
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(1)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">1. Gestor da Área</div>
+                      <div className="text-[10px] text-slate-500">Nova Solicitação Criada</div>
+                    </div>
+                    {testingStep === 1 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" /> : <Send className="w-3.5 h-3.5 text-amber-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(2)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-sky-400 hover:bg-sky-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">2. Setor de Compras</div>
+                      <div className="text-[10px] text-slate-500">Aprovado pelo Gestor</div>
+                    </div>
+                    {testingStep === 2 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" /> : <Send className="w-3.5 h-3.5 text-sky-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(3)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">3. 1º Aprovador (Fernando)</div>
+                      <div className="text-[10px] text-slate-500">Suprimentos & Operações</div>
+                    </div>
+                    {testingStep === 3 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Send className="w-3.5 h-3.5 text-purple-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(4)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">4. 2º Aprovador (Eduardo)</div>
+                      <div className="text-[10px] text-slate-500">Financeiro & Controladoria</div>
+                    </div>
+                    {testingStep === 4 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Send className="w-3.5 h-3.5 text-purple-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(5)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">5. 3º Aprovador (Luiz)</div>
+                      <div className="text-[10px] text-slate-500">Diretoria Executiva / CEO</div>
+                    </div>
+                    {testingStep === 5 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" /> : <Send className="w-3.5 h-3.5 text-purple-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(6)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">6. Compras (100% Aprovado)</div>
+                      <div className="text-[10px] text-slate-500">Liberado para Pedido</div>
+                    </div>
+                    {testingStep === 6 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" /> : <Send className="w-3.5 h-3.5 text-emerald-600" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestStep(7)}
+                    disabled={testingStep !== null}
+                    className="p-2.5 bg-white border border-slate-200 hover:border-rose-400 hover:bg-rose-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer sm:col-span-2"
+                  >
+                    <div>
+                      <div className="font-bold text-rose-700">7. Solicitação Reprovada (com Parecer)</div>
+                      <div className="text-[10px] text-slate-500">Notificação de recusa com motivo</div>
+                    </div>
+                    {testingStep === 7 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-600" /> : <Send className="w-3.5 h-3.5 text-rose-600" />}
+                  </button>
+                </div>
               </div>
 
               {/* Feedback Alert */}

@@ -160,6 +160,106 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
   }
 });
 
+// Endpoint para testar CADA ETAPA DO E-MAIL INDIVIDUALMENTE (sob demanda)
+app.post('/api/mail/test-step', async (req, res) => {
+  const { step } = req.body || {};
+  const {
+    notifyManagerNewRequest,
+    notifyPurchasingManagerApproved,
+    notifyCurrentApprover,
+    notifyPurchasingFullyApproved,
+    notifyRequestRejected,
+  } = await import('./mailer');
+
+  const mockRequest = {
+    id: 'req-teste-individual',
+    code: 'S00012',
+    title: 'Servidor Dell PowerEdge R660xs para Virtualização',
+    description: 'Equipamento corporativo para manutenção e virtualização de infraestrutura.',
+    reason: 'Reposição de equipamento para o cluster corporativo da CTDI.',
+    quantity: 1,
+    unit: 'un',
+    priority: 'alta',
+    requesterId: 'user-master-dev',
+    requesterName: 'Roberto Albuquerque (Analista Infra)',
+    sector: 'TI',
+    supplier: 'Dell Computadores do Brasil Ltda',
+    unitPrice: 48750,
+    totalPrice: 48750,
+    paymentTerms: 'Faturado 30/60/90 Dias',
+    deliveryDeadline: '15 dias corridos',
+    purchasedBy: 'Alexandre Fontes (Compras)',
+    purchasingNotes: 'Foram avaliadas 3 cotações (Dell, Lenovo e HPE). Proposta da Dell homologada com 3 anos de garantia.',
+    items: [
+      { name: 'Servidor Dell PowerEdge R660xs', quantity: 1, unit: 'un', description: 'Dual Intel Xeon Silver, 128GB RAM' },
+      { name: 'Kit Redundância Fonte 800W', quantity: 2, unit: 'un' },
+    ],
+  };
+
+  try {
+    let sent = false;
+    let stepTitle = '';
+
+    switch (Number(step) || step) {
+      case 1:
+        stepTitle = '1. Nova Solicitação (Aviso ao Gestor da Área)';
+        sent = await notifyManagerNewRequest(mockRequest);
+        break;
+      case 2:
+        stepTitle = '2. Solicitação Aprovada pelo Gestor (Aviso para Compras)';
+        sent = await notifyPurchasingManagerApproved({
+          ...mockRequest,
+          managerApprovalStatus: 'aprovado',
+          managerApprovedBy: 'Marcelo Santos (Gestor de TI)',
+          managerNotes: 'Aprovado integralmente com prioridade alta para expansão.',
+        });
+        break;
+      case 3:
+        stepTitle = '3. Cotação Submetida (Aviso ao 1º Aprovador - Fernando)';
+        sent = await notifyCurrentApprover(mockRequest, 'Fernando');
+        break;
+      case 4:
+        stepTitle = '4. Alçada em Andamento (Aviso ao 2º Aprovador - Eduardo)';
+        sent = await notifyCurrentApprover(mockRequest, 'Eduardo');
+        break;
+      case 5:
+        stepTitle = '5. Alçada em Andamento (Aviso ao 3º Aprovador - Luiz)';
+        sent = await notifyCurrentApprover(mockRequest, 'Luiz');
+        break;
+      case 6:
+        stepTitle = '6. Pedido 100% Aprovado (Aviso para Emissão em Compras)';
+        sent = await notifyPurchasingFullyApproved(mockRequest);
+        break;
+      case 7:
+      case 'rejected':
+        stepTitle = '7. Solicitação Reprovada (Aviso com Justificativa)';
+        sent = await notifyRequestRejected(
+          mockRequest,
+          'Fernando Silva (Diretoria de Suprimentos)',
+          'Necessário renegociar prazo de faturamento para 60/90 dias ou buscar outro fornecedor alternativo.'
+        );
+        break;
+      default:
+        return res.status(400).json({ error: 'Etapa inválida. Escolha de 1 a 7.' });
+    }
+
+    if (!sent) {
+      return res.status(400).json({
+        error: `Falha ao disparar o e-mail da etapa: ${stepTitle}.`,
+      });
+    }
+
+    res.json({
+      success: true,
+      step,
+      stepTitle,
+      message: `E-mail da etapa "${stepTitle}" enviado com sucesso!`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Rotas de API
 app.use('/api/requests', requestsRouter);
 app.use('/api/users', usersRouter);
