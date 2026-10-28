@@ -187,7 +187,12 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
     setFormRole(user.role);
     setFormPosition(user.position);
     setFormPassword('');
-    setFormProjects(user.allowedProjects && user.allowedProjects.length > 0 ? user.allowedProjects : ['Manutenção/Engenharia']);
+    const projs = Array.isArray(user.allowedProjects) && user.allowedProjects.length > 0
+      ? user.allowedProjects
+      : (typeof user.allowedProjects === 'string' && user.allowedProjects
+        ? [user.allowedProjects as ProjectType]
+        : ['Manutenção/Engenharia']);
+    setFormProjects(projs);
     setUserFormError('');
     setShowUserModal(true);
   };
@@ -606,7 +611,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                             <div className="text-[11px] text-slate-500 font-mono">
                               {u.email}
                             </div>
-                            {u.allowedProjects && u.allowedProjects.length > 0 && u.role === 'colaborador' && (
+                            {Array.isArray(u.allowedProjects) && u.allowedProjects.length > 0 && u.role === 'colaborador' && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {u.allowedProjects.map(p => (
                                   <span key={p} className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200">
@@ -1224,16 +1229,16 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                 </label>
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   {ALL_PROJECTS.map((proj) => {
-                    const isChecked = formProjects.includes(proj);
+                    const isChecked = Array.isArray(formProjects) && formProjects.includes(proj);
                     return (
                       <button
                         key={proj}
                         type="button"
                         onClick={() => {
                           if (isChecked) {
-                            setFormProjects(prev => prev.filter(p => p !== proj));
+                            setFormProjects(prev => (Array.isArray(prev) ? prev.filter(p => p !== proj) : []));
                           } else {
-                            setFormProjects(prev => [...prev, proj]);
+                            setFormProjects(prev => (Array.isArray(prev) ? [...prev, proj] : [proj]));
                           }
                         }}
                         className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer text-left ${

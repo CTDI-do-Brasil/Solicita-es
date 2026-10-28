@@ -11,6 +11,7 @@ import { SectorUserManagementModal } from './components/SectorUserManagementModa
 import { PurchasingActionModal } from './components/PurchasingActionModal';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { ApproversView } from './components/ApproversView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function App() {
@@ -270,11 +271,16 @@ export default function App() {
 
       {/* Modal: Sector Manager Adding Users */}
       {showUserModal && (currentUser.role === 'gestor' || currentUser.role === 'master') && (
-        <SectorUserManagementModal
-          manager={currentUser.role === 'master' ? { ...currentUser, sector: simulatedSector, role: 'gestor' } : currentUser}
-          onClose={() => setShowUserModal(false)}
-          onUserCreated={handleUserCreated}
-        />
+        <ErrorBoundary 
+          fallbackTitle="Falha ao carregar Gerenciamento de Equipe"
+          onReset={() => setShowUserModal(false)}
+        >
+          <SectorUserManagementModal
+            manager={currentUser.role === 'master' ? { ...currentUser, sector: simulatedSector, role: 'gestor' } : currentUser}
+            onClose={() => setShowUserModal(false)}
+            onUserCreated={handleUserCreated}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Modal: Order Details & Manager Approval */}

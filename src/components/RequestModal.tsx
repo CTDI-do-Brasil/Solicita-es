@@ -35,15 +35,21 @@ export const RequestModal: React.FC<RequestModalProps> = ({
   onRequestCreated,
 }) => {
   const availableProjects: ProjectType[] = useMemo(() => {
-    if (currentUser.role === 'colaborador' && currentUser.allowedProjects && currentUser.allowedProjects.length > 0) {
-      return currentUser.allowedProjects;
+    if (currentUser.role === 'colaborador') {
+      if (Array.isArray(currentUser.allowedProjects) && currentUser.allowedProjects.length > 0) {
+        return currentUser.allowedProjects;
+      }
+      return ['Manutenção/Engenharia'];
     }
     return ALL_PROJECTS;
   }, [currentUser]);
 
   const [project, setProject] = useState<ProjectType>(() => {
-    if (currentUser.role === 'colaborador' && currentUser.allowedProjects && currentUser.allowedProjects.length > 0) {
-      return currentUser.allowedProjects[0];
+    if (currentUser.role === 'colaborador') {
+      if (Array.isArray(currentUser.allowedProjects) && currentUser.allowedProjects.length > 0) {
+        return currentUser.allowedProjects[0];
+      }
+      return 'Manutenção/Engenharia';
     }
     return 'Manutenção/Engenharia';
   });

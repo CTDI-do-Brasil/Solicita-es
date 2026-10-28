@@ -3,15 +3,20 @@ import { pool } from '../db';
 
 const router = Router();
 
-function mapRowToUser(row: any) {
-  let allowedProjects: string[] = ['Manutenção/Engenharia'];
-  if (row.allowed_projects) {
+function parseAllowedProjects(raw: any, role?: string): string[] {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string' && raw.trim()) {
     try {
-      allowedProjects = typeof row.allowed_projects === 'string' ? JSON.parse(row.allowed_projects) : row.allowed_projects;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
     } catch {
-      allowedProjects = String(row.allowed_projects).split(',').map((s: string) => s.trim());
+      return raw.replace(/[{}]/g, '').split(',').map((s: string) => s.trim().replace(/^"|"$/g, '')).filter(Boolean);
     }
   }
+  return role === 'colaborador' ? ['Manutenção/Engenharia'] : ['Cielo', 'Claro', 'VIVO', 'TIM', 'Alloha', 'Manutenção/Engenharia'];
+}
+
+function mapRowToUser(row: any) {
   return {
     id: row.id,
     name: row.name,
@@ -21,7 +26,7 @@ function mapRowToUser(row: any) {
     position: row.position,
     avatarUrl: row.avatar_url,
     password: row.password || '123456',
-    allowedProjects: allowedProjects,
+    allowedProjects: parseAllowedProjects(row.allowed_projects, row.role),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
 }
@@ -43,17 +48,21 @@ router.post('/', async (req: Request, res: Response) => {
     const data = req.body;
     const id = data.id || `user-${Date.now()}`;
     const now = new Date();
+    const allowedProjects = data.allowedProjects !== undefined
+      ? (Array.isArray(data.allowedProjects) ? JSON.stringify(data.allowedProjects) : String(data.allowedProjects))
+      : JSON.stringify(['Manutenção/Engenharia']);
 
     const query = `
-      INSERT INTO users (id, name, email, role, sector, position, avatar_url, password, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO users (id, name, email, role, sector, position, avatar_url, password, allowed_projects, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       ON CONFLICT (email) DO UPDATE SET
         name = EXCLUDED.name,
         role = EXCLUDED.role,
         sector = EXCLUDED.sector,
         position = EXCLUDED.position,
         avatar_url = EXCLUDED.avatar_url,
-        password = COALESCE(EXCLUDED.password, users.password)
+        password = COALESCE(EXCLUDED.password, users.password),
+        allowed_projects = COALESCE(EXCLUDED.allowed_projects, users.allowed_projects)
       RETURNING *;
     `;
 
@@ -66,6 +75,7 @@ router.post('/', async (req: Request, res: Response) => {
       data.position,
       data.avatarUrl || null,
       data.password || '123456',
+      allowedProjects,
       data.createdAt || now
     ];
 
@@ -122,6 +132,9 @@ router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const data = req.body;
+    const allowedProjects = data.allowedProjects !== undefined
+      ? (Array.isArray(data.allowedProjects) ? JSON.stringify(data.allowedProjects) : String(data.allowedProjects))
+      : null;
 
     const query = `
       UPDATE users SET
@@ -131,12 +144,13 @@ router.put('/:id', async (req: Request, res: Response) => {
         sector = COALESCE($4, sector),
         position = COALESCE($5, position),
         avatar_url = COALESCE($6, avatar_url),
-        password = COALESCE($7, password)
-      WHERE id = $8
+        password = COALESCE($7, password),
+        allowed_projects = COALESCE($8, allowed_projects)
+      WHERE id = $9
       RETURNING *;
     `;
 
-    const values = [data.name, data.email, data.role, data.sector, data.position, data.avatarUrl, data.password, id];
+    const values = [data.name, data.email, data.role, data.sector, data.position, data.avatarUrl, data.password, allowedProjects, id];
     const result = await pool.query(query, values);
 
     if (result.rows.length === 0) {

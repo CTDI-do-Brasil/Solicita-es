@@ -23,7 +23,7 @@ import {
 interface SectorUserManagementModalProps {
   manager: User;
   onClose: () => void;
-  onUserCreated: (newUser: User) => void;
+  onUserCreated?: (newUser: User) => void;
 }
 
 export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps> = ({
@@ -31,8 +31,15 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
   onClose,
   onUserCreated,
 }) => {
+  const managerSector = manager?.sector || 'Produção';
+  const managerName = manager?.name || 'Gestor Responsável';
+
   const [users, setUsers] = useState<User[]>(() => {
-    return storage.getUsers().filter(u => u.sector === manager.sector);
+    try {
+      return storage.getUsers().filter(u => u && u.sector === managerSector);
+    } catch {
+      return [];
+    }
   });
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -57,13 +64,25 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
 
   useEffect(() => {
     const handleStorageUpdate = () => {
-      setUsers(storage.getUsers().filter(u => u.sector === manager.sector));
+      try {
+        setUsers(storage.getUsers().filter(u => u && u.sector === managerSector));
+      } catch (err) {
+        console.error('Erro ao atualizar lista de usuários:', err);
+      }
     };
     window.addEventListener('storage-users-updated', handleStorageUpdate);
     return () => window.removeEventListener('storage-users-updated', handleStorageUpdate);
-  }, [manager.sector]);
+  }, [managerSector]);
 
-  const sectorColor = getSectorColor(manager.sector);
+  const sectorColor = getSectorColor(managerSector);
+
+  const getUserInitials = (userName?: string) => {
+    if (!userName) return 'U';
+    const parts = userName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'U';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,14 +95,14 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
       return;
     }
 
-    if (selectedProjects.length === 0) {
+    if (!Array.isArray(selectedProjects) || selectedProjects.length === 0) {
       setErrorMsg('Por favor, selecione pelo menos um projeto para o colaborador.');
       return;
     }
 
     // Check if email already in use
     const allUsers = storage.getUsers();
-    if (allUsers.some(u => u.email.toLowerCase() === email.trim().toLowerCase())) {
+    if (allUsers.some(u => u && u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
       setErrorMsg('Este e-mail já está cadastrado no sistema.');
       return;
     }
@@ -98,17 +117,20 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
         allowedProjects: selectedProjects,
       });
 
-      setUsers(prev => [...prev, newUser]);
+      setUsers(prev => [...prev.filter(u => u.id !== newUser.id), newUser]);
       setName('');
       setEmail('');
       setPosition('');
       setInitialPassword('');
       setSelectedProjects(['Manutenção/Engenharia']);
-      setSuccessMsg(`Usuário "${newUser.name}" cadastrado com sucesso! Projetos: ${newUser.allowedProjects?.join(', ')}.`);
-      onUserCreated(newUser);
-    } catch (err) {
+      const projLabel = Array.isArray(newUser.allowedProjects) ? newUser.allowedProjects.join(', ') : 'Manutenção/Engenharia';
+      setSuccessMsg(`Usuário "${newUser.name}" cadastrado com sucesso! Projetos: ${projLabel}.`);
+      if (typeof onUserCreated === 'function') {
+        onUserCreated(newUser);
+      }
+    } catch (err: any) {
       console.error(err);
-      setErrorMsg('Erro ao cadastrar usuário.');
+      setErrorMsg('Erro ao cadastrar usuário: ' + (err?.message || 'Falha inesperada'));
     }
   };
 
@@ -173,7 +195,12 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
 
   const handleOpenEditProjects = (user: User) => {
     setEditingProjectsUser(user);
-    setUserProjectsToEdit(user.allowedProjects && user.allowedProjects.length > 0 ? user.allowedProjects : ['Manutenção/Engenharia']);
+    const projs = Array.isArray(user.allowedProjects) && user.allowedProjects.length > 0
+      ? user.allowedProjects
+      : (typeof user.allowedProjects === 'string' && user.allowedProjects
+        ? [user.allowedProjects as ProjectType]
+        : ['Manutenção/Engenharia']);
+    setUserProjectsToEdit(projs);
   };
 
   const handleSaveProjects = (e: React.FormEvent) => {
@@ -394,7 +421,7 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {ALL_PROJECTS.map((proj) => {
-                  const isSelected = selectedProjects.includes(proj);
+                  const isSelected = Array.isArray(selectedProjects) && selectedProjects.includes(proj);
                   const color = getProjectColor(proj);
                   return (
                     <button
@@ -402,9 +429,9 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
                       type="button"
                       onClick={() => {
                         if (isSelected) {
-                          setSelectedProjects(prev => prev.filter(p => p !== proj));
+                          setSelectedProjects(prev => (Array.isArray(prev) ? prev.filter(p => p !== proj) : []));
                         } else {
-                          setSelectedProjects(prev => [...prev, proj]);
+                          setSelectedProjects(prev => (Array.isArray(prev) ? [...prev, proj] : [proj]));
                         }
                       }}
                       className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer text-left ${
@@ -449,71 +476,79 @@ export const SectorUserManagementModal: React.FC<SectorUserManagementModalProps>
             </div>
 
             <div className="divide-y divide-slate-200 border border-slate-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
-              {users.map((u) => (
-                <div key={u.id} className="p-3 bg-white hover:bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between transition-colors gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                      {u.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
-                        <span className="truncate">{u.name}</span>
-                        {u.role === 'gestor' && (
-                          <span className="text-[10px] px-1.5 py-0.2 bg-indigo-100 text-indigo-800 rounded font-medium shrink-0">
-                            Gestor
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-slate-500 truncate">{u.position} • {u.email}</div>
-                      
-                      {/* Projects Badges */}
-                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Projetos:</span>
-                        {u.role === 'gestor' ? (
-                          <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-semibold">
-                            Todos os Projetos
-                          </span>
-                        ) : u.allowedProjects && u.allowedProjects.length > 0 ? (
-                          u.allowedProjects.map((p) => {
-                            const pColor = getProjectColor(p);
-                            return (
-                              <span key={p} className={`px-1.5 py-0.2 rounded text-[10px] font-semibold border ${pColor.badge}`}>
-                                {p}
-                              </span>
-                            );
-                          })
-                        ) : (
-                          <span className="text-[10px] text-slate-400 italic">Nenhum projeto configurado</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+              {users.filter(Boolean).map((u) => {
+                const userProjects = Array.isArray(u.allowedProjects)
+                  ? u.allowedProjects
+                  : (typeof u.allowedProjects === 'string' && u.allowedProjects
+                    ? [u.allowedProjects as ProjectType]
+                    : []);
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                    {u.role !== 'gestor' && (
+                return (
+                  <div key={u.id} className="p-3 bg-white hover:bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between transition-colors gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        {getUserInitials(u.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
+                          <span className="truncate">{u.name || 'Sem Nome'}</span>
+                          {u.role === 'gestor' && (
+                            <span className="text-[10px] px-1.5 py-0.2 bg-indigo-100 text-indigo-800 rounded font-medium shrink-0">
+                              Gestor
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">{u.position || 'Colaborador'} • {u.email}</div>
+                        
+                        {/* Projects Badges */}
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Projetos:</span>
+                          {u.role === 'gestor' ? (
+                            <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-semibold">
+                              Todos os Projetos
+                            </span>
+                          ) : userProjects.length > 0 ? (
+                            userProjects.map((p) => {
+                              const pColor = getProjectColor(p);
+                              return (
+                                <span key={p} className={`px-1.5 py-0.2 rounded text-[10px] font-semibold border ${pColor.badge}`}>
+                                  {p}
+                                </span>
+                              );
+                            })
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Nenhum projeto configurado</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                      {u.role !== 'gestor' && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditProjects(u)}
+                          className="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Alterar projetos autorizados"
+                        >
+                          <FolderKanban className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Projetos</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={() => handleOpenEditProjects(u)}
-                        className="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Alterar projetos autorizados"
+                        onClick={() => handleOpenResetPassword(u)}
+                        className="px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 border border-indigo-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                        title={`Redefinir senha de acesso de ${u.name || 'usuário'}`}
                       >
-                        <FolderKanban className="w-3.5 h-3.5 text-slate-600" />
-                        <span>Projetos</span>
+                        <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Redefinir Senha</span>
                       </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenResetPassword(u)}
-                      className="px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 border border-indigo-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                      title={`Redefinir senha de acesso de ${u.name}`}
-                    >
-                      <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Redefinir Senha</span>
-                    </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

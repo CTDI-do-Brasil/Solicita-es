@@ -93,6 +93,33 @@ export const INITIAL_VERSIONS: AppVersionRelease[] = [
   }
 ];
 
+export function normalizeAllowedProjects(raw: any, role?: string): ProjectType[] {
+  if (Array.isArray(raw)) {
+    const valid = raw.filter(Boolean).map(p => String(p).trim()) as ProjectType[];
+    if (valid.length > 0) return valid;
+  } else if (typeof raw === 'string' && raw.trim()) {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter(Boolean).map(p => String(p).trim()) as ProjectType[];
+          if (valid.length > 0) return valid;
+        }
+      } catch {}
+    }
+    const parts = trimmed
+      .replace(/[{}"]/g, '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean) as ProjectType[];
+    if (parts.length > 0) return parts;
+  }
+
+  // Fallback default
+  return role === 'colaborador' ? ['Manutenção/Engenharia'] : [...ALL_PROJECTS];
+}
+
 export const storage = {
   getUsers(): User[] {
     try {
@@ -101,19 +128,21 @@ export const storage = {
         const users: User[] = JSON.parse(stored);
         // Ensure master dev user is always present
         let needsSave = false;
-        if (!users.some(u => u.role === 'master' || u.id === 'user-master-dev')) {
+        if (!users.some(u => u && (u.role === 'master' || u.id === 'user-master-dev'))) {
           users.unshift(MASTER_USER);
           needsSave = true;
         }
 
-        // Ensure all users have a default password and allowedProjects
+        // Ensure all users have a default password and robust allowedProjects
         users.forEach(u => {
+          if (!u) return;
           if (!u.password) {
             u.password = '123456';
             needsSave = true;
           }
-          if (!u.allowedProjects || u.allowedProjects.length === 0) {
-            u.allowedProjects = u.role === 'colaborador' ? ['Manutenção/Engenharia'] : ALL_PROJECTS;
+          const normalized = normalizeAllowedProjects(u.allowedProjects, u.role);
+          if (JSON.stringify(normalized) !== JSON.stringify(u.allowedProjects)) {
+            u.allowedProjects = normalized;
             needsSave = true;
           }
         });
@@ -129,7 +158,7 @@ export const storage = {
     const defaultUsers = INITIAL_USERS.map(u => ({ 
       ...u, 
       password: u.password || '123456',
-      allowedProjects: u.allowedProjects || (u.role === 'colaborador' ? ['Manutenção/Engenharia'] : ALL_PROJECTS)
+      allowedProjects: normalizeAllowedProjects(u.allowedProjects, u.role)
     }));
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
     return defaultUsers;
@@ -137,7 +166,11 @@ export const storage = {
 
   saveUsers(users: User[]) {
     try {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      const normalizedUsers = (users || []).filter(Boolean).map(u => ({
+        ...u,
+        allowedProjects: normalizeAllowedProjects(u.allowedProjects, u.role),
+      }));
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(normalizedUsers));
       window.dispatchEvent(new Event('storage-users-updated'));
     } catch (e) {
       console.error('Failed to save users', e);
@@ -589,16 +622,14 @@ export const storage = {
       name: userData.name,
       email: userData.email,
       role: 'colaborador',
-      sector: manager.sector, // Strictly within the manager's sector
+      sector: manager?.sector || 'Produção', // Strictly within the manager's sector
       position: userData.position || 'Colaborador do Setor',
       password: userData.password?.trim() || '123456',
-      allowedProjects: userData.allowedProjects && userData.allowedProjects.length > 0 
-        ? userData.allowedProjects 
-        : ['Manutenção/Engenharia'],
+      allowedProjects: normalizeAllowedProjects(userData.allowedProjects, 'colaborador'),
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [...allUsers, newUser];
+    const updated = [...allUsers.filter(u => u.id !== newUser.id), newUser];
     this.saveUsers(updated);
     api.saveUser(newUser).catch(() => {});
     return newUser;
@@ -647,13 +678,11 @@ export const storage = {
       sector: data.sector,
       position: data.position || 'Colaborador',
       password: data.password?.trim() || '123456',
-      allowedProjects: data.allowedProjects && data.allowedProjects.length > 0 
-        ? data.allowedProjects 
-        : ALL_PROJECTS,
+      allowedProjects: normalizeAllowedProjects(data.allowedProjects, data.role),
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [...allUsers, newUser];
+    const updated = [...allUsers.filter(u => u.id !== newUser.id), newUser];
     this.saveUsers(updated);
     api.saveUser(newUser).catch(() => {});
     return newUser;
@@ -664,12 +693,24 @@ export const storage = {
     const index = allUsers.findIndex(u => u.id === userId);
     if (index === -1) return false;
 
+    const updatedData = { ...data };
+    if (updatedData.allowedProjects !== undefined) {
+      updatedData.allowedProjects = normalizeAllowedProjects(updatedData.allowedProjects, allUsers[index].role);
+    }
+
     allUsers[index] = {
       ...allUsers[index],
-      ...data,
+      ...updatedData,
     };
 
     this.saveUsers(allUsers);
+
+    // Keep currentUser synchronized if the edited user is currently logged in
+    const current = this.getCurrentUser();
+    if (current && current.id === userId) {
+      this.setCurrentUser({ ...current, ...allUsers[index] });
+    }
+
     api.saveUser(allUsers[index]).catch(() => {});
     return true;
   },
@@ -838,8 +879,7 @@ export const storage = {
         hasChanges = true;
       }
       if (remoteUsers && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(remoteUsers));
-        window.dispatchEvent(new Event('storage-users-updated'));
+        this.saveUsers(remoteUsers);
         hasChanges = true;
       }
       if (remoteVersions && Array.isArray(remoteVersions) && remoteVersions.length > 0) {
