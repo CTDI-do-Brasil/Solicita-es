@@ -19,7 +19,7 @@ const EMAIL_OVERRIDE_TO = process.env.EMAIL_OVERRIDE_TO || '';
 let transporter: Transporter | null = null;
 
 export function isSmtpConfigured(): boolean {
-  return Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS);
+  return Boolean(SMTP_HOST && SMTP_USER);
 }
 
 export function getTransporter(): Transporter | null {
@@ -27,31 +27,40 @@ export function getTransporter(): Transporter | null {
     return null;
   }
   if (!transporter) {
-    transporter = nodemailer.createTransport({
+    const transportConfig: any = {
       host: SMTP_HOST,
       port: SMTP_PORT,
       secure: SMTP_SECURE,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
       connectionTimeout: 10000,
       greetingTimeout: 8000,
       socketTimeout: 15000,
       tls: {
         rejectUnauthorized: false, // Compatibilidade com certificados internos do CapRover
       },
-    });
+    };
+
+    if (SMTP_USER && SMTP_PASS) {
+      transportConfig.auth = {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      };
+    }
+
+    if (SMTP_PORT === 25 || process.env.SMTP_IGNORE_TLS === 'true') {
+      transportConfig.ignoreTLS = true;
+    }
+
+    transporter = nodemailer.createTransport(transportConfig);
   }
   return transporter;
 }
 
 // Verificação de conexão com o servidor SMTP
-export async function verifySmtpConnection(): Promise<{ ok: boolean; message: string }> {
+export async function verifySmtpConnection(): Promise<{ ok: boolean; message: string; details?: any }> {
   if (!isSmtpConfigured()) {
     return {
       ok: false,
-      message: 'SMTP não configurado. Preencha SMTP_HOST, SMTP_USER e SMTP_PASS no arquivo .env.',
+      message: 'SMTP não configurado. Preencha SMTP_HOST e SMTP_USER.',
     };
   }
 
@@ -62,7 +71,19 @@ export async function verifySmtpConnection(): Promise<{ ok: boolean; message: st
     return { ok: true, message: 'Conexão SMTP estabelecida com sucesso!' };
   } catch (error: any) {
     console.error('[Nexus Mailer] Erro ao verificar conexão SMTP:', error.message);
-    return { ok: false, message: `Erro ao conectar ao SMTP: ${error.message}` };
+    return {
+      ok: false,
+      message: `Erro ao conectar ao SMTP (${SMTP_HOST}:${SMTP_PORT}): ${error.message}`,
+      details: {
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
+        user: SMTP_USER,
+        error: error.message,
+        code: error.code,
+        command: error.command,
+      },
+    };
   }
 }
 

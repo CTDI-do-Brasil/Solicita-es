@@ -99,7 +99,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
       } else {
         setEmailTestFeedback({
           type: 'error',
-          message: data.error || data.details || 'Falha ao disparar e-mails.',
+          message: data.details ? `${data.error} — Detalhes: ${data.details}` : data.error || 'Falha ao disparar e-mails.',
         });
       }
     } catch (err: any) {
