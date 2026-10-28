@@ -114,7 +114,7 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
 
     // 1. Gestor da Área
     results.push(await notifyManagerNewRequest(mockRequest));
-    await sleep(350);
+    await sleep(2000);
 
     // 2. Compras (Aprovado pelo Gestor)
     results.push(await notifyPurchasingManagerApproved({
@@ -123,19 +123,19 @@ app.post('/api/mail/test-full-flow', async (_req, res) => {
       managerApprovedBy: 'Marcelo Santos (Gestor de TI)',
       managerNotes: 'Aprovado integralmente com prioridade alta.',
     }));
-    await sleep(350);
+    await sleep(2000);
 
     // 3. 1º Aprovador (Fernando)
     results.push(await notifyCurrentApprover(mockRequest, 'Fernando'));
-    await sleep(350);
+    await sleep(2000);
 
     // 4. 2º Aprovador (Eduardo)
     results.push(await notifyCurrentApprover(mockRequest, 'Eduardo'));
-    await sleep(350);
+    await sleep(2000);
 
     // 5. 3º Aprovador (Luiz)
     results.push(await notifyCurrentApprover(mockRequest, 'Luiz'));
-    await sleep(350);
+    await sleep(2000);
 
     // 6. Compras (100% Concluído)
     results.push(await notifyPurchasingFullyApproved(mockRequest));
