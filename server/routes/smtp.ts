@@ -10,6 +10,12 @@ import {
 
 const router = Router();
 
+// Garantir cabeçalho Content-Type: application/json em todas as respostas da rota
+router.use((_req, res, next) => {
+  res.setHeader('Content-Type', 'application/json');
+  next();
+});
+
 // GET /api/smtp-config - Retorna a configuração atual do SMTP
 router.get('/', async (_req: Request, res: Response) => {
   try {
