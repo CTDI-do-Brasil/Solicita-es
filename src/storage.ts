@@ -1,4 +1,4 @@
-import { User, UserRole, PurchaseRequest, SectorType, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem } from './types';
+import { User, UserRole, PurchaseRequest, SectorType, ProjectType, ALL_PROJECTS, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem } from './types';
 import { INITIAL_USERS, INITIAL_REQUESTS, MASTER_USER } from './mockData';
 import { api } from './services/api';
 
@@ -106,10 +106,14 @@ export const storage = {
           needsSave = true;
         }
 
-        // Ensure all users have a default password
+        // Ensure all users have a default password and allowedProjects
         users.forEach(u => {
           if (!u.password) {
             u.password = '123456';
+            needsSave = true;
+          }
+          if (!u.allowedProjects || u.allowedProjects.length === 0) {
+            u.allowedProjects = u.role === 'colaborador' ? ['Manutenção/Engenharia'] : ALL_PROJECTS;
             needsSave = true;
           }
         });
@@ -122,7 +126,11 @@ export const storage = {
     } catch (e) {
       console.error('Failed to load users from localStorage', e);
     }
-    const defaultUsers = INITIAL_USERS.map(u => ({ ...u, password: u.password || '123456' }));
+    const defaultUsers = INITIAL_USERS.map(u => ({ 
+      ...u, 
+      password: u.password || '123456',
+      allowedProjects: u.allowedProjects || (u.role === 'colaborador' ? ['Manutenção/Engenharia'] : ALL_PROJECTS)
+    }));
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
     return defaultUsers;
   },
@@ -568,7 +576,13 @@ export const storage = {
     return true;
   },
 
-  createUserByManager(manager: User, userData: { name: string; email: string; position: string; password?: string }): User {
+  createUserByManager(manager: User, userData: { 
+    name: string; 
+    email: string; 
+    position: string; 
+    password?: string;
+    allowedProjects?: ProjectType[];
+  }): User {
     const allUsers = this.getUsers();
     const newUser: User = {
       id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -578,6 +592,9 @@ export const storage = {
       sector: manager.sector, // Strictly within the manager's sector
       position: userData.position || 'Colaborador do Setor',
       password: userData.password?.trim() || '123456',
+      allowedProjects: userData.allowedProjects && userData.allowedProjects.length > 0 
+        ? userData.allowedProjects 
+        : ['Manutenção/Engenharia'],
       createdAt: new Date().toISOString(),
     };
 
@@ -612,7 +629,15 @@ export const storage = {
   },
 
   // MASTER DEVELOPER PRIVILEGED OPERATIONS
-  createMasterUser(data: { name: string; email: string; role: UserRole; sector: SectorType; position: string; password?: string }): User {
+  createMasterUser(data: { 
+    name: string; 
+    email: string; 
+    role: UserRole; 
+    sector: SectorType; 
+    position: string; 
+    password?: string;
+    allowedProjects?: ProjectType[];
+  }): User {
     const allUsers = this.getUsers();
     const newUser: User = {
       id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -622,6 +647,9 @@ export const storage = {
       sector: data.sector,
       position: data.position || 'Colaborador',
       password: data.password?.trim() || '123456',
+      allowedProjects: data.allowedProjects && data.allowedProjects.length > 0 
+        ? data.allowedProjects 
+        : ALL_PROJECTS,
       createdAt: new Date().toISOString(),
     };
 

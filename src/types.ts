@@ -25,6 +25,23 @@ export const ALL_SECTORS: SectorType[] = [
   'Diretor'
 ];
 
+export type ProjectType = 
+  | 'Cielo'
+  | 'Claro'
+  | 'VIVO'
+  | 'TIM'
+  | 'Alloha'
+  | 'Manutenção/Engenharia';
+
+export const ALL_PROJECTS: ProjectType[] = [
+  'Cielo',
+  'Claro',
+  'VIVO',
+  'TIM',
+  'Alloha',
+  'Manutenção/Engenharia'
+];
+
 export type UserRole = 'gestor' | 'colaborador' | 'compras' | 'master' | 'aprovador';
 
 export type ApproverName = 'Fernando' | 'Eduardo' | 'Luiz';
@@ -63,6 +80,7 @@ export interface User {
   position: string;
   avatarUrl?: string;
   password?: string;
+  allowedProjects?: ProjectType[];
   createdAt: string;
 }
 
@@ -120,6 +138,7 @@ export interface PurchaseRequest {
   requesterId: string;
   requesterName: string;
   sector: SectorType;
+  project?: ProjectType;
   createdAt: string; // ISO string
 
   // Sector Manager Approval details

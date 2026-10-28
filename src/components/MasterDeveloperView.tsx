@@ -541,7 +541,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                 <option value="gestor">Gestores de Área</option>
                 <option value="colaborador">Colaboradores</option>
                 <option value="compras">Setor de Compras</option>
-                <option value="aprovador">Diretores / Aprovadores</option>
+                <option value="aprovador">Aprovadores</option>
                 <option value="master">Desenvolvedor Master</option>
               </select>
 
@@ -623,7 +623,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                             )}
                             {u.role === 'aprovador' && (
                               <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-semibold text-[11px] inline-flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3" /> Diretor / Aprovador
+                                <ShieldCheck className="w-3 h-3" /> Aprovador
                               </span>
                             )}
                             {u.role === 'master' && (
@@ -1160,7 +1160,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                     <option value="colaborador">Colaborador</option>
                     <option value="gestor">Gestor do Setor</option>
                     <option value="compras">Setor de Compras</option>
-                    <option value="aprovador">Diretor / Aprovador da Diretoria</option>
+                    <option value="aprovador">Aprovador</option>
                     <option value="master">Desenvolvedor Master</option>
                   </select>
                 </div>

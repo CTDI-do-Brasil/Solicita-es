@@ -1,4 +1,4 @@
-import { PurchaseOrderStatus, ManagerApprovalStatus, SectorType, User, PurchaseRequest, ApproverName } from './types';
+import { PurchaseOrderStatus, ManagerApprovalStatus, SectorType, ProjectType, User, PurchaseRequest, ApproverName } from './types';
 
 export function formatCurrency(value?: number | null): string {
   if (value === undefined || value === null || isNaN(value)) {
@@ -395,6 +395,67 @@ export function getSectorColor(sector: SectorType): {
         text: 'text-slate-800',
         border: 'border-slate-200',
         accent: '#64748b',
+      };
+  }
+}
+
+export function getProjectColor(project?: ProjectType | string): {
+  badge: string;
+  dot: string;
+  text: string;
+  bg: string;
+} {
+  switch (project) {
+    case 'Cielo':
+      return {
+        badge: 'bg-sky-100 text-sky-800 border-sky-300',
+        dot: 'bg-sky-500',
+        text: 'text-sky-800',
+        bg: 'bg-sky-50',
+      };
+    case 'Claro':
+      return {
+        badge: 'bg-red-100 text-red-800 border-red-300',
+        dot: 'bg-red-500',
+        text: 'text-red-800',
+        bg: 'bg-red-50',
+      };
+    case 'VIVO':
+      return {
+        badge: 'bg-purple-100 text-purple-800 border-purple-300',
+        dot: 'bg-purple-500',
+        text: 'text-purple-800',
+        bg: 'bg-purple-50',
+      };
+    case 'TIM':
+      return {
+        badge: 'bg-blue-100 text-blue-800 border-blue-300',
+        dot: 'bg-blue-600',
+        text: 'text-blue-800',
+        bg: 'bg-blue-50',
+      };
+    case 'Alloha':
+      return {
+        badge: 'bg-amber-100 text-amber-900 border-amber-300',
+        dot: 'bg-amber-500',
+        text: 'text-amber-900',
+        bg: 'bg-amber-50',
+      };
+    case 'Manutenção/Engenharia':
+    case 'Manutenção':
+    case 'Engenharia':
+      return {
+        badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        dot: 'bg-emerald-500',
+        text: 'text-emerald-800',
+        bg: 'bg-emerald-50',
+      };
+    default:
+      return {
+        badge: 'bg-slate-100 text-slate-800 border-slate-300',
+        dot: 'bg-slate-500',
+        text: 'text-slate-800',
+        bg: 'bg-slate-50',
       };
   }
 }
