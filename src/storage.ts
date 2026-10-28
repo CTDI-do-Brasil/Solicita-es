@@ -120,6 +120,18 @@ export function normalizeAllowedProjects(raw: any, role?: string): ProjectType[]
   return role === 'colaborador' ? ['Manutenção/Engenharia'] : [...ALL_PROJECTS];
 }
 
+/**
+ * Regra de envio direto para Compras (sem aprovação do gestor do setor):
+ * - Todos os usuários do setor TI
+ * - Gestores de qualquer setor
+ * - Aprovadores
+ * A cadeia de aprovadores (Fernando → Eduardo → Luiz) após a cotação continua valendo normalmente.
+ */
+export function canSendDirectToPurchasing(user?: User | null): boolean {
+  if (!user) return false;
+  return user.sector === 'TI' || user.role === 'gestor' || user.role === 'aprovador';
+}
+
 export const storage = {
   getUsers(): User[] {
     try {
@@ -275,7 +287,19 @@ export const storage = {
     // If manager submits, is it automatically approved or requires one-click approval?
     // As per user prompt: "Tanto o gestor quanto os novos usuários que eles criarão poderá fazer solicitações de compra... O gestor inicialmente terá que aprovar essa solicitação."
     // If the manager creates it, we can auto-approve or keep it clear:
-    const isManager = currentUser.role === 'gestor';
+    // Envio direto para Compras: setor TI, gestores e aprovadores (pula apenas a aprovação do gestor do setor).
+    // Colaboradores dos demais setores continuam precisando da aprovação do gestor.
+    const isDirect = canSendDirectToPurchasing(currentUser);
+    const directLabel = currentUser.role === 'gestor'
+      ? 'Próprio Gestor'
+      : currentUser.role === 'aprovador'
+        ? 'Aprovador - envio direto'
+        : 'Setor TI - envio direto';
+    const directNotes = currentUser.role === 'gestor'
+      ? 'Solicitação aprovada diretamente pelo gestor da área.'
+      : currentUser.role === 'aprovador'
+        ? 'Solicitação enviada diretamente a Compras por aprovador.'
+        : 'Solicitação do setor de TI enviada diretamente a Compras.';
 
     const newRequest: PurchaseRequest = {
       ...data,
@@ -283,11 +307,11 @@ export const storage = {
       code,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      managerApprovalStatus: isManager ? 'aprovado' : 'pendente',
-      managerApprovedAt: isManager ? new Date().toISOString() : undefined,
-      managerApprovedBy: isManager ? `${currentUser.name} (Próprio Gestor)` : undefined,
-      managerNotes: isManager ? 'Solicitação aprovada diretamente pelo gestor da área.' : undefined,
-      purchaseStatus: isManager ? 'recebido_em_compras' : 'aguardando_aprovacao_gestor',
+      managerApprovalStatus: isDirect ? 'aprovado' : 'pendente',
+      managerApprovedAt: isDirect ? new Date().toISOString() : undefined,
+      managerApprovedBy: isDirect ? `${currentUser.name} (${directLabel})` : undefined,
+      managerNotes: isDirect ? directNotes : undefined,
+      purchaseStatus: isDirect ? 'recebido_em_compras' : 'aguardando_aprovacao_gestor',
     };
 
     const updated = [newRequest, ...all];

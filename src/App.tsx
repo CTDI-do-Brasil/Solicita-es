@@ -195,6 +195,7 @@ export default function App() {
                 <ApproversView
                   currentUser={currentUser}
                   onSelectRequest={(req) => setSelectedRequest(req)}
+                  onOpenNewRequest={() => setShowRequestModal(true)}
                   requestsVersion={requestsVersion}
                 />
               </div>
@@ -230,6 +231,7 @@ export default function App() {
           <ApproversView
             currentUser={currentUser}
             onSelectRequest={(req) => setSelectedRequest(req)}
+            onOpenNewRequest={() => setShowRequestModal(true)}
             requestsVersion={requestsVersion}
           />
         ) : isPurchasingSector ? (

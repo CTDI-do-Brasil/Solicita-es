@@ -25,7 +25,8 @@ import {
   Calendar,
   CalendarRange,
   RotateCcw,
-  CreditCard
+  CreditCard,
+  Plus
 } from 'lucide-react';
 
 const MONTHS_LIST = [
@@ -47,12 +48,14 @@ interface ApproversViewProps {
   currentUser: User;
   onSelectRequest: (req: PurchaseRequest) => void;
   requestsVersion: number;
+  onOpenNewRequest?: () => void;
 }
 
 export const ApproversView: React.FC<ApproversViewProps> = ({
   currentUser,
   onSelectRequest,
   requestsVersion,
+  onOpenNewRequest,
 }) => {
   // Determine if the logged-in user is one of the 3 approvers or Master
   const detectedApprover = getApproverFromUser(currentUser);
@@ -321,6 +324,43 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
           <span>{actionSuccessMsg}</span>
         </div>
       )}
+
+      {/* Approver Header & Action Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                Alçada de Decisão & Aprovação Executiva
+              </span>
+              {currentApproverRole && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                  {currentApproverRole}
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">
+              Esteira de Aprovadores • {currentUser.name}
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Avalie e aprove solicitações em cotação após envio por Compras, ou abra novas solicitações corporativas com envio direto.
+            </p>
+          </div>
+
+          {onOpenNewRequest && (
+            <div className="shrink-0">
+              <button
+                id="new-approver-request-button"
+                onClick={onOpenNewRequest}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nova Solicitação de Compra</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* KPI Cards / Indicadores Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

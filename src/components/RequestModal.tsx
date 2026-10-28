@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { User, PurchaseRequest, RequestItem, ProjectType, ALL_PROJECTS } from '../types';
-import { storage } from '../storage';
+import { storage, canSendDirectToPurchasing } from '../storage';
 import { getProjectColor } from '../utils';
 import { 
   X, 
@@ -179,7 +179,12 @@ export const RequestModal: React.FC<RequestModalProps> = ({
     }
   };
 
-  const isManager = currentUser.role === 'gestor';
+  const isDirect = canSendDirectToPurchasing(currentUser);
+  const directReason = currentUser.role === 'gestor'
+    ? `Como gestor responsável do setor de ${currentUser.sector}`
+    : currentUser.role === 'aprovador'
+      ? 'Como aprovador'
+      : 'Como usuário do setor de TI';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
@@ -210,15 +215,15 @@ export const RequestModal: React.FC<RequestModalProps> = ({
 
         {/* Notice of Approval Workflow */}
         <div className={`px-6 py-2.5 border-b text-xs flex items-start gap-2.5 shrink-0 ${
-          isManager 
+          isDirect 
             ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900' 
             : 'bg-amber-50/80 border-amber-200 text-amber-900'
         }`}>
-          <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${isManager ? 'text-emerald-600' : 'text-amber-600'}`} />
+          <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${isDirect ? 'text-emerald-600' : 'text-amber-600'}`} />
           <div>
-            {isManager ? (
+            {isDirect ? (
               <span>
-                <strong>Aprovação Imediata:</strong> Como gestor responsável do setor de {currentUser.sector}, esta solicitação será encaminhada diretamente à <strong>Central de Compras</strong> para cotação e emissão de pedido.
+                <strong>Envio Direto:</strong> {directReason}, esta solicitação será encaminhada diretamente à <strong>Central de Compras</strong> para cotação e emissão de pedido, sem necessidade de aprovação do gestor do setor.
               </span>
             ) : (
               <span>
