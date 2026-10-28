@@ -121,6 +121,35 @@ router.post('/', async (req: Request, res: Response) => {
       code = `S${String(nextNum).padStart(5, '0')}`;
     }
 
+    // Garantir que requester_id não quebre restrição de chave estrangeira caso o usuário ainda não exista no banco
+    let safeRequesterId: string | null = null;
+    if (data.requesterId) {
+      try {
+        const uCheck = await pool.query('SELECT id FROM users WHERE id = $1', [data.requesterId]);
+        if (uCheck.rows.length > 0) {
+          safeRequesterId = data.requesterId;
+        } else if (data.requesterName) {
+          // Cria o usuário automaticamente no PostgreSQL para manter integridade
+          await pool.query(
+            `INSERT INTO users (id, name, email, role, sector, position)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (id) DO NOTHING`,
+            [
+              data.requesterId,
+              data.requesterName,
+              data.requesterEmail || `${data.requesterId}@ctdibrasil.com.br`,
+              data.role || 'colaborador',
+              data.sector || 'TI',
+              data.position || 'Colaborador Solicitante'
+            ]
+          );
+          safeRequesterId = data.requesterId;
+        }
+      } catch {
+        safeRequesterId = null;
+      }
+    }
+
     const query = `
       INSERT INTO purchase_requests (
         id, code, title, description, reason, link_url, quantity, unit, priority,
@@ -150,7 +179,7 @@ router.post('/', async (req: Request, res: Response) => {
       data.quantity || 1,
       data.unit || 'un',
       data.priority || 'media',
-      data.requesterId || null,
+      safeRequesterId,
       data.requesterName || '',
       data.sector || '',
       data.createdAt || now,
