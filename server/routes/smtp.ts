@@ -137,6 +137,10 @@ router.post('/test', async (req: Request, res: Response) => {
       });
     }
 
+    // Se o teste detectou um container interno alternativo (ex: srv-captain--mail ou porta 25), utiliza ele
+    if (verifyResult.activeHost) testConfig.host = verifyResult.activeHost;
+    if (verifyResult.activePort) testConfig.port = verifyResult.activePort;
+
     // 2. Dispara e-mail de teste
     const emailSent = await sendEmail(
       {

@@ -129,7 +129,7 @@ export function getTransporter(): Transporter | null {
 }
 
 // Verificação de conexão com o servidor SMTP
-export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{ ok: boolean; message: string; details?: any }> {
+export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{ ok: boolean; message: string; details?: any; activeHost?: string; activePort?: number }> {
   const cfg = customConfig || await getActiveSmtpConfig();
   if (!cfg.host) {
     return {
@@ -145,7 +145,12 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
     if (!customConfig) {
       transporter = client;
     }
-    return { ok: true, message: `Conexão SMTP com ${cfg.host}:${cfg.port} estabelecida com sucesso!` };
+    return { 
+      ok: true, 
+      message: `Conexão SMTP com ${cfg.host}:${cfg.port} estabelecida com sucesso!`,
+      activeHost: cfg.host,
+      activePort: cfg.port,
+    };
   } catch (error: any) {
     console.error(`[Nexus Mailer] Erro ao verificar conexão SMTP (${cfg.host}:${cfg.port}):`, error.message);
 
@@ -166,9 +171,60 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
         if (!customConfig) {
           transporter = noAuthTransport;
         }
-        return { ok: true, message: 'Conexão SMTP estabelecida com sucesso (modo relay interno sem autenticação na porta 25)!' };
+        return { 
+          ok: true, 
+          message: 'Conexão SMTP estabelecida com sucesso (modo relay interno sem autenticação na porta 25)!',
+          activeHost: cfg.host,
+          activePort: 25,
+        };
       } catch (innerErr: any) {
         console.error('[Nexus Mailer] Fallback sem auth também falhou:', innerErr.message);
+      }
+    }
+
+    // Se falhou por timeout ou erro de rede (comum no CapRover quando se tenta host externo em vez de container interno)
+    const isNetworkError = error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.message?.includes('Timeout');
+    if (isNetworkError) {
+      const candidates = [
+        { host: 'srv-captain--mail', port: 25 },
+        { host: 'srv-captain--mailserver', port: 25 },
+        { host: 'mail.ctdibrasil.com.br', port: 25 },
+        { host: 'srv-captain--mail', port: 587 },
+        { host: 'srv-captain--mailserver', port: 587 },
+      ];
+
+      for (const cand of candidates) {
+        if (cand.host === cfg.host && cand.port === cfg.port) continue;
+        try {
+          console.log(`[Nexus Mailer] Tentando fallback automático para container interno ${cand.host}:${cand.port}...`);
+          const fbConfig: any = {
+            host: cand.host,
+            port: cand.port,
+            secure: false,
+            ignoreTLS: true,
+            connectionTimeout: 5000,
+            greetingTimeout: 4000,
+            socketTimeout: 8000,
+            tls: { rejectUnauthorized: false },
+          };
+          if (cand.port !== 25 && cfg.user && cfg.pass) {
+            fbConfig.auth = { user: cfg.user, pass: cfg.pass };
+          }
+          const fbTransport = nodemailer.createTransport(fbConfig);
+          await fbTransport.verify();
+          console.log(`[Nexus Mailer] Fallback automático para ${cand.host}:${cand.port} CONECTADO COM SUCESSO!`);
+          if (!customConfig) {
+            transporter = fbTransport;
+          }
+          return {
+            ok: true,
+            message: `Conexão SMTP estabelecida com sucesso via rede interna do CapRover (${cand.host}:${cand.port})!`,
+            activeHost: cand.host,
+            activePort: cand.port,
+          };
+        } catch {
+          // Continua testando o próximo candidato
+        }
       }
     }
 

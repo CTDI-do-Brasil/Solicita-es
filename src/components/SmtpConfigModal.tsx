@@ -152,6 +152,8 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
       const data = await safeParseResponse(res);
 
       if (data.success) {
+        if (data.activeHost) setHost(data.activeHost);
+        if (data.activePort) setPort(data.activePort);
         setFeedback({
           type: 'success',
           message: data.message || 'Conexão estabelecida e e-mail de teste enviado com sucesso!',
