@@ -239,6 +239,13 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
     }
   };
 
+  // Limpar todas as solicitações do sistema
+  const handleClearAllRequests = async () => {
+    if (confirm('ATENÇÃO: Deseja realmente excluir permanentemente TODAS as solicitações do sistema e do banco de dados? Esta ação não pode ser desfeita.')) {
+      await storage.clearAllRequests();
+    }
+  };
+
   // Export JSON
   const handleExportData = () => {
     const backup = {
@@ -734,6 +741,17 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                 <option value="compra_realizada">Compra Realizada</option>
                 <option value="entregue">Entregue no Setor</option>
               </select>
+
+              {allRequests.length > 0 && (
+                <button
+                  onClick={handleClearAllRequests}
+                  className="px-3 py-1.5 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Excluir permanentemente todas as solicitações cadastradas"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Limpar Todas ({allRequests.length})</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -955,6 +973,24 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
               >
                 <Download className="w-3.5 h-3.5" />
                 Baixar Arquivo JSON
+              </button>
+            </div>
+
+            {/* Limpar Todas as Solicitações */}
+            <div className="p-4 bg-rose-50/70 rounded-xl border border-rose-200 space-y-3">
+              <div className="flex items-center gap-2 text-rose-950 font-bold text-sm">
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>Limpar Banco de Solicitações</span>
+              </div>
+              <p className="text-xs text-rose-800">
+                Remove permanentemente todas as solicitações cadastradas no sistema e no banco de dados ({allRequests.length} no total).
+              </p>
+              <button
+                onClick={handleClearAllRequests}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Excluir Todas as Solicitações
               </button>
             </div>
 

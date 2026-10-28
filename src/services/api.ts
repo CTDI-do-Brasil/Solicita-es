@@ -96,6 +96,15 @@ export const api = {
     }
   },
 
+  async clearAllRequests(): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/requests`, { method: 'DELETE' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
   // Versões e Revisores
   async getVersions(): Promise<AppVersionRelease[] | null> {
     try {

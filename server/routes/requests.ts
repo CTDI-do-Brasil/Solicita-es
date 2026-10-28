@@ -386,6 +386,29 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/requests/all ou DELETE /api/requests (Limpar todas as solicitações)
+router.delete('/all', async (_req: Request, res: Response) => {
+  try {
+    await pool.query('DELETE FROM system_logs');
+    await pool.query('DELETE FROM purchase_requests');
+    res.json({ success: true, message: 'Todas as solicitações foram excluídas com sucesso' });
+  } catch (error: any) {
+    console.error('Erro ao excluir todas as solicitações:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/', async (_req: Request, res: Response) => {
+  try {
+    await pool.query('DELETE FROM system_logs');
+    await pool.query('DELETE FROM purchase_requests');
+    res.json({ success: true, message: 'Todas as solicitações foram excluídas com sucesso' });
+  } catch (error: any) {
+    console.error('Erro ao excluir todas as solicitações:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // DELETE /api/requests/:id
 router.delete('/:id', async (req: Request, res: Response) => {
   try {

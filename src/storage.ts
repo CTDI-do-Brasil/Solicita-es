@@ -3,7 +3,7 @@ import { INITIAL_USERS, INITIAL_REQUESTS, MASTER_USER } from './mockData';
 import { api } from './services/api';
 
 const USERS_STORAGE_KEY = 'compras_app_users_v2';
-const REQUESTS_STORAGE_KEY = 'compras_app_requests_v2';
+const REQUESTS_STORAGE_KEY = 'compras_app_requests_v3';
 const CURRENT_USER_KEY = 'compras_app_current_user_v2';
 const VERSIONS_STORAGE_KEY = 'compras_app_versions_v2';
 
@@ -12,6 +12,7 @@ if (typeof window !== 'undefined') {
   try {
     localStorage.removeItem('compras_app_users_v1');
     localStorage.removeItem('compras_app_requests_v1');
+    localStorage.removeItem('compras_app_requests_v2');
     localStorage.removeItem('compras_app_current_user_v1');
   } catch {}
 }
@@ -658,7 +659,19 @@ export const storage = {
     if (updated.length === allRequests.length) return false;
 
     this.saveRequests(updated);
+    api.deleteRequest(requestId).catch(() => {});
     return true;
+  },
+
+  async clearAllRequests(): Promise<boolean> {
+    try {
+      this.saveRequests([]);
+      await api.clearAllRequests();
+      return true;
+    } catch (e) {
+      console.error('Falha ao limpar todas as solicitações:', e);
+      return false;
+    }
   },
 
   updateRequest(requestId: string, data: Partial<PurchaseRequest>): boolean {
