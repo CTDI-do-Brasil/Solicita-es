@@ -37,7 +37,8 @@ import {
   BarChart3,
   KeyRound,
   Mail,
-  Send
+  Send,
+  Check
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 import { ApproversView } from './ApproversView';
