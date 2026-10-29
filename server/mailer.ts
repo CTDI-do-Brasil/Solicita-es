@@ -702,9 +702,9 @@ export async function notifyPurchasingManagerApproved(request: any): Promise<boo
   const html = buildEmailTemplate({
     headerTitle: 'Solicitação Aprovada pelo Gestor',
     headerSubtitle: `A gerência de ${request.sector} aprovou a solicitação.`,
-    badgeText: 'Recebido em Compras',
-    badgeBgColor: '#0284C7',
-    badgeTextColor: '#FFFFFF',
+    badgeText: 'Aguardando Cotação',
+    badgeBgColor: '#FACC15',
+    badgeTextColor: '#0F172A',
     buttonBgColor: '#0284C7',
     requestCode: request.code,
     requestTitle: request.title,

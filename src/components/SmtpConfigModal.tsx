@@ -436,13 +436,13 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                     type="button"
                     onClick={() => handleTestStep(2)}
                     disabled={testingStep !== null}
-                    className="p-2.5 bg-white border border-slate-200 hover:border-sky-400 hover:bg-sky-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                    className="p-2.5 bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/50 rounded-lg text-left flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
                   >
                     <div>
                       <div className="font-bold text-slate-900">2. Setor de Compras</div>
-                      <div className="text-[10px] text-slate-500">Aprovado pelo Gestor</div>
+                      <div className="text-[10px] text-amber-700 font-medium">Aguardando Cotação</div>
                     </div>
-                    {testingStep === 2 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" /> : <Send className="w-3.5 h-3.5 text-sky-600" />}
+                    {testingStep === 2 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" /> : <Send className="w-3.5 h-3.5 text-amber-600" />}
                   </button>
 
                   <button
