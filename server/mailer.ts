@@ -775,9 +775,9 @@ export async function notifyCurrentApprover(request: any, approverName: string):
   const html = buildEmailTemplate({
     headerTitle: `Solicitação para sua Aprovação (${approverName})`,
     headerSubtitle: 'O Setor de Compras formalizou a proposta comercial e o pedido aguarda sua análise executiva.',
-    badgeText: `Aguardando ${orderLabel} (${approverName})`,
-    badgeBgColor: '#9333EA',
-    badgeTextColor: '#FFFFFF',
+    badgeText: 'Aguardando Aprovação',
+    badgeBgColor: '#FACC15',
+    badgeTextColor: '#0F172A',
     buttonBgColor: '#9333EA',
     requestCode: request.code,
     requestTitle: request.title,
