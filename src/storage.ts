@@ -334,7 +334,11 @@ export const storage = {
       ...all[index],
       managerApprovalStatus: 'aprovado',
       managerApprovedAt: new Date().toISOString(),
-      managerApprovedBy: manager.role === 'master' ? `${manager.name} (Acesso Master)` : `${manager.name} (Gestor de ${manager.sector})`,
+      managerApprovedBy: manager.role === 'master' 
+        ? `${manager.name} (Acesso Master)` 
+        : manager.role === 'aprovador'
+          ? `${manager.name} (Diretor e Gestor de ${manager.sector})`
+          : `${manager.name} (Gestor de ${manager.sector})`,
       managerNotes: notes || 'Solicitação aprovada para cotação e compra.',
       purchaseStatus: 'recebido_em_compras',
       updatedAt: new Date().toISOString(),
@@ -362,7 +366,11 @@ export const storage = {
       ...all[index],
       managerApprovalStatus: 'reprovado',
       managerApprovedAt: new Date().toISOString(),
-      managerApprovedBy: manager.role === 'master' ? `${manager.name} (Acesso Master)` : `${manager.name} (Gestor de ${manager.sector})`,
+      managerApprovedBy: manager.role === 'master' 
+        ? `${manager.name} (Acesso Master)` 
+        : manager.role === 'aprovador'
+          ? `${manager.name} (Diretor e Gestor de ${manager.sector})`
+          : `${manager.name} (Gestor de ${manager.sector})`,
       managerNotes: notes.trim(),
       purchaseStatus: 'cancelado',
       updatedAt: new Date().toISOString(),

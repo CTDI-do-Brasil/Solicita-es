@@ -196,6 +196,7 @@ export default function App() {
                   currentUser={currentUser}
                   onSelectRequest={(req) => setSelectedRequest(req)}
                   onOpenNewRequest={() => setShowRequestModal(true)}
+                  onOpenManageUsers={() => setShowUserModal(true)}
                   requestsVersion={requestsVersion}
                 />
               </div>
@@ -232,6 +233,7 @@ export default function App() {
             currentUser={currentUser}
             onSelectRequest={(req) => setSelectedRequest(req)}
             onOpenNewRequest={() => setShowRequestModal(true)}
+            onOpenManageUsers={() => setShowUserModal(true)}
             requestsVersion={requestsVersion}
           />
         ) : isPurchasingSector ? (
@@ -272,13 +274,13 @@ export default function App() {
       )}
 
       {/* Modal: Sector Manager Adding Users */}
-      {showUserModal && (currentUser.role === 'gestor' || currentUser.role === 'master') && (
+      {showUserModal && (currentUser.role === 'gestor' || currentUser.role === 'master' || currentUser.role === 'aprovador') && (
         <ErrorBoundary 
           fallbackTitle="Falha ao carregar Gerenciamento de Equipe"
           onReset={() => setShowUserModal(false)}
         >
           <SectorUserManagementModal
-            manager={currentUser.role === 'master' ? { ...currentUser, sector: simulatedSector, role: 'gestor' } : currentUser}
+            manager={currentUser.role === 'master' ? { ...currentUser, sector: simulatedSector, role: 'gestor' } : { ...currentUser, role: 'gestor' }}
             onClose={() => setShowUserModal(false)}
             onUserCreated={handleUserCreated}
           />

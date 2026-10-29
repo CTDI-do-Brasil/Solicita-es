@@ -196,6 +196,24 @@ export const DEMO_USERS: User[] = [
     sector: 'Manutenção',
     position: 'Mecânico de Manutenção Sênior',
     createdAt: '2026-02-15T09:00:00Z',
+  },
+  {
+    id: 'user-colab-fin-1',
+    name: 'Larissa Mendes',
+    email: 'larissa.financeiro@empresa.com',
+    role: 'colaborador',
+    sector: 'Financeiro',
+    position: 'Analista de Controladoria & Contas a Pagar',
+    createdAt: '2026-02-18T09:00:00Z',
+  },
+  {
+    id: 'user-colab-compras-1',
+    name: 'Bruna Toledo',
+    email: 'bruna.compras@empresa.com',
+    role: 'colaborador',
+    sector: 'Compras',
+    position: 'Compradora Júnior de Suprimentos',
+    createdAt: '2026-02-20T09:00:00Z',
   }
 ];
 
@@ -286,6 +304,55 @@ export const DEMO_REQUESTS: PurchaseRequest[] = [
     purchasedBy: 'Juliana Paes Correia (Compras)',
     purchasingNotes: 'Cotação preliminar registrada pelo setor de Compras.',
     updatedAt: '2026-09-14T09:15:00Z',
+  },
+
+  // 2B. Financeiro - Aguardando Aprovação do Gestor (Eduardo Costa)
+  {
+    id: 'req-002-fin',
+    code: 'S00021',
+    title: 'Licenças de Software de Conciliação Bancária Automatizada',
+    description: 'Renovação de 3 licenças anuais do módulo de conciliação bancária eletrônica e extrato OFX para a equipe financeira.',
+    reason: 'Automação do fechamento contábil diário e redução do tempo manual de conferência de extratos.',
+    linkUrl: 'https://exemplo.com.br/software-financeiro',
+    quantity: 3,
+    unit: 'licenças',
+    priority: 'alta',
+    project: 'Manutenção/Engenharia',
+    requesterId: 'user-colab-fin-1',
+    requesterName: 'Larissa Mendes',
+    sector: 'Financeiro',
+    createdAt: '2026-10-20T10:30:00Z',
+    managerApprovalStatus: 'pendente',
+    purchaseStatus: 'aguardando_aprovacao_gestor',
+    items: [
+      { id: 'item-fin-1', name: 'Software Conciliação Bancária', description: 'Assinatura anual software de conciliação bancária', quantity: 3, unit: 'licenças' }
+    ],
+    updatedAt: '2026-10-20T10:30:00Z',
+  },
+
+  // 2C. Compras - Aguardando Aprovação do Gestor (Fernando Silva)
+  {
+    id: 'req-002-compras',
+    code: 'S00022',
+    title: 'Etiquetas Térmicas de Código de Barras e Bobinas Ribbon',
+    description: 'Lote de 20 rolos de etiquetas adesivas térmicas 100x50mm e 10 fitas ribbon cera para identificação de materiais recebidos no almoxarifado.',
+    reason: 'Estoque de insumos de etiquetagem de entrada zerado no almoxarifado central.',
+    linkUrl: 'https://exemplo.com.br/etiquetas-almoxarifado',
+    quantity: 30,
+    unit: 'rolos',
+    priority: 'media',
+    project: 'Manutenção/Engenharia',
+    requesterId: 'user-colab-compras-1',
+    requesterName: 'Bruna Toledo',
+    sector: 'Compras',
+    createdAt: '2026-10-22T14:15:00Z',
+    managerApprovalStatus: 'pendente',
+    purchaseStatus: 'aguardando_aprovacao_gestor',
+    items: [
+      { id: 'item-cmp-1', name: 'Etiquetas térmicas 100x50mm', description: 'Etiquetas térmicas 100x50mm', quantity: 20, unit: 'rolos' },
+      { id: 'item-cmp-2', name: 'Fitas ribbon cera', description: 'Fitas ribbon cera 110mm x 74m', quantity: 10, unit: 'unidades' }
+    ],
+    updatedAt: '2026-10-22T14:15:00Z',
   },
 
   // 3. Produção - Em Cotação pelo Setor de Compras

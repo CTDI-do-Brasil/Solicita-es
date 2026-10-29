@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { User, PurchaseRequest, ApproverName, APPROVAL_CHAIN } from '../types';
 import { storage } from '../storage';
-import { formatCurrency, formatDate, formatDateTime, getSectorColor, getProjectColor, getApproverFromUser } from '../utils';
+import { formatCurrency, formatDate, formatDateTime, getSectorColor, getProjectColor, getApproverFromUser, getPurchaseStatusInfo } from '../utils';
 import { 
   ShieldCheck, 
   CheckCircle2, 
@@ -26,7 +26,9 @@ import {
   CalendarRange,
   RotateCcw,
   CreditCard,
-  Plus
+  Plus,
+  Users,
+  X
 } from 'lucide-react';
 
 const MONTHS_LIST = [
@@ -49,6 +51,7 @@ interface ApproversViewProps {
   onSelectRequest: (req: PurchaseRequest) => void;
   requestsVersion: number;
   onOpenNewRequest?: () => void;
+  onOpenManageUsers?: () => void;
 }
 
 export const ApproversView: React.FC<ApproversViewProps> = ({
@@ -56,12 +59,13 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
   onSelectRequest,
   requestsVersion,
   onOpenNewRequest,
+  onOpenManageUsers,
 }) => {
   // Determine if the logged-in user is one of the 3 approvers or Master
   const detectedApprover = getApproverFromUser(currentUser);
   const isMaster = currentUser.role === 'master';
 
-  const [activeTab, setActiveTab] = useState<'minha_vez' | 'esteira' | 'aprovados' | 'reprovados'>('minha_vez');
+  const [activeTab, setActiveTab] = useState<'minha_vez' | 'esteira' | 'aprovados' | 'reprovados' | 'meu_setor'>('minha_vez');
   const [searchQuery, setSearchQuery] = useState('');
   const [sectorFilter, setSectorFilter] = useState<string>('todos');
   
@@ -70,6 +74,10 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
   const [rejectionModalReq, setRejectionModalReq] = useState<PurchaseRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+
+  // Manager rejection modal state (when approving/rejecting as Sector Manager)
+  const [managerRejectionModalReq, setManagerRejectionModalReq] = useState<PurchaseRequest | null>(null);
+  const [managerRejectionReason, setManagerRejectionReason] = useState('');
 
   // Fetch all requests
   const allRequests = useMemo(() => {
@@ -310,6 +318,48 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       setActionSuccessMsg(`Pedido ${rejectionModalReq.code} reprovado por ${approverToUse}. O setor de compras foi notificado.`);
       setRejectionModalReq(null);
       setRejectionReason('');
+      setTimeout(() => setActionSuccessMsg(''), 4000);
+    }
+  };
+
+  // Sector Data for Approvers who also act as Sector Managers (Fernando em Compras, Eduardo no Financeiro, etc.)
+  const sectorRequests = useMemo(() => {
+    if (!currentUser.sector) return [];
+    return allRequests.filter(r => r.sector === currentUser.sector);
+  }, [allRequests, currentUser.sector]);
+
+  const pendingSectorApprovals = useMemo(() => {
+    return sectorRequests.filter(r => r.managerApprovalStatus === 'pendente');
+  }, [sectorRequests]);
+
+  const sectorUsers = useMemo(() => {
+    if (!currentUser.sector) return [];
+    return storage.getUsers().filter(u => u.sector === currentUser.sector);
+  }, [currentUser.sector]);
+
+  const totalSectorSpent = useMemo(() => {
+    return sectorRequests.reduce((acc, r) => acc + (r.totalPrice || 0), 0);
+  }, [sectorRequests]);
+
+  // Handler for manager approving request from their sector
+  const handleManagerApprove = (req: PurchaseRequest) => {
+    const notes = actionNotes[req.id] || '';
+    const success = storage.approveRequestByManager(req.id, currentUser, notes);
+    if (success) {
+      setActionSuccessMsg(`Solicitação ${req.code} aprovada com sucesso! Encaminhada para a Central de Compras.`);
+      setActionNotes(prev => ({ ...prev, [req.id]: '' }));
+      setTimeout(() => setActionSuccessMsg(''), 4000);
+    }
+  };
+
+  // Handler for confirming manager rejection
+  const handleConfirmManagerRejection = () => {
+    if (!managerRejectionModalReq || !managerRejectionReason.trim()) return;
+    const success = storage.rejectRequestByManager(managerRejectionModalReq.id, currentUser, managerRejectionReason.trim());
+    if (success) {
+      setActionSuccessMsg(`Solicitação ${managerRejectionModalReq.code} reprovada com sucesso.`);
+      setManagerRejectionModalReq(null);
+      setManagerRejectionReason('');
       setTimeout(() => setActionSuccessMsg(''), 4000);
     }
   };
@@ -872,6 +922,33 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
               <XCircle className="w-3.5 h-3.5" />
               <span>Reprovados ({metrics.reprovedCount})</span>
             </button>
+
+            {/* 5. Aba Meu Setor / Minha Equipe (Fernando em Compras, Eduardo no Financeiro, Luiz em Administrativo) */}
+            {currentUser.sector && (
+              <button
+                id="approver-tab-meu-setor"
+                onClick={() => setActiveTab('meu_setor')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 border ${
+                  activeTab === 'meu_setor'
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs'
+                    : pendingSectorApprovals.length > 0
+                      ? 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Minha Equipe ({currentUser.sector})</span>
+                {pendingSectorApprovals.length > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold flex items-center gap-1 ${
+                    activeTab === 'meu_setor' 
+                      ? 'bg-amber-400 text-slate-950' 
+                      : 'bg-amber-500 text-white animate-pulse'
+                  }`}>
+                    {pendingSectorApprovals.length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Search & Sector Filters */}
@@ -903,7 +980,296 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
       </div>
 
       {/* REQUESTS LIST / CARDS */}
-      <div className="space-y-4">
+      {activeTab === 'meu_setor' ? (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Header da Gestão Setorial */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    Área de Gestão: Setor {currentUser.sector}
+                  </span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                    Gestor: {currentUser.name}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight mt-1.5">
+                  Painel de Aprovação & Equipe • Setor {currentUser.sector}
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Como gestor responsável do setor de {currentUser.sector}, aprove as solicitações abertas pelos seus colaboradores e gerencie permissões e projetos da equipe.
+                </p>
+              </div>
+
+              {/* Botões de Ação da Gestão Setorial */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {onOpenManageUsers && (
+                  <button
+                    id="approver-manage-sector-users-btn"
+                    onClick={onOpenManageUsers}
+                    className="px-3.5 py-2 rounded-xl border border-slate-300 hover:border-indigo-500 hover:bg-indigo-50/40 text-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Users className="w-4 h-4 text-indigo-600" />
+                    <span>Gerenciar Equipe ({sectorUsers.length})</span>
+                  </button>
+                )}
+
+                {onOpenNewRequest && (
+                  <button
+                    id="approver-sector-new-request-btn"
+                    onClick={onOpenNewRequest}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Nova Solicitação</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Mini KPIs do Setor */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-slate-100">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Total de Pedidos do Setor
+                </span>
+                <div className="text-xl font-bold text-slate-900 mt-0.5">
+                  {sectorRequests.length}
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  {sectorRequests.filter(r => r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado').length} em andamento
+                </span>
+              </div>
+
+              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200">
+                <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider flex items-center justify-between">
+                  <span>Aprovações Pendentes</span>
+                  {pendingSectorApprovals.length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  )}
+                </span>
+                <div className="text-xl font-bold text-amber-950 mt-0.5">
+                  {pendingSectorApprovals.length}
+                </div>
+                <span className="text-[11px] text-amber-800 font-medium">
+                  {pendingSectorApprovals.length === 1 ? '1 solicitação aguardando sua liberação' : `${pendingSectorApprovals.length} solicitações aguardando sua liberação`}
+                </span>
+              </div>
+
+              <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
+                  Gasto Faturado pelo Setor
+                </span>
+                <div className="text-xl font-bold text-emerald-950 mt-0.5">
+                  {formatCurrency(totalSectorSpent)}
+                </div>
+                <span className="text-[11px] text-emerald-700 font-medium">
+                  Valores consolidados em Compras
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. SEÇÃO DE SOLICITAÇÕES PENDENTES DESTE SETOR */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>Solicitações Aguardando sua Aprovação como Gestor ({pendingSectorApprovals.length})</span>
+              </h3>
+              <span className="text-xs text-slate-500">
+                Liberação gerencial antes do envio para cotação na Central de Compras
+              </span>
+            </div>
+
+            {pendingSectorApprovals.length === 0 ? (
+              <div className="p-8 bg-white border border-slate-200 rounded-2xl text-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-slate-800">
+                  Nenhuma aprovação pendente no setor de {currentUser.sector}
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Todas as solicitações da sua equipe já foram analisadas ou não há pedidos novos aguardando.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingSectorApprovals.map((req) => (
+                  <div key={req.id} className="p-5 bg-white border-2 border-amber-300 rounded-2xl shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-sm text-indigo-700">{req.code}</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                            Aguardando Gestor
+                          </span>
+                          {req.project && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getProjectColor(req.project).badge}`}>
+                              {req.project}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-base font-bold text-slate-900 mt-1">{req.title}</h4>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          Solicitado por <strong>{req.requesterName}</strong> ({req.requesterEmail}) em {formatDate(req.createdAt)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => onSelectRequest(req)}
+                          className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-300 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Ver Detalhes</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {req.description && (
+                      <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        {req.description}
+                      </p>
+                    )}
+
+                    {/* Tabela de itens */}
+                    {req.items && req.items.length > 0 && (
+                      <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                        <div className="bg-slate-50 px-3 py-2 font-bold text-slate-700 flex justify-between">
+                          <span>Itens Solicitados ({req.items.length})</span>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {req.items.map((item, idx) => (
+                            <div key={idx} className="px-3 py-2 flex items-center justify-between text-slate-700">
+                              <span className="font-medium truncate mr-2">{item.description}</span>
+                              <span className="shrink-0 font-mono text-slate-500">{item.quantity} {item.unit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Barra de ação rápida */}
+                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Observação para Compras (opcional)..."
+                          value={actionNotes[req.id] || ''}
+                          onChange={(e) => setActionNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
+                          className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManagerRejectionModalReq(req);
+                            setManagerRejectionReason('');
+                          }}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Reprovar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleManagerApprove(req)}
+                          className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Aprovar para Compras</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2. TODAS AS SOLICITAÇÕES DO SETOR */}
+          <div className="space-y-3 pt-4">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-600" />
+              <span>Histórico de Todas as Solicitações do Setor {currentUser.sector} ({sectorRequests.length})</span>
+            </h3>
+
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold text-[10px] tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Código / Título</th>
+                      <th className="py-3 px-4">Solicitante</th>
+                      <th className="py-3 px-4">Projeto</th>
+                      <th className="py-3 px-4">Status no Sistema</th>
+                      <th className="py-3 px-4 text-right">Valor Total</th>
+                      <th className="py-3 px-4 text-right">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {sectorRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                          Nenhuma solicitação registrada no setor {currentUser.sector}.
+                        </td>
+                      </tr>
+                    ) : (
+                      sectorRequests.map((req) => {
+                        const statusInfo = getPurchaseStatusInfo(req.purchaseStatus);
+                        return (
+                          <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-4">
+                              <span className="font-mono font-bold text-indigo-700 block">{req.code}</span>
+                              <span className="font-medium text-slate-900 truncate block max-w-xs">{req.title}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="font-semibold text-slate-900 block">{req.requesterName}</span>
+                              <span className="text-[11px] text-slate-500 block">{formatDate(req.createdAt)}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              {req.project ? (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getProjectColor(req.project).badge}`}>
+                                  {req.project}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${statusInfo.bgClass} ${statusInfo.colorClass} ${statusInfo.borderClass}`}>
+                                {statusInfo.label}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                              {req.totalPrice ? formatCurrency(req.totalPrice) : <span className="text-slate-400 text-xs font-normal">Aguardando cotação</span>}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => onSelectRequest(req)}
+                                className="px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
+                              >
+                                Detalhes
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
         {filteredList.length === 0 ? (
           <div className="bg-white p-12 text-center rounded-2xl border border-slate-200">
             <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -1258,8 +1624,9 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
           })
         )}
       </div>
+      )}
 
-      {/* REJECTION REASON MODAL */}
+      {/* REJECTION REASON MODAL (ESTEIRA EXECUTIVA) */}
       {rejectionModalReq && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95">
@@ -1302,6 +1669,58 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                 type="button"
                 disabled={!rejectionReason.trim()}
                 onClick={handleConfirmRejection}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-xs transition-colors cursor-pointer"
+              >
+                Confirmar Reprovação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE REPROVAÇÃO PELO GESTOR SETORIAL */}
+      {managerRejectionModalReq && (
+        <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Reprovar Solicitação {managerRejectionModalReq.code}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Setor {currentUser.sector} • Solicitante: {managerRejectionModalReq.requesterName}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Motivo da Reprovação do Gestor <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={managerRejectionReason}
+                onChange={(e) => setManagerRejectionReason(e.target.value)}
+                placeholder="Informe o motivo da recusa desta solicitação para o colaborador..."
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-rose-500 outline-hidden resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setManagerRejectionModalReq(null)}
+                className="px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!managerRejectionReason.trim()}
+                onClick={handleConfirmManagerRejection}
                 className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 Confirmar Reprovação
