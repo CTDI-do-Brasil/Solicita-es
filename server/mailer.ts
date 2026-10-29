@@ -839,7 +839,7 @@ export async function notifyPurchasingFullyApproved(request: any): Promise<boole
   const html = buildEmailTemplate({
     headerTitle: 'Pedido 100% Aprovado pela Diretoria!',
     headerSubtitle: 'A cadeia de aprovação executiva foi concluída com sucesso. O pedido está liberado para compra.',
-    badgeText: '100% Aprovado - Liberado',
+    badgeText: 'Aprovado - Liberado para Compra',
     badgeBgColor: '#059669',
     badgeTextColor: '#FFFFFF',
     buttonBgColor: '#059669',

@@ -492,7 +492,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                   >
                     <div>
                       <div className="font-bold text-slate-900">6. Compras (100% Aprovado)</div>
-                      <div className="text-[10px] text-slate-500">Liberado para Pedido</div>
+                      <div className="text-[10px] text-emerald-700 font-medium">Aprovado - Liberado para Compra</div>
                     </div>
                     {testingStep === 6 ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" /> : <Send className="w-3.5 h-3.5 text-emerald-600" />}
                   </button>
