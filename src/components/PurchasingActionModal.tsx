@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem } from '../types';
 import { storage } from '../storage';
-import { formatCurrency, formatDate, getSectorColor, getRequestPurchaseReleaseInfo } from '../utils';
+import { formatCurrency, formatDate, getSectorColor, getProjectColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
   X, 
   ShoppingBag, 
@@ -440,9 +440,12 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
           {/* Original Request Summary */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-xs font-bold px-2 py-0.5 rounded border ${sectorColor.badge}`}>
                   Setor: {request.sector}
+                </span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getProjectColor(request.project).badge}`}>
+                  Projeto: {request.project || 'Não informado'}
                 </span>
                 <span className="text-xs text-slate-500 font-medium">
                   Solicitante: <strong>{request.requesterName}</strong> • {formatDate(request.createdAt)}
