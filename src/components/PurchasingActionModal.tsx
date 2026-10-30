@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem, ProjectType, ALL_PROJECTS } from '../types';
+import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem } from '../types';
 import { storage } from '../storage';
 import { formatCurrency, formatDate, getSectorColor, getProjectColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
@@ -57,9 +57,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     request.purchaseStatus === 'aguardando_aprovacao_gestor' || request.purchaseStatus === 'recebido_em_compras'
       ? 'em_cotacao'
       : request.purchaseStatus
-  );
-  const [selectedProject, setSelectedProject] = useState<ProjectType>(
-    request.project || 'Manutenção/Engenharia'
   );
 
   // Initialize items and quotes
@@ -277,7 +274,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status,
-        project: selectedProject,
         purchaseOrderNumber: request.purchaseOrderNumber,
         supplier: primarySupplier,
         unitPrice: firstSelected?.unitPrice || undefined,
@@ -322,7 +318,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status: 'em_aprovacao',
-        project: selectedProject,
         purchaseOrderNumber: request.purchaseOrderNumber,
         supplier: primarySupplier,
         unitPrice: firstSelected?.unitPrice || undefined,
@@ -491,7 +486,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 
                 {/* 1. Projeto / Contrato */}
-                <div className={`p-3 rounded-xl border flex items-center gap-3 ${getProjectColor(selectedProject || request.project).badge}`}>
+                <div className={`p-3 rounded-xl border flex items-center gap-3 ${getProjectColor(request.project).badge}`}>
                   <div className="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center shrink-0 shadow-2xs">
                     <Briefcase className="w-4 h-4" />
                   </div>
@@ -500,7 +495,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                       Projeto / Contrato
                     </span>
                     <span className="text-xs sm:text-sm font-black truncate block">
-                      {selectedProject || request.project || 'Não informado'}
+                      {request.project || 'Não informado'}
                     </span>
                   </div>
                 </div>
@@ -578,50 +573,27 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
             </div>
           </div>
 
-          {/* Status & Project Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Status Selector */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                Status Operacional do Pedido <span className="text-rose-500">*</span>
-              </label>
-              <select
-                id="buyer-order-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as PurchaseOrderStatus)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
-              >
-                <option value="recebido_em_compras">Recebido em Compras (Aguardando Cotação)</option>
-                <option value="em_cotacao">Em Cotação com Fornecedores</option>
-                <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
-                <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
-                <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
-                <option value="em_transito">Em Trânsito / Em Transporte</option>
-                <option value="entregue">Entregue no Setor Solicitante</option>
-                <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
-                <option value="cancelado">Cancelado / Sem Fornecedor</option>
-              </select>
-            </div>
-
-            {/* Project / Contract Selector */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                <span>Projeto / Operação Destino</span>
-                <span className="text-[10px] text-cyan-800 font-bold lowercase">atribuído</span>
-              </label>
-              <select
-                id="buyer-order-project"
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value as ProjectType)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-bold"
-              >
-                {ALL_PROJECTS.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-
+          {/* Status Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Status Operacional do Pedido <span className="text-rose-500">*</span>
+            </label>
+            <select
+              id="buyer-order-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as PurchaseOrderStatus)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
+            >
+              <option value="recebido_em_compras">Recebido em Compras (Aguardando Cotação)</option>
+              <option value="em_cotacao">Em Cotação com Fornecedores</option>
+              <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
+              <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
+              <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
+              <option value="em_transito">Em Trânsito / Em Transporte</option>
+              <option value="entregue">Entregue no Setor Solicitante</option>
+              <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
+              <option value="cancelado">Cancelado / Sem Fornecedor</option>
+            </select>
           </div>
 
           {/* SECTION: PRODUTOS E MÚLTIPLOS ORÇAMENTOS POR PRODUTO */}
