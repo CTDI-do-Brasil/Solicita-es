@@ -5,12 +5,10 @@ import { getSectorColor, isLocalEnvironment } from '../utils';
 import { 
   Building2, 
   LogOut, 
-  UserCheck, 
   ShieldCheck, 
   ChevronDown, 
   RefreshCw, 
   RotateCcw,
-  Sparkles,
   ShieldAlert,
   SlidersHorizontal,
   GitBranch,
@@ -447,26 +445,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sectorColor.badge}`}>
                       {currentUser.sector}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    {currentUser.role === 'master' ? (
-                      <span className="flex items-center gap-1 text-amber-700 font-bold">
-                        <ShieldAlert className="w-3.5 h-3.5 text-amber-600" /> Desenvolvedor Master (Total)
-                      </span>
-                    ) : currentUser.role === 'compras' ? (
-                      <span className="flex items-center gap-1 text-cyan-700 font-medium">
-                        <Sparkles className="w-3 h-3" /> Central de Compras
-                      </span>
-                    ) : currentUser.role === 'gestor' ? (
-                      <span className="flex items-center gap-1 text-indigo-700 font-medium">
-                        <ShieldCheck className="w-3 h-3" /> Gestor Responsável
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-slate-600">
-                        <UserCheck className="w-3 h-3" /> Colaborador
-                      </span>
-                    )}
-                    <span>• {currentUser.position}</span>
                   </div>
                 </div>
 
