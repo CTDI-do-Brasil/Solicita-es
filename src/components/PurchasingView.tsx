@@ -10,7 +10,6 @@ import {
   getProjectColor,
   getRequestDelayInfo,
   getRequestPurchaseReleaseInfo,
-  getLatestRequestStatusInfo,
   isRequestWaitingQuote
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
@@ -735,7 +734,6 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 const statusInfo = getPurchaseStatusInfo(req.purchaseStatus);
                 const approvalInfo = getManagerApprovalInfo(req.managerApprovalStatus);
                 const releaseInfo = getRequestPurchaseReleaseInfo(req);
-                const latestStatus = getLatestRequestStatusInfo(req);
                 const sectorColor = getSectorColor(req.sector);
                 const hasPrice = req.totalPrice !== undefined && req.totalPrice > 0;
                 const delayInfo = getRequestDelayInfo(req);
@@ -769,10 +767,6 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                               {req.project}
                             </span>
                           )}
-
-                          <span className={`text-xs px-2.5 py-0.5 rounded-full border ${latestStatus.badgeClass}`}>
-                            {latestStatus.label}
-                          </span>
 
                           <span className="text-[11px] text-slate-400">
                             • Solicitante: <strong>{req.requesterName}</strong> ({formatDate(req.createdAt)})
