@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem } from '../types';
 import { storage } from '../storage';
-import { formatCurrency, formatDate, getSectorColor, getProjectColor, getRequestPurchaseReleaseInfo } from '../utils';
+import { formatCurrency, formatDate, getSectorColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
   X, 
   ShoppingBag, 
@@ -486,15 +486,15 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 
                 {/* 1. Projeto / Contrato */}
-                <div className={`p-3 rounded-xl border flex items-center gap-3 ${getProjectColor(request.project).badge}`}>
-                  <div className="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center shrink-0 shadow-2xs">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shrink-0 shadow-2xs">
                     <Briefcase className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold tracking-wider block opacity-75">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
                       Projeto / Contrato
                     </span>
-                    <span className="text-xs sm:text-sm font-black truncate block">
+                    <span className="text-xs sm:text-sm font-bold text-slate-900 truncate block">
                       {request.project || 'Não informado'}
                     </span>
                   </div>
