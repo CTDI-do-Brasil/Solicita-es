@@ -628,16 +628,17 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                   {activeTab === 'versoes' && 'Controle de Versões & Revisores'}
                 </h1>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {activeTab === 'geral' && 'Fila operacional de solicitações ativas em cotação e atendimento'}
-                {activeTab === 'cotacao' && 'Fila operacional de solicitações aguardando cotação de preços com fornecedores ou definição de valor'}
-                {activeTab === 'liberadas' && 'Solicitações autorizadas prontas para compra ou emissão de pedido'}
-                {activeTab === 'aprovadores' && 'Solicitações aguardando deliberação de gestores e diretoria'}
-                {activeTab === 'atrasadas' && 'Solicitações recebidas há mais de 48 horas aguardando atendimento'}
-                {activeTab === 'faturados' && 'Arquivo histórico de pedidos já comprados, faturados e concluídos'}
-                {activeTab === 'dashboard' && 'Visão financeira e acompanhamento mensal por setor'}
-                {activeTab === 'versoes' && 'Histórico e homologação de versões da aplicação'}
-              </p>
+              {activeTab !== 'cotacao' && (
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {activeTab === 'geral' && 'Fila operacional de solicitações ativas em cotação e atendimento'}
+                  {activeTab === 'liberadas' && 'Solicitações autorizadas prontas para compra ou emissão de pedido'}
+                  {activeTab === 'aprovadores' && 'Solicitações aguardando deliberação de gestores e diretoria'}
+                  {activeTab === 'atrasadas' && 'Solicitações recebidas há mais de 48 horas aguardando atendimento'}
+                  {activeTab === 'faturados' && 'Arquivo histórico de pedidos já comprados, faturados e concluídos'}
+                  {activeTab === 'dashboard' && 'Visão financeira e acompanhamento mensal por setor'}
+                  {activeTab === 'versoes' && 'Histórico e homologação de versões da aplicação'}
+                </p>
+              )}
             </div>
 
             {/* Sector indicator if filtered */}
