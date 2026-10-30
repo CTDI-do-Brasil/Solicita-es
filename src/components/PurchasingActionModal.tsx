@@ -456,12 +456,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   {request.code}
                 </span>
 
-                {/* Badge Principal de Projeto com Indicador Ativo */}
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl font-black text-xs border shadow-xs ${getProjectColor(selectedProject || request.project).badge}`}>
-                  <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                  <span>Projeto: <strong className="uppercase tracking-wider">{selectedProject || request.project || 'Não informado'}</strong></span>
-                </div>
-
                 {/* Badge do Setor */}
                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs border ${sectorColor.badge}`}>
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
