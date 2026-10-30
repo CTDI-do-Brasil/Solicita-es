@@ -849,7 +849,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-amber-600 shrink-0" />
                               <span>
-                                <strong>Aguardando Cotação:</strong> Aprovada pelo Gestor ({req.managerApprovedBy || req.sector}). Pendente equipe de Compras cotar com fornecedores e definir valor.
+                                <strong>Aguardando Cotação:</strong> Aprovada pelo Gestor.
                               </span>
                             </div>
                             <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded border border-amber-400 shrink-0">
