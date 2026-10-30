@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem } from '../types';
+import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem, ProjectType, ALL_PROJECTS } from '../types';
 import { storage } from '../storage';
 import { formatCurrency, formatDate, getSectorColor, getProjectColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
@@ -20,7 +20,11 @@ import {
   CreditCard, 
   Clock, 
   Award,
-  Sparkles
+  Sparkles,
+  Briefcase,
+  UserCheck,
+  Building2,
+  FileText
 } from 'lucide-react';
 
 interface PurchasingActionModalProps {
@@ -53,6 +57,9 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     request.purchaseStatus === 'aguardando_aprovacao_gestor' || request.purchaseStatus === 'recebido_em_compras'
       ? 'em_cotacao'
       : request.purchaseStatus
+  );
+  const [selectedProject, setSelectedProject] = useState<ProjectType>(
+    request.project || 'Manutenção/Engenharia'
   );
 
   // Initialize items and quotes
@@ -270,6 +277,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status,
+        project: selectedProject,
         purchaseOrderNumber: request.purchaseOrderNumber,
         supplier: primarySupplier,
         unitPrice: firstSelected?.unitPrice || undefined,
@@ -314,6 +322,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     try {
       storage.updatePurchasingDetails(request.id, buyer, {
         status: 'em_aprovacao',
+        project: selectedProject,
         purchaseOrderNumber: request.purchaseOrderNumber,
         supplier: primarySupplier,
         unitPrice: firstSelected?.unitPrice || undefined,
@@ -437,72 +446,188 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
             </div>
           )}
 
-          {/* Original Request Summary */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded border ${sectorColor.badge}`}>
-                  Setor: {request.sector}
-                </span>
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${getProjectColor(request.project).badge}`}>
-                  Projeto: {request.project || 'Não informado'}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  Solicitante: <strong>{request.requesterName}</strong> • {formatDate(request.createdAt)}
-                </span>
-              </div>
-              <div className="text-xs bg-slate-200/90 px-2.5 py-1 rounded-md text-slate-900 font-bold border border-slate-300">
-                {request.items && request.items.length > 1
-                  ? `${request.items.length} itens solicitados`
-                  : `Qtd: ${request.quantity} ${request.unit}`}
-              </div>
-            </div>
-
-            <div className="text-sm font-bold text-slate-900">
-              {request.title}
-            </div>
-
-            {request.reason && (
-              <div className="text-xs text-slate-500 flex items-start gap-1">
-                <strong className="text-slate-700">Justificativa:</strong> {request.reason}
-              </div>
-            )}
+          {/* Original Request Summary - Design Executivo de Alta Visibilidade */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden">
             
-            {request.linkUrl && (!request.items || request.items.length === 0) && (
-              <div className="pt-1">
-                <a
-                  href={request.linkUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline break-all"
-                >
-                  <ExternalLink className="w-3 h-3" /> Link de referência indicado pelo solicitante
-                </a>
+            {/* Top Identity Header Bar */}
+            <div className="bg-gradient-to-r from-slate-50 via-slate-50/80 to-slate-100/60 px-4 py-3 border-b border-slate-200/90 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-lg bg-slate-900 text-amber-300 shadow-xs tracking-wider">
+                  {request.code}
+                </span>
+
+                {/* Badge Principal de Projeto com Indicador Ativo */}
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl font-black text-xs border shadow-xs ${getProjectColor(selectedProject || request.project).badge}`}>
+                  <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                  <span>Projeto: <strong className="uppercase tracking-wider">{selectedProject || request.project || 'Não informado'}</strong></span>
+                </div>
+
+                {/* Badge do Setor */}
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs border ${sectorColor.badge}`}>
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Setor: {request.sector}</span>
+                </div>
               </div>
-            )}
+
+              {/* Quantidade Total */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-800 text-xs font-extrabold shrink-0">
+                <Package className="w-3.5 h-3.5 text-slate-500" />
+                <span>
+                  {request.items && request.items.length > 1
+                    ? `${request.items.length} itens inclusos`
+                    : `Qtd: ${request.quantity} ${request.unit}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="p-4 sm:p-5 space-y-4">
+              
+              {/* Item Title */}
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-0.5">
+                  Descrição do Item Solicitado
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+                  {request.title}
+                </h3>
+              </div>
+
+              {/* 3-Card Structured Metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                
+                {/* 1. Projeto / Contrato */}
+                <div className={`p-3 rounded-xl border flex items-center gap-3 ${getProjectColor(selectedProject || request.project).badge}`}>
+                  <div className="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold tracking-wider block opacity-75">
+                      Projeto / Contrato
+                    </span>
+                    <span className="text-xs sm:text-sm font-black truncate block">
+                      {selectedProject || request.project || 'Não informado'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Solicitante */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shrink-0 shadow-2xs">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                      Solicitante
+                    </span>
+                    <span className="text-xs font-bold text-slate-800 truncate block" title={request.requesterName}>
+                      {request.requesterName}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {formatDate(request.createdAt)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Prioridade */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs ${
+                    request.priority === 'urgente' ? 'text-rose-600' :
+                    request.priority === 'alta' ? 'text-orange-500' :
+                    request.priority === 'baixa' ? 'text-slate-400' : 'text-amber-500'
+                  }`}>
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                      Prioridade
+                    </span>
+                    <span className="text-xs font-bold capitalize text-slate-900 block">
+                      {request.priority || 'Média'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Setor {request.sector}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Justificativa Callout */}
+              {request.reason && (
+                <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-slate-700 space-y-1">
+                  <div className="flex items-center gap-1.5 text-amber-950 font-bold">
+                    <FileText className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <span>Justificativa da Compra:</span>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed pl-5">
+                    {request.reason}
+                  </p>
+                </div>
+              )}
+
+              {/* Reference Link */}
+              {request.linkUrl && (!request.items || request.items.length === 0) && (
+                <div className="pt-0.5">
+                  <a
+                    href={request.linkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs text-indigo-700 font-semibold transition-colors break-all"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    <span>Link de referência indicado pelo solicitante</span>
+                  </a>
+                </div>
+              )}
+
+            </div>
           </div>
 
-          {/* Status Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Status Operacional do Pedido <span className="text-rose-500">*</span>
-            </label>
-            <select
-              id="buyer-order-status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as PurchaseOrderStatus)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
-            >
-              <option value="recebido_em_compras">Recebido em Compras (Aguardando Cotação)</option>
-              <option value="em_cotacao">Em Cotação com Fornecedores</option>
-              <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
-              <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
-              <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
-              <option value="em_transito">Em Trânsito / Em Transporte</option>
-              <option value="entregue">Entregue no Setor Solicitante</option>
-              <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
-              <option value="cancelado">Cancelado / Sem Fornecedor</option>
-            </select>
+          {/* Status & Project Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            {/* Status Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Status Operacional do Pedido <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="buyer-order-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as PurchaseOrderStatus)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-medium"
+              >
+                <option value="recebido_em_compras">Recebido em Compras (Aguardando Cotação)</option>
+                <option value="em_cotacao">Em Cotação com Fornecedores</option>
+                <option value="em_aprovacao">Em Aprovação Diretoria (Fernando ➔ Eduardo ➔ Luiz)</option>
+                <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
+                <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
+                <option value="em_transito">Em Trânsito / Em Transporte</option>
+                <option value="entregue">Entregue no Setor Solicitante</option>
+                <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
+                <option value="cancelado">Cancelado / Sem Fornecedor</option>
+              </select>
+            </div>
+
+            {/* Project / Contract Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Projeto / Operação Destino</span>
+                <span className="text-[10px] text-cyan-800 font-bold lowercase">atribuído</span>
+              </label>
+              <select
+                id="buyer-order-project"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value as ProjectType)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden font-bold"
+              >
+                {ALL_PROJECTS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
           </div>
 
           {/* SECTION: PRODUTOS E MÚLTIPLOS ORÇAMENTOS POR PRODUTO */}

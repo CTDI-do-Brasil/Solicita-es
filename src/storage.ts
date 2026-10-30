@@ -386,6 +386,7 @@ export const storage = {
     buyer: User,
     data: {
       status: PurchaseOrderStatus;
+      project?: ProjectType;
       purchaseOrderNumber?: string;
       supplier?: string;
       unitPrice?: number;
@@ -432,6 +433,7 @@ export const storage = {
     all[index] = {
       ...all[index],
       purchaseStatus: data.status,
+      project: data.project !== undefined ? data.project : all[index].project,
       purchaseOrderNumber: data.purchaseOrderNumber || all[index].purchaseOrderNumber,
       supplier: data.supplier !== undefined ? data.supplier : all[index].supplier,
       unitPrice: data.unitPrice !== undefined ? data.unitPrice : all[index].unitPrice,
