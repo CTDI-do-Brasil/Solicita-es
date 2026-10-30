@@ -916,11 +916,11 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                       <div className="flex items-center justify-between lg:justify-end gap-5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 shrink-0">
                         
                         {/* Price Display */}
-                        <div className="text-left lg:text-right min-w-32">
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
-                            Valor de Compra
-                          </span>
-                          {hasPrice ? (
+                        {hasPrice && (
+                          <div className="text-left lg:text-right min-w-32">
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
+                              Valor de Compra
+                            </span>
                             <div>
                               <span className="text-lg font-extrabold text-emerald-800 tracking-tight">
                                 {formatCurrency(req.totalPrice)}
@@ -941,18 +941,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                                 </div>
                               )}
                             </div>
-                          ) : (
-                            <div>
-                              <div className="text-xs font-bold text-amber-800 bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300 flex items-center gap-1 mt-0.5">
-                                <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                                <span>Aguardando Cotação</span>
-                              </div>
-                              <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
-                                Pendente Compras cotar
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
