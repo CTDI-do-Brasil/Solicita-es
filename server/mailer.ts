@@ -5,13 +5,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configurações do SMTP a partir do .env (valores padrão otimizados para CapRover / Poste.io)
-const SMTP_HOST = process.env.SMTP_HOST || 'srv-captain--mail';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '25', 10);
+// Configurações do SMTP a partir do .env (valores padrão otimizados para UOL Host / smtps.uhserver.com)
+const SMTP_HOST = process.env.SMTP_HOST || 'smtps.uhserver.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
-const SMTP_USER = process.env.SMTP_USER || 'nexus@ctdibrasil.com.br';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || `"Nexus CTDI" <${SMTP_USER || 'nexus@ctdibrasil.com.br'}>`;
+const SMTP_USER = process.env.SMTP_USER || 'nexus@ctdisystem.com.br';
+const SMTP_PASS = process.env.SMTP_PASS || 'Ctdi@2026!';
+const SMTP_FROM = process.env.SMTP_FROM || `"Nexus CTDI" <${SMTP_USER || 'nexus@ctdisystem.com.br'}>`;
 const APP_URL = process.env.APP_URL || 'https://nexus.ctdibrasil.com.br';
 const EMAIL_COMPRAS_FALLBACK = process.env.EMAIL_COMPRAS || '';
 const EMAIL_OVERRIDE_TO = process.env.EMAIL_OVERRIDE_TO || '';
@@ -44,17 +44,17 @@ export async function getActiveSmtpConfig(forceReload = false): Promise<SmtpConf
       const dbHost = row.host || SMTP_HOST;
       const dbPort = parseInt(row.port || String(SMTP_PORT), 10);
 
-      // Se o banco estava com o seed antigo (mail.ctdibrasil.com.br:587) que sofre timeout no Haraka, ajusta para a porta 25 / .env
-      const isLegacySeed = dbHost === 'mail.ctdibrasil.com.br' && dbPort === 587;
+      // Se o banco estava com o seed antigo e o .env está configurado com UOL Host ou outro host explícito, prioriza o host do .env
+      const isLegacySeed = dbHost === 'mail.ctdibrasil.com.br' || (dbHost === 'srv-captain--mail' && SMTP_HOST !== 'srv-captain--mail');
 
       cachedConfig = {
         enabled: row.enabled ?? true,
         host: isLegacySeed ? SMTP_HOST : dbHost,
         port: isLegacySeed ? SMTP_PORT : dbPort,
-        secure: isLegacySeed ? false : Boolean(row.secure),
-        user: row.user_account || SMTP_USER,
-        pass: row.pass_account || SMTP_PASS,
-        from: row.from_name || SMTP_FROM,
+        secure: isLegacySeed ? SMTP_SECURE : Boolean(row.secure),
+        user: isLegacySeed ? SMTP_USER : (row.user_account || SMTP_USER),
+        pass: isLegacySeed ? SMTP_PASS : (row.pass_account || SMTP_PASS),
+        from: isLegacySeed ? SMTP_FROM : (row.from_name || SMTP_FROM),
         testRecipient: row.test_recipient || EMAIL_OVERRIDE_TO || 'apongeluppi@ctdi.com',
       };
       return cachedConfig;
@@ -108,7 +108,9 @@ export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
 
   if (isPort25 || process.env.SMTP_IGNORE_TLS === 'true') {
     transportConfig.ignoreTLS = true;
-  } else if (cfg.user && cfg.pass) {
+  }
+  
+  if (cfg.user && cfg.pass) {
     transportConfig.auth = {
       user: cfg.user,
       pass: cfg.pass,
@@ -170,54 +172,57 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
   } catch (error: any) {
     console.error(`[Nexus Mailer] Erro ao verificar conexão SMTP (${cfg.host}:${cfg.port}):`, error.message);
 
-    // Tenta candidatos alternativos na porta 25 (funciona tanto dentro do CapRover via srv-captain--mail quanto externamente via mail.ctdibrasil.com.br)
-    const candidates = [
-      { host: cfg.host, port: 25 },
-      { host: 'srv-captain--mail', port: 25 },
-      { host: 'mail.ctdibrasil.com.br', port: 25 },
-      { host: 'srv-captain--mailserver', port: 25 },
-    ];
+    // Só tenta candidatos alternativos na porta 25 se for o servidor local/CapRover
+    const isLocalCapRover = cfg.host.includes('srv-captain') || cfg.host === 'mail.ctdibrasil.com.br';
+    if (isLocalCapRover) {
+      const candidates = [
+        { host: cfg.host, port: 25 },
+        { host: 'srv-captain--mail', port: 25 },
+        { host: 'mail.ctdibrasil.com.br', port: 25 },
+        { host: 'srv-captain--mailserver', port: 25 },
+      ];
 
-    const seen = new Set<string>();
-    for (const cand of candidates) {
-      const key = `${cand.host}:${cand.port}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const seen = new Set<string>();
+      for (const cand of candidates) {
+        const key = `${cand.host}:${cand.port}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
 
-      try {
-        console.log(`[Nexus Mailer] Tentando rota SMTP direta em ${cand.host}:${cand.port}...`);
-        const fbTransport = nodemailer.createTransport({
-          pool: true,
-          maxConnections: 1,
-          maxMessages: 100,
-          name: 'nexus.ctdibrasil.com.br',
-          host: cand.host,
-          port: cand.port,
-          secure: false,
-          ignoreTLS: true,
-          connectionTimeout: 20000,
-          greetingTimeout: 15000,
-          socketTimeout: 30000,
-          tls: { rejectUnauthorized: false },
-        });
-        await fbTransport.verify();
-        console.log(`[Nexus Mailer] Rota SMTP ${cand.host}:${cand.port} CONECTADA COM SUCESSO!`);
-        if (!customConfig) {
-          transporter = fbTransport;
-          if (cachedConfig) {
-            cachedConfig.host = cand.host;
-            cachedConfig.port = cand.port;
-            cachedConfig.secure = false;
+        try {
+          console.log(`[Nexus Mailer] Tentando rota SMTP direta em ${cand.host}:${cand.port}...`);
+          const fbTransport = nodemailer.createTransport({
+            pool: true,
+            maxConnections: 1,
+            maxMessages: 100,
+            name: 'nexus.ctdibrasil.com.br',
+            host: cand.host,
+            port: cand.port,
+            secure: false,
+            ignoreTLS: true,
+            connectionTimeout: 10000,
+            greetingTimeout: 8000,
+            socketTimeout: 15000,
+            tls: { rejectUnauthorized: false },
+          });
+          await fbTransport.verify();
+          console.log(`[Nexus Mailer] Rota SMTP ${cand.host}:${cand.port} CONECTADA COM SUCESSO!`);
+          if (!customConfig) {
+            transporter = fbTransport;
+            if (cachedConfig) {
+              cachedConfig.host = cand.host;
+              cachedConfig.port = cand.port;
+              cachedConfig.secure = false;
+            }
           }
+          return {
+            ok: true,
+            message: `Conexão SMTP estabelecida com sucesso (${cand.host}:${cand.port})!`,
+            activeHost: cand.host,
+            activePort: cand.port,
+          };
+        } catch {
+          // Continua testando o próximo candidato
         }
-        return {
-          ok: true,
-          message: `Conexão SMTP estabelecida com sucesso (${cand.host}:${cand.port})!`,
-          activeHost: cand.host,
-          activePort: cand.port,
-        };
-      } catch {
-        // Continua testando o próximo candidato
       }
     }
 

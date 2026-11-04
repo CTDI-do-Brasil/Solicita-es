@@ -22,11 +22,11 @@ interface SmtpConfigModalProps {
 
 export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClose }) => {
   const [enabled, setEnabled] = useState(true);
-  const [host, setHost] = useState('srv-captain--mail');
-  const [port, setPort] = useState(25);
-  const [user, setUser] = useState('nexus@ctdibrasil.com.br');
+  const [host, setHost] = useState('smtps.uhserver.com');
+  const [port, setPort] = useState(465);
+  const [user, setUser] = useState('nexus@ctdisystem.com.br');
   const [pass, setPass] = useState('');
-  const [from, setFrom] = useState('Nexus CTDI <nexus@ctdibrasil.com.br>');
+  const [from, setFrom] = useState('Nexus CTDI <nexus@ctdisystem.com.br>');
   const [testRecipient, setTestRecipient] = useState('apongeluppi@ctdi.com');
   const [hasStoredPassword, setHasStoredPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -284,18 +284,18 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
             </div>
           ) : (
             <>
-              {/* Card Guia Rápido CapRover / Poste.io */}
+              {/* Card Guia Rápido UOL Host */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 space-y-2">
                 <div className="font-bold text-slate-900 flex items-center gap-1.5">
                   <HelpCircle className="w-4 h-4 text-indigo-600" />
-                  <span>Guia Rápido CapRover / Poste.io (<span className="text-indigo-600 underline">mail.ctdibrasil.com.br</span>):</span>
+                  <span>Configuração do Servidor de Envio (UOL Host / Uhserver):</span>
                 </div>
                 <div className="space-y-1 text-slate-600 pl-5 list-disc">
                   <p>
-                    • <strong>Host SMTP:</strong> Use <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">mail.ctdibrasil.com.br</code> (ou o nome interno do container no CapRover, ex: <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">srv-captain--mailserver</code> ou <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">srv-captain--mail</code>).
+                    • <strong>Host SMTP:</strong> Use <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">smtps.uhserver.com</code> na porta <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">465</code> (comunicação segura SSL/TLS direta).
                   </p>
                   <p>
-                    • <strong>Porta:</strong> <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">587</code> (STARTTLS) ou <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">25</code> (comunicação interna entre containers no CapRover).
+                    • <strong>Remetente Obrigatório:</strong> O remetente configurado em <em>From</em> deve usar a conta do domínio UOL, ex: <code className="bg-slate-200/80 px-1.5 py-0.5 rounded text-slate-800 font-mono text-[11px] border border-slate-300">Nexus CTDI &lt;nexus@ctdisystem.com.br&gt;</code>.
                   </p>
                 </div>
               </div>
@@ -310,7 +310,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                     type="text"
                     value={host}
                     onChange={(e) => setHost(e.target.value)}
-                    placeholder="mail.ctdibrasil.com.br"
+                    placeholder="smtps.uhserver.com"
                     className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-hidden font-mono bg-white"
                     required
                   />
@@ -323,7 +323,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                     type="number"
                     value={port}
                     onChange={(e) => setPort(Number(e.target.value))}
-                    placeholder="587"
+                    placeholder="465"
                     className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-hidden font-mono bg-white"
                     required
                   />
@@ -334,13 +334,13 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Usuário / E-mail da Conta (Poste.io)
+                    Usuário / E-mail da Conta (UOL Host)
                   </label>
                   <input
                     type="text"
                     value={user}
                     onChange={(e) => setUser(e.target.value)}
-                    placeholder="nexus@ctdibrasil.com.br"
+                    placeholder="nexus@ctdisystem.com.br"
                     className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-hidden bg-white"
                   />
                 </div>
@@ -353,7 +353,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                       type={showPassword ? 'text' : 'password'}
                       value={pass}
                       onChange={(e) => setPass(e.target.value)}
-                      placeholder={hasStoredPassword ? '•••••••• (senha gravada no banco)' : 'Senha criada no painel do Poste.io'}
+                      placeholder={hasStoredPassword ? '•••••••• (senha gravada no banco)' : 'Senha da conta (ex: Ctdi@2026!)'}
                       className="w-full px-3.5 py-2.5 pr-10 border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-hidden bg-white"
                     />
                     <button
@@ -377,7 +377,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
                   type="text"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
-                  placeholder="Nexus CTDI <nexus@ctdibrasil.com.br>"
+                  placeholder="Nexus CTDI <nexus@ctdisystem.com.br>"
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-hidden bg-white"
                 />
               </div>
