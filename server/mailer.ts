@@ -298,13 +298,16 @@ export async function sendEmail(
     ? `"${rawFrom.split('<')[0].trim()}" <${rawFrom.split('<')[1]}`
     : rawFrom;
 
-  const mailOptions = {
+  const domainMatch = formattedFrom.match(/@([a-zA-Z0-9.-]+)/);
+  const fromDomain = domainMatch ? domainMatch[1].replace('>', '').trim() : 'ctdisystem.com.br';
+
+  const mailOptions: any = {
     from: formattedFrom,
     to: recipients.join(', '),
     subject: finalSubject,
     html: finalHtml,
     text: finalText,
-    messageId: `<nexus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@ctdibrasil.com.br>`,
+    messageId: `<nexus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@${fromDomain}>`,
   };
 
   let client = customConfig ? createTransporterForConfig(cfg) : getTransporter();
