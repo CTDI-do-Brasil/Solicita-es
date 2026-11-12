@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PurchaseRequest, User, ApproverName } from '../types';
 import { storage } from '../storage';
 import { 
@@ -35,7 +35,8 @@ import {
   Lock,
   CreditCard,
   Award,
-  Wallet
+  Wallet,
+  CheckCheck
 } from 'lucide-react';
 
 interface OrderDetailsModalProps {
@@ -47,16 +48,22 @@ interface OrderDetailsModalProps {
 }
 
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
-  request,
+  request: propRequest,
   currentUser,
   onClose,
   onStatusChanged,
   onOpenPurchasingEdit,
 }) => {
+  const [request, setRequest] = useState<PurchaseRequest>(propRequest);
+  const [selectionFeedback, setSelectionFeedback] = useState<string>('');
   const [managerNotes, setManagerNotes] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [actionError, setActionError] = useState('');
   const [approverNotes, setApproverNotes] = useState('');
+
+  useEffect(() => {
+    setRequest(propRequest);
+  }, [propRequest]);
 
   const statusInfo = getPurchaseStatusInfo(request.purchaseStatus);
   const approvalInfo = getManagerApprovalInfo(request.managerApprovalStatus);
@@ -74,6 +81,30 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   const canApproverAct = 
     request.purchaseStatus === 'em_aprovacao' && 
     (currentUser.role === 'master' || (detectedApprover && detectedApprover === currentStep));
+
+  // Permissão para selecionar cotação vencedora: Aprovadores (Fernando, Eduardo, Luiz), Gestor, Compras ou Master
+  const canSelectQuote = 
+    currentUser.role === 'master' || 
+    currentUser.role === 'compras' || 
+    currentUser.role === 'aprovador' || 
+    currentUser.role === 'gestor' || 
+    Boolean(detectedApprover);
+
+  const handleSelectQuote = (quoteId: string, itemId?: string) => {
+    setActionError('');
+    const success = storage.selectWinningQuote(request.id, quoteId, currentUser, itemId);
+    if (success) {
+      const updated = storage.getRequestById(request.id);
+      if (updated) {
+        setRequest(updated);
+      }
+      setSelectionFeedback('Cotação selecionada como vencedora com sucesso!');
+      setTimeout(() => setSelectionFeedback(''), 4500);
+      onStatusChanged();
+    } else {
+      setActionError('Não foi possível selecionar esta cotação.');
+    }
+  };
 
   const handleApprove = () => {
     setActionError('');
@@ -515,15 +546,29 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           {/* COTAÇÕES E ORÇAMENTOS REGISTRADOS PELA CENTRAL DE COMPRAS */}
           {((request.quotes && request.quotes.length > 0) || (request.items && request.items.some(i => i.quotes && i.quotes.length > 0))) && (
             <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-cyan-950 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-cyan-700" />
-                  Orçamentos & Cotações Realizadas por Compras
-                </span>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-200 text-cyan-900">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-cyan-950 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-cyan-700" />
+                    Orçamentos & Cotações Realizadas por Compras
+                  </span>
+                  {canSelectQuote && (
+                    <p className="text-[11px] text-cyan-800 font-medium">
+                      O aprovador pode clicar na cotação desejada para defini-la como a <span className="font-bold underline text-cyan-950">vencedora</span> do pedido.
+                    </p>
+                  )}
+                </div>
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-200 text-cyan-900 self-start sm:self-auto">
                   Transparência & Compliance
                 </span>
               </div>
+
+              {selectionFeedback && (
+                <div className="p-2.5 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>{selectionFeedback}</span>
+                </div>
+              )}
 
               {/* Se os itens têm cotações específicas */}
               {request.items && request.items.some(i => i.quotes && i.quotes.length > 0) ? (
@@ -538,19 +583,28 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                         {it.quotes?.map((q, qIdx) => (
                           <div
                             key={q.id || qIdx}
-                            className={`p-2.5 rounded-lg border text-xs space-y-1 ${
+                            onClick={() => {
+                              if (canSelectQuote && !q.selected) {
+                                handleSelectQuote(q.id, it.id);
+                              }
+                            }}
+                            className={`p-2.5 rounded-lg border text-xs space-y-1 transition-all ${
                               q.selected
-                                ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-xs'
+                                ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
+                                : canSelectQuote
+                                ? 'bg-slate-50 hover:bg-cyan-50/40 border-slate-200 hover:border-cyan-400 text-slate-700 cursor-pointer hover:shadow-xs'
                                 : 'bg-slate-50 border-slate-200 text-slate-700'
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold truncate">{q.supplier}</span>
-                              {q.selected && (
-                                <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-black flex items-center gap-0.5">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold truncate text-slate-900">{q.supplier}</span>
+                              {q.selected ? (
+                                <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shrink-0">
                                   <Award className="w-3 h-3 text-emerald-700" />
                                   Vencedor
                                 </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 shrink-0">Opção #{qIdx + 1}</span>
                               )}
                             </div>
                             <div className="font-bold text-sm text-slate-900">
@@ -580,6 +634,30 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                                 "{q.notes}"
                               </div>
                             )}
+
+                            {/* Botão de seleção interativo para o aprovador */}
+                            {canSelectQuote && (
+                              <div className="pt-2 mt-1 border-t border-slate-100">
+                                {q.selected ? (
+                                  <div className="w-full py-1 px-2 rounded-md bg-emerald-100 text-emerald-800 font-bold text-center text-[11px] flex items-center justify-center gap-1">
+                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                    Cotação Escolhida
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectQuote(q.id, it.id);
+                                    }}
+                                    className="w-full py-1.5 px-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-xs cursor-pointer"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    Selecionar Esta Cotação
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -592,21 +670,28 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   {request.quotes?.map((q, qIdx) => (
                     <div
                       key={q.id || qIdx}
-                      className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                      onClick={() => {
+                        if (canSelectQuote && !q.selected) {
+                          handleSelectQuote(q.id);
+                        }
+                      }}
+                      className={`p-3 rounded-xl border text-xs space-y-1.5 transition-all ${
                         q.selected
-                          ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-xs'
+                          ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
+                          : canSelectQuote
+                          ? 'bg-white hover:bg-cyan-50/40 border-slate-200 hover:border-cyan-400 text-slate-700 cursor-pointer hover:shadow-xs'
                           : 'bg-white border-slate-200 text-slate-700'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-1">
                         <span className="font-bold text-slate-900 truncate" title={q.supplier}>{q.supplier || 'Fornecedor s/ nome'}</span>
                         {q.selected ? (
-                          <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-black flex items-center gap-0.5">
+                          <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-black flex items-center gap-0.5 shrink-0">
                             <Award className="w-3 h-3 text-emerald-700" />
                             Vencedor
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">Orçamento #{qIdx + 1}</span>
+                          <span className="text-[10px] text-slate-400 shrink-0">Orçamento #{qIdx + 1}</span>
                         )}
                       </div>
 
@@ -644,6 +729,30 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                       {q.notes && (
                         <div className="text-[10px] text-slate-500 italic pt-1">
                           "{q.notes}"
+                        </div>
+                      )}
+
+                      {/* Botão de Ação / Indicação para Seleção */}
+                      {canSelectQuote && (
+                        <div className="pt-2 mt-1 border-t border-slate-100">
+                          {q.selected ? (
+                            <div className="w-full py-1.5 px-2 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-center text-xs flex items-center justify-center gap-1.5">
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              Cotação Escolhida
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectQuote(q.id);
+                              }}
+                              className="w-full py-1.5 px-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Selecionar Esta Cotação
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

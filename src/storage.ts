@@ -268,6 +268,10 @@ export const storage = {
     return fallbackRequests;
   },
 
+  getRequestById(id: string): PurchaseRequest | undefined {
+    return this.getAllRequests().find(r => r.id === id);
+  },
+
   saveRequests(requests: PurchaseRequest[]) {
     try {
       localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(requests));
@@ -474,6 +478,96 @@ export const storage = {
       approvals: newApprovals,
       updatedAt: new Date().toISOString(),
     };
+
+    this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
+    return true;
+  },
+
+  selectWinningQuote(requestId: string, quoteId: string, user: User, itemId?: string): boolean {
+    const all = this.getAllRequests();
+    const index = all.findIndex(r => r.id === requestId);
+    if (index === -1) return false;
+
+    const req = all[index];
+    let updatedQuotes = req.quotes ? [...req.quotes] : [];
+    let updatedItems = req.items ? [...req.items] : undefined;
+
+    let chosenQuote: ProductQuote | undefined;
+
+    // Se temos itens com cotações
+    if (updatedItems && updatedItems.length > 0 && updatedItems.some(it => it.quotes && it.quotes.length > 0)) {
+      updatedItems = updatedItems.map(it => {
+        if (itemId && it.id !== itemId) return it;
+        if (!it.quotes) return it;
+        const matching = it.quotes.find(q => q.id === quoteId);
+        if (matching) {
+          chosenQuote = matching;
+          return {
+            ...it,
+            quotes: it.quotes.map(q => ({
+              ...q,
+              selected: q.id === quoteId
+            }))
+          };
+        }
+        return it;
+      });
+
+      // Recalcular totais consolidados dos itens selecionados
+      const allSelectedQuotes = updatedItems.flatMap(it => it.quotes?.filter(q => q.selected) || []);
+      const newTotalPrice = allSelectedQuotes.reduce((acc, q) => acc + (q.totalPrice || 0), 0);
+      const newShippingCost = allSelectedQuotes.reduce((acc, q) => acc + (q.shippingCost || 0), 0);
+      const newSupplier = allSelectedQuotes.map(q => q.supplier?.trim()).filter(Boolean).join(', ') || req.supplier;
+      const newPaymentMethod = allSelectedQuotes.map(q => q.paymentMethod?.trim()).filter(Boolean).join(' | ') || req.paymentMethod;
+      const newPaymentTerms = allSelectedQuotes.map(q => q.paymentTerms?.trim()).filter(Boolean).join(' | ') || req.paymentTerms;
+      const newDeliveryDeadline = allSelectedQuotes.map(q => q.deliveryDeadline?.trim()).filter(Boolean).join(' | ') || req.deliveryDeadline;
+      const newUnitPrice = allSelectedQuotes.length === 1 ? allSelectedQuotes[0].unitPrice : req.unitPrice;
+
+      all[index] = {
+        ...req,
+        items: updatedItems,
+        totalPrice: newTotalPrice > 0 ? newTotalPrice : req.totalPrice,
+        unitPrice: newUnitPrice,
+        shippingCost: newShippingCost,
+        supplier: newSupplier,
+        paymentMethod: newPaymentMethod,
+        paymentTerms: newPaymentTerms,
+        deliveryDeadline: newDeliveryDeadline,
+        purchasingNotes: req.purchasingNotes
+          ? `${req.purchasingNotes}\n[${new Date().toLocaleDateString('pt-BR')}]: Cotação de "${newSupplier}" selecionada por ${user.name}.`
+          : `Cotação de "${newSupplier}" selecionada por ${user.name}.`,
+        updatedAt: new Date().toISOString()
+      };
+    } else if (updatedQuotes && updatedQuotes.length > 0) {
+      // Cotações a nível de requisição
+      updatedQuotes = updatedQuotes.map(q => {
+        const isMatch = q.id === quoteId;
+        if (isMatch) chosenQuote = q;
+        return {
+          ...q,
+          selected: isMatch
+        };
+      });
+
+      if (chosenQuote) {
+        all[index] = {
+          ...req,
+          quotes: updatedQuotes,
+          totalPrice: chosenQuote.totalPrice,
+          unitPrice: chosenQuote.unitPrice,
+          shippingCost: chosenQuote.shippingCost || 0,
+          supplier: chosenQuote.supplier || req.supplier,
+          paymentMethod: chosenQuote.paymentMethod || req.paymentMethod,
+          paymentTerms: chosenQuote.paymentTerms || req.paymentTerms,
+          deliveryDeadline: chosenQuote.deliveryDeadline || req.deliveryDeadline,
+          purchasingNotes: req.purchasingNotes
+            ? `${req.purchasingNotes}\n[${new Date().toLocaleDateString('pt-BR')}]: Cotação de "${chosenQuote.supplier}" selecionada por ${user.name}.`
+            : `Cotação de "${chosenQuote.supplier}" selecionada por ${user.name}.`,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    }
 
     this.saveRequests(all);
     api.updateRequest(all[index]).catch(() => {});
