@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
     unit_price NUMERIC(15, 2),
     total_price NUMERIC(15, 2),
     shipping_cost NUMERIC(15, 2),
+    payment_method VARCHAR(255),
     payment_terms VARCHAR(255),
     delivery_deadline VARCHAR(255),
     purchase_date DATE,
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
 );
 
 -- Garantir que colunas adicionadas existam em bancos de dados já instanciados
+ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(255);
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(255);
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS delivery_deadline VARCHAR(255);
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS quotes JSONB DEFAULT '[]'::jsonb;

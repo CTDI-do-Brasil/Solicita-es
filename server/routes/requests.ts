@@ -51,6 +51,7 @@ function mapRowToRequest(row: any) {
     unitPrice: row.unit_price ? Number(row.unit_price) : undefined,
     totalPrice: row.total_price ? Number(row.total_price) : undefined,
     shippingCost: row.shipping_cost ? Number(row.shipping_cost) : undefined,
+    paymentMethod: row.payment_method || (parseJsonSafe(row.quotes, [])[0]?.paymentMethod),
     paymentTerms: row.payment_terms,
     deliveryDeadline: row.delivery_deadline,
     purchaseDate: row.purchase_date,

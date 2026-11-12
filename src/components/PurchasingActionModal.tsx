@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem } from '../types';
+import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem, PAYMENT_METHODS } from '../types';
 import { storage } from '../storage';
 import { formatCurrency, formatDate, getSectorColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
@@ -24,7 +24,8 @@ import {
   Briefcase,
   UserCheck,
   Building2,
-  FileText
+  FileText,
+  Wallet
 } from 'lucide-react';
 
 interface PurchasingActionModalProps {
@@ -90,6 +91,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
           unitPrice: (request.items!.length === 1 ? request.unitPrice : 0) || 0,
           shippingCost: (request.items!.length === 1 ? request.shippingCost : 0) || 0,
           totalPrice: (request.items!.length === 1 ? request.totalPrice : 0) || 0,
+          paymentMethod: (request.items!.length === 1 ? request.paymentMethod : '') || '',
           paymentTerms: (request.items!.length === 1 ? request.paymentTerms : '') || '',
           deliveryDeadline: (request.items!.length === 1 ? request.deliveryDeadline : '') || '',
           notes: '',
@@ -114,6 +116,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
           unitPrice: request.unitPrice || 0,
           shippingCost: request.shippingCost || 0,
           totalPrice: request.totalPrice || (request.unitPrice ? (request.unitPrice * request.quantity + (request.shippingCost || 0)) : 0),
+          paymentMethod: request.paymentMethod || '',
           paymentTerms: request.paymentTerms || '',
           deliveryDeadline: request.deliveryDeadline || '',
           notes: '',
@@ -193,6 +196,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
           unitPrice: 0,
           shippingCost: 0,
           totalPrice: 0,
+          paymentMethod: '',
           paymentTerms: '',
           deliveryDeadline: '',
           notes: '',
@@ -226,6 +230,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   const selectedQuotes = itemsQuotes.map(it => it.quotes.find(q => q.selected) || it.quotes[0]);
   const consolidatedTotalPrice = selectedQuotes.reduce((acc, q) => acc + (q?.totalPrice || 0), 0);
   const primarySupplier = selectedQuotes.map(q => q?.supplier?.trim()).filter(Boolean).join(', ') || '';
+  const primaryPaymentMethod = selectedQuotes.map(q => q?.paymentMethod?.trim()).filter(Boolean).join(' | ') || '';
   const primaryPaymentTerms = selectedQuotes.map(q => q?.paymentTerms?.trim()).filter(Boolean).join(' | ') || '';
   const primaryDeliveryDeadline = selectedQuotes.map(q => q?.deliveryDeadline?.trim()).filter(Boolean).join(' | ') || '';
 
@@ -279,6 +284,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         unitPrice: firstSelected?.unitPrice || undefined,
         totalPrice: consolidatedTotalPrice,
         shippingCost: firstSelected?.shippingCost || 0,
+        paymentMethod: primaryPaymentMethod || undefined,
         paymentTerms: primaryPaymentTerms || undefined,
         deliveryDeadline: primaryDeliveryDeadline || undefined,
         purchaseDate: purchaseDate || undefined,
@@ -323,6 +329,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         unitPrice: firstSelected?.unitPrice || undefined,
         totalPrice: consolidatedTotalPrice,
         shippingCost: firstSelected?.shippingCost || 0,
+        paymentMethod: primaryPaymentMethod || undefined,
         paymentTerms: primaryPaymentTerms || undefined,
         deliveryDeadline: primaryDeliveryDeadline || undefined,
         purchaseDate: purchaseDate || undefined,
@@ -716,9 +723,63 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                               </div>
                             </div>
 
-                            {/* NOVO: PRAZO DE PAGAMENTO & PRAZO DE ENTREGA */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            {/* FORMA DE PAGAMENTO, PRAZO DE PAGAMENTO & PRAZO DE ENTREGA */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 pt-1">
                               
+                              {/* Campo de Forma de Pagamento */}
+                              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                                  <span className="flex items-center gap-1.5">
+                                    <Wallet className="w-3.5 h-3.5 text-cyan-700" />
+                                    Forma de Pagamento
+                                  </span>
+                                  {quote.paymentMethod && (
+                                    <span className="text-[10px] text-cyan-700 font-semibold px-1.5 py-0.2 bg-cyan-100 rounded">
+                                      Selecionado
+                                    </span>
+                                  )}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={quote.paymentMethod || ''}
+                                  onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'paymentMethod', e.target.value)}
+                                  placeholder="Selecione ou digite a forma..."
+                                  className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden font-medium"
+                                />
+                                <div className="space-y-1">
+                                  <span className="text-[10px] text-slate-400 font-medium block">Opções rápidas:</span>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    {PAYMENT_METHODS.map(method => {
+                                      const isSelected = quote.paymentMethod === method;
+                                      return (
+                                        <button
+                                          key={method}
+                                          type="button"
+                                          onClick={() => {
+                                            handleQuoteChange(itemIdx, quoteIdx, 'paymentMethod', method);
+                                            // Se o prazo estiver vazio, preenche uma sugestão padrão inteligente
+                                            if (!quote.paymentTerms) {
+                                              if (method === 'Boleto faturado') {
+                                                handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', '30 dias');
+                                              } else if (method === 'Boleto à vista' || method === 'PIX' || method === 'Cartão de crédito') {
+                                                handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', 'À vista');
+                                              }
+                                            }
+                                          }}
+                                          className={`text-[10px] px-2 py-1 rounded-md font-semibold border text-center transition-all cursor-pointer ${
+                                            isSelected
+                                              ? 'bg-cyan-700 text-white border-cyan-800 shadow-2xs font-bold'
+                                              : 'bg-white hover:bg-cyan-50 text-cyan-900 border-slate-200 hover:border-cyan-300'
+                                          }`}
+                                        >
+                                          {method}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+
                               {/* Campo de Prazo de Pagamento */}
                               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5">
                                 <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -729,21 +790,23 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                                   type="text"
                                   value={quote.paymentTerms || ''}
                                   onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', e.target.value)}
-                                  placeholder="ex: 30 dias, Boleto 28 DDL, À vista..."
+                                  placeholder="ex: À vista, 30 dias, 28 DDL..."
                                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
                                 />
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 font-medium">Sugestões:</span>
-                                  {QUICK_PAYMENT_TERMS.map(term => (
-                                    <button
-                                      key={term}
-                                      type="button"
-                                      onClick={() => handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', term)}
-                                      className="text-[10px] px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer"
-                                    >
-                                      {term}
-                                    </button>
-                                  ))}
+                                <div className="space-y-1">
+                                  <span className="text-[10px] text-slate-400 font-medium block">Sugestões de prazo:</span>
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    {QUICK_PAYMENT_TERMS.map(term => (
+                                      <button
+                                        key={term}
+                                        type="button"
+                                        onClick={() => handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', term)}
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer"
+                                      >
+                                        {term}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
 
@@ -760,18 +823,20 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                                   placeholder="ex: 5 dias úteis, 15 dias corridos, Pronta entrega..."
                                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
                                 />
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <span className="text-[10px] text-slate-400 font-medium">Sugestões:</span>
-                                  {QUICK_DELIVERY_TERMS.map(term => (
-                                    <button
-                                      key={term}
-                                      type="button"
-                                      onClick={() => handleQuoteChange(itemIdx, quoteIdx, 'deliveryDeadline', term)}
-                                      className="text-[10px] px-1.5 py-0.5 rounded bg-white hover:bg-amber-50 text-amber-800 border border-slate-200 hover:border-amber-300 transition-colors cursor-pointer"
-                                    >
-                                      {term}
-                                    </button>
-                                  ))}
+                                <div className="space-y-1">
+                                  <span className="text-[10px] text-slate-400 font-medium block">Sugestões de entrega:</span>
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    {QUICK_DELIVERY_TERMS.map(term => (
+                                      <button
+                                        key={term}
+                                        type="button"
+                                        onClick={() => handleQuoteChange(itemIdx, quoteIdx, 'deliveryDeadline', term)}
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-white hover:bg-amber-50 text-amber-800 border border-slate-200 hover:border-amber-300 transition-colors cursor-pointer"
+                                      >
+                                        {term}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
 

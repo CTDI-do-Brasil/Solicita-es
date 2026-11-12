@@ -392,6 +392,7 @@ export const storage = {
       unitPrice?: number;
       totalPrice?: number;
       shippingCost?: number;
+      paymentMethod?: string;
       paymentTerms?: string;
       deliveryDeadline?: string;
       purchaseDate?: string;
@@ -439,6 +440,7 @@ export const storage = {
       unitPrice: data.unitPrice !== undefined ? data.unitPrice : all[index].unitPrice,
       totalPrice: data.totalPrice !== undefined ? data.totalPrice : all[index].totalPrice,
       shippingCost: data.shippingCost !== undefined ? data.shippingCost : all[index].shippingCost,
+      paymentMethod: data.paymentMethod !== undefined ? data.paymentMethod : all[index].paymentMethod,
       paymentTerms: data.paymentTerms !== undefined ? data.paymentTerms : all[index].paymentTerms,
       deliveryDeadline: data.deliveryDeadline !== undefined ? data.deliveryDeadline : all[index].deliveryDeadline,
       purchaseDate: data.purchaseDate || all[index].purchaseDate,

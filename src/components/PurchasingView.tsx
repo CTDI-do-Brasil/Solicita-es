@@ -923,10 +923,11 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                                 )}
                                 <span>Definido por Compras</span>
                               </div>
-                              {(req.paymentTerms || req.deliveryDeadline) && (
+                              {(req.paymentMethod || req.paymentTerms || req.deliveryDeadline) && (
                                 <div className="text-[10px] text-slate-500 font-medium">
-                                  {req.paymentTerms ? `Pagto: ${req.paymentTerms}` : ''}
-                                  {req.paymentTerms && req.deliveryDeadline ? ' • ' : ''}
+                                  {req.paymentMethod ? req.paymentMethod : ''}
+                                  {req.paymentMethod && req.paymentTerms ? ` (${req.paymentTerms})` : req.paymentTerms ? `Pagto: ${req.paymentTerms}` : ''}
+                                  {(req.paymentMethod || req.paymentTerms) && req.deliveryDeadline ? ' • ' : ''}
                                   {req.deliveryDeadline ? `Entrega: ${req.deliveryDeadline}` : ''}
                                 </div>
                               )}

@@ -34,7 +34,8 @@ import {
   ShieldCheck,
   Lock,
   CreditCard,
-  Award
+  Award,
+  Wallet
 } from 'lucide-react';
 
 interface OrderDetailsModalProps {
@@ -384,19 +385,25 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Prazo de Pagamento & Prazo de Entrega */}
-                {(request.paymentTerms || request.deliveryDeadline) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-emerald-200/60 text-xs">
+                {/* Forma de Pagamento, Prazo de Pagamento & Prazo de Entrega */}
+                {(request.paymentMethod || request.paymentTerms || request.deliveryDeadline) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-emerald-200/60 text-xs">
+                    {request.paymentMethod && (
+                      <div className="flex items-center gap-1.5 text-emerald-950 bg-emerald-100/70 px-2.5 py-1.5 rounded-lg border border-emerald-300">
+                        <Wallet className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                        <span>Forma: <strong>{request.paymentMethod}</strong></span>
+                      </div>
+                    )}
                     {request.paymentTerms && (
                       <div className="flex items-center gap-1.5 text-emerald-950 bg-emerald-100/70 px-2.5 py-1.5 rounded-lg border border-emerald-300">
                         <CreditCard className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                        <span>Prazo de Pagamento: <strong>{request.paymentTerms}</strong></span>
+                        <span>Prazo Pagto: <strong>{request.paymentTerms}</strong></span>
                       </div>
                     )}
                     {request.deliveryDeadline && (
                       <div className="flex items-center gap-1.5 text-emerald-950 bg-emerald-100/70 px-2.5 py-1.5 rounded-lg border border-emerald-300">
                         <Clock className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                        <span>Prazo de Entrega: <strong>{request.deliveryDeadline}</strong></span>
+                        <span>Prazo Entrega: <strong>{request.deliveryDeadline}</strong></span>
                       </div>
                     )}
                   </div>
@@ -550,10 +557,16 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                               {formatCurrency(q.totalPrice)}
                               {q.shippingCost ? <span className="text-[10px] text-slate-500 font-normal"> (Frete: {formatCurrency(q.shippingCost)})</span> : null}
                             </div>
+                            {q.paymentMethod && (
+                              <div className="text-[11px] text-slate-700 flex items-center gap-1">
+                                <Wallet className="w-3 h-3 text-cyan-600 shrink-0" />
+                                <span>Forma: <strong>{q.paymentMethod}</strong></span>
+                              </div>
+                            )}
                             {q.paymentTerms && (
                               <div className="text-[11px] text-slate-600 flex items-center gap-1">
                                 <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
-                                <span>Pagamento: <strong>{q.paymentTerms}</strong></span>
+                                <span>Prazo: <strong>{q.paymentTerms}</strong></span>
                               </div>
                             )}
                             {q.deliveryDeadline && (
@@ -607,8 +620,15 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                         </div>
                       ) : null}
 
-                      {q.paymentTerms && (
+                      {q.paymentMethod && (
                         <div className="text-[11px] text-slate-700 flex items-center gap-1 pt-1 border-t border-slate-100">
+                          <Wallet className="w-3 h-3 text-cyan-600 shrink-0" />
+                          <span>Forma: <strong>{q.paymentMethod}</strong></span>
+                        </div>
+                      )}
+
+                      {q.paymentTerms && (
+                        <div className={`text-[11px] text-slate-700 flex items-center gap-1 ${q.paymentMethod ? '' : 'pt-1 border-t border-slate-100'}`}>
                           <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
                           <span>Prazo Pagto: <strong>{q.paymentTerms}</strong></span>
                         </div>

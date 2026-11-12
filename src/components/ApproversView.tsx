@@ -26,6 +26,7 @@ import {
   CalendarRange,
   RotateCcw,
   CreditCard,
+  Wallet,
   Plus,
   Users,
   X
@@ -1377,13 +1378,19 @@ export const ApproversView: React.FC<ApproversViewProps> = ({
                         Fornecedor: <strong className="text-slate-800">{req.supplier || 'Não informado'}</strong>
                       </div>
 
-                      {/* Prazo de Pagamento & Prazo de Entrega */}
-                      {(req.paymentTerms || req.deliveryDeadline) && (
+                      {/* Forma de Pagamento, Prazo de Pagamento & Prazo de Entrega */}
+                      {(req.paymentMethod || req.paymentTerms || req.deliveryDeadline) && (
                         <div className="pt-1.5 border-t border-slate-200 space-y-0.5 text-[11px] text-slate-600">
+                          {req.paymentMethod && (
+                            <div className="flex items-center justify-end gap-1">
+                              <Wallet className="w-3 h-3 text-cyan-600" />
+                              <span>Forma: <strong className="text-slate-800">{req.paymentMethod}</strong></span>
+                            </div>
+                          )}
                           {req.paymentTerms && (
                             <div className="flex items-center justify-end gap-1">
                               <CreditCard className="w-3 h-3 text-indigo-500" />
-                              <span>Pagamento: <strong className="text-slate-800">{req.paymentTerms}</strong></span>
+                              <span>Prazo Pagto: <strong className="text-slate-800">{req.paymentTerms}</strong></span>
                             </div>
                           )}
                           {req.deliveryDeadline && (
