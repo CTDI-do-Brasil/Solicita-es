@@ -917,9 +917,15 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                               </span>
                               <div className="flex items-center gap-1 justify-end text-[10px] text-emerald-700 font-semibold">
                                 {((req.quotes && req.quotes.length > 0) || (req.items && req.items.some(i => i.quotes && i.quotes.length > 0))) && (
-                                  <span className="bg-cyan-100 text-cyan-800 px-1.5 py-0.2 rounded font-bold">
-                                    {req.quotes ? req.quotes.length : req.items?.reduce((acc, it) => acc + (it.quotes?.length || 0), 0)} orç.
-                                  </span>
+                                  releaseInfo.isReleased ? (
+                                    <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                                      Orçamento Aprovado
+                                    </span>
+                                  ) : (
+                                    <span className="bg-cyan-100 text-cyan-800 px-1.5 py-0.2 rounded font-bold">
+                                      {req.quotes ? req.quotes.length : req.items?.reduce((acc, it) => acc + (it.quotes?.length || 0), 0)} orç.
+                                    </span>
+                                  )
                                 )}
                                 <span>Definido por Compras</span>
                               </div>

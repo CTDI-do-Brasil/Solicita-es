@@ -82,13 +82,27 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
     request.purchaseStatus === 'em_aprovacao' && 
     (currentUser.role === 'master' || (detectedApprover && detectedApprover === currentStep));
 
+  const isApproved =
+    releaseInfo.isReleased ||
+    request.approvals?.currentApprover === 'concluido' ||
+    (request.approvals?.fernando?.status === 'aprovado' &&
+      request.approvals?.eduardo?.status === 'aprovado' &&
+      request.approvals?.luiz?.status === 'aprovado') ||
+    request.purchaseStatus === 'pedido_emitido' ||
+    request.purchaseStatus === 'compra_realizada' ||
+    request.purchaseStatus === 'em_transito' ||
+    request.purchaseStatus === 'entregue';
+
   // Permissão para selecionar cotação vencedora: Aprovadores (Fernando, Eduardo, Luiz), Gestor, Compras ou Master
+  // Apenas disponível enquanto a solicitação NÃO estiver aprovada/concluída
   const canSelectQuote = 
-    currentUser.role === 'master' || 
-    currentUser.role === 'compras' || 
-    currentUser.role === 'aprovador' || 
-    currentUser.role === 'gestor' || 
-    Boolean(detectedApprover);
+    !isApproved && (
+      currentUser.role === 'master' || 
+      currentUser.role === 'compras' || 
+      currentUser.role === 'aprovador' || 
+      currentUser.role === 'gestor' || 
+      Boolean(detectedApprover)
+    );
 
   const handleSelectQuote = (quoteId: string, itemId?: string) => {
     setActionError('');
@@ -550,16 +564,23 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                 <div className="space-y-0.5">
                   <span className="text-xs font-bold text-cyan-950 uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-cyan-700" />
-                    Orçamentos & Cotações Realizadas por Compras
+                    {isApproved ? 'Orçamento Aprovado da Solicitação' : 'Orçamentos & Cotações Realizadas por Compras'}
                   </span>
-                  {canSelectQuote && (
+                  {isApproved ? (
+                    <p className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Cotação homologada e 100% aprovada pela diretoria para emissão do pedido.
+                    </p>
+                  ) : canSelectQuote ? (
                     <p className="text-[11px] text-cyan-800 font-medium">
                       O aprovador pode clicar na cotação desejada para defini-la como a <span className="font-bold underline text-cyan-950">vencedora</span> do pedido.
                     </p>
-                  )}
+                  ) : null}
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-200 text-cyan-900 self-start sm:self-auto">
-                  Transparência & Compliance
+                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full self-start sm:self-auto ${
+                  isApproved ? 'bg-emerald-200 text-emerald-900 border border-emerald-300' : 'bg-cyan-200 text-cyan-900'
+                }`}>
+                  {isApproved ? 'Aprovado & Homologado' : 'Transparência & Compliance'}
                 </span>
               </div>
 
@@ -573,101 +594,112 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               {/* Se os itens têm cotações específicas */}
               {request.items && request.items.some(i => i.quotes && i.quotes.length > 0) ? (
                 <div className="space-y-3">
-                  {request.items.map((it, idx) => (
-                    <div key={it.id || idx} className="bg-white p-3 rounded-lg border border-cyan-200 text-xs space-y-2">
-                      <div className="font-bold text-slate-800 flex items-center justify-between">
-                        <span>Item #{idx + 1}: {it.name} ({it.quantity} {it.unit})</span>
-                        <span className="text-slate-500 font-normal">{it.quotes?.length || 0} cotações</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {it.quotes?.map((q, qIdx) => (
-                          <div
-                            key={q.id || qIdx}
-                            onClick={() => {
-                              if (canSelectQuote && !q.selected) {
-                                handleSelectQuote(q.id, it.id);
-                              }
-                            }}
-                            className={`p-2.5 rounded-lg border text-xs space-y-1 transition-all ${
-                              q.selected
-                                ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
-                                : canSelectQuote
-                                ? 'bg-slate-50 hover:bg-cyan-50/40 border-slate-200 hover:border-cyan-400 text-slate-700 cursor-pointer hover:shadow-xs'
-                                : 'bg-slate-50 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold truncate text-slate-900">{q.supplier}</span>
-                              {q.selected ? (
-                                <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shrink-0">
-                                  <Award className="w-3 h-3 text-emerald-700" />
-                                  Vencedor
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-slate-400 shrink-0">Opção #{qIdx + 1}</span>
-                              )}
-                            </div>
-                            <div className="font-bold text-sm text-slate-900">
-                              {formatCurrency(q.totalPrice)}
-                              {q.shippingCost ? <span className="text-[10px] text-slate-500 font-normal"> (Frete: {formatCurrency(q.shippingCost)})</span> : null}
-                            </div>
-                            {q.paymentMethod && (
-                              <div className="text-[11px] text-slate-700 flex items-center gap-1">
-                                <Wallet className="w-3 h-3 text-cyan-600 shrink-0" />
-                                <span>Forma: <strong>{q.paymentMethod}</strong></span>
-                              </div>
-                            )}
-                            {q.paymentTerms && (
-                              <div className="text-[11px] text-slate-600 flex items-center gap-1">
-                                <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
-                                <span>Prazo: <strong>{q.paymentTerms}</strong></span>
-                              </div>
-                            )}
-                            {q.deliveryDeadline && (
-                              <div className="text-[11px] text-slate-600 flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-amber-600 shrink-0" />
-                                <span>Entrega: <strong>{q.deliveryDeadline}</strong></span>
-                              </div>
-                            )}
-                            {q.notes && (
-                              <div className="text-[10px] text-slate-500 italic mt-0.5">
-                                "{q.notes}"
-                              </div>
-                            )}
+                  {request.items.map((it, idx) => {
+                    const itemQuotesToRender = isApproved
+                      ? (it.quotes?.filter(q => q.selected).length ? it.quotes.filter(q => q.selected) : (it.quotes?.[0] ? [it.quotes[0]] : []))
+                      : (it.quotes || []);
 
-                            {/* Botão de seleção interativo para o aprovador */}
-                            {canSelectQuote && (
-                              <div className="pt-2 mt-1 border-t border-slate-100">
+                    return (
+                      <div key={it.id || idx} className="bg-white p-3 rounded-lg border border-cyan-200 text-xs space-y-2">
+                        <div className="font-bold text-slate-800 flex items-center justify-between">
+                          <span>Item #{idx + 1}: {it.name} ({it.quantity} {it.unit})</span>
+                          <span className="text-slate-500 font-normal">
+                            {isApproved ? '1 cotação aprovada' : `${it.quotes?.length || 0} cotações`}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {itemQuotesToRender.map((q, qIdx) => (
+                            <div
+                              key={q.id || qIdx}
+                              onClick={() => {
+                                if (canSelectQuote && !q.selected) {
+                                  handleSelectQuote(q.id, it.id);
+                                }
+                              }}
+                              className={`p-2.5 rounded-lg border text-xs space-y-1 transition-all ${
+                                q.selected
+                                  ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
+                                  : canSelectQuote
+                                  ? 'bg-slate-50 hover:bg-cyan-50/40 border-slate-200 hover:border-cyan-400 text-slate-700 cursor-pointer hover:shadow-xs'
+                                  : 'bg-slate-50 border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-bold truncate text-slate-900">{q.supplier}</span>
                                 {q.selected ? (
-                                  <div className="w-full py-1 px-2 rounded-md bg-emerald-100 text-emerald-800 font-bold text-center text-[11px] flex items-center justify-center gap-1">
-                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                    Cotação Escolhida
-                                  </div>
+                                  <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shrink-0">
+                                    <Award className="w-3 h-3 text-emerald-700" />
+                                    {isApproved ? 'Aprovado' : 'Vencedor'}
+                                  </span>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSelectQuote(q.id, it.id);
-                                    }}
-                                    className="w-full py-1.5 px-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-xs cursor-pointer"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                    Selecionar Esta Cotação
-                                  </button>
+                                  <span className="text-[10px] text-slate-400 shrink-0">Opção #{qIdx + 1}</span>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              <div className="font-bold text-sm text-slate-900">
+                                {formatCurrency(q.totalPrice)}
+                                {q.shippingCost ? <span className="text-[10px] text-slate-500 font-normal"> (Frete: {formatCurrency(q.shippingCost)})</span> : null}
+                              </div>
+                              {q.paymentMethod && (
+                                <div className="text-[11px] text-slate-700 flex items-center gap-1">
+                                  <Wallet className="w-3 h-3 text-cyan-600 shrink-0" />
+                                  <span>Forma: <strong>{q.paymentMethod}</strong></span>
+                                </div>
+                              )}
+                              {q.paymentTerms && (
+                                <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                                  <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
+                                  <span>Prazo: <strong>{q.paymentTerms}</strong></span>
+                                </div>
+                              )}
+                              {q.deliveryDeadline && (
+                                <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>Entrega: <strong>{q.deliveryDeadline}</strong></span>
+                                </div>
+                              )}
+                              {q.notes && (
+                                <div className="text-[10px] text-slate-500 italic mt-0.5">
+                                  "{q.notes}"
+                                </div>
+                              )}
+
+                              {/* Botão de seleção interativo para o aprovador */}
+                              {canSelectQuote && (
+                                <div className="pt-2 mt-1 border-t border-slate-100">
+                                  {q.selected ? (
+                                    <div className="w-full py-1 px-2 rounded-md bg-emerald-100 text-emerald-800 font-bold text-center text-[11px] flex items-center justify-center gap-1">
+                                      <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                      Cotação Escolhida
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSelectQuote(q.id, it.id);
+                                      }}
+                                      className="w-full py-1.5 px-2 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 transition-colors shadow-xs cursor-pointer"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      Selecionar Esta Cotação
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 /* Cotações do produto / requisição geral */
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {request.quotes?.map((q, qIdx) => (
+                  {(isApproved
+                    ? (request.quotes?.filter(q => q.selected).length ? request.quotes.filter(q => q.selected) : (request.quotes?.[0] ? [request.quotes[0]] : []))
+                    : (request.quotes || [])
+                  ).map((q, qIdx) => (
                     <div
                       key={q.id || qIdx}
                       onClick={() => {
@@ -688,7 +720,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                         {q.selected ? (
                           <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-black flex items-center gap-0.5 shrink-0">
                             <Award className="w-3 h-3 text-emerald-700" />
-                            Vencedor
+                            {isApproved ? 'Aprovado' : 'Vencedor'}
                           </span>
                         ) : (
                           <span className="text-[10px] text-slate-400 shrink-0">Orçamento #{qIdx + 1}</span>

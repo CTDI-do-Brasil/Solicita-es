@@ -52,6 +52,18 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const releaseInfo = getRequestPurchaseReleaseInfo(request);
+  const isApproved =
+    releaseInfo.isReleased ||
+    request.approvals?.currentApprover === 'concluido' ||
+    (request.approvals?.fernando?.status === 'aprovado' &&
+      request.approvals?.eduardo?.status === 'aprovado' &&
+      request.approvals?.luiz?.status === 'aprovado') ||
+    request.purchaseStatus === 'pedido_emitido' ||
+    request.purchaseStatus === 'compra_realizada' ||
+    request.purchaseStatus === 'em_transito' ||
+    request.purchaseStatus === 'entregue';
+
   const [status, setStatus] = useState<PurchaseOrderStatus>(
     request.purchaseStatus === 'aguardando_aprovacao_gestor' || request.purchaseStatus === 'recebido_em_compras'
       ? 'em_cotacao'
@@ -59,26 +71,47 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   );
 
   // Initialize items and quotes
+  // IMPORTANTE: Se a solicitação já foi aprovada, exibe SOMENTE o orçamento aprovado para o comprador
   const [itemsQuotes, setItemsQuotes] = useState<ItemQuotesState[]>(() => {
     if (request.items && request.items.length > 0) {
       return request.items.map((it, idx) => {
         if (it.quotes && it.quotes.length > 0) {
+          let list = it.quotes.map(q => ({ ...q }));
+          if (isApproved) {
+            const winners = list.filter(q => q.selected);
+            if (winners.length > 0) {
+              list = [winners[0]];
+            } else {
+              const match = list.find(q => q.supplier === request.supplier || q.totalPrice === request.totalPrice);
+              list = [match ? { ...match, selected: true } : { ...list[0], selected: true }];
+            }
+          }
           return {
             itemId: it.id || `item-${idx}`,
             itemName: it.name,
             itemQuantity: it.quantity,
             itemUnit: it.unit,
-            quotes: it.quotes.map(q => ({ ...q })),
+            quotes: list,
           };
         }
         // If single item in items array and request has top-level quotes
         if (request.items!.length === 1 && request.quotes && request.quotes.length > 0) {
+          let list = request.quotes.map(q => ({ ...q }));
+          if (isApproved) {
+            const winners = list.filter(q => q.selected);
+            if (winners.length > 0) {
+              list = [winners[0]];
+            } else {
+              const match = list.find(q => q.supplier === request.supplier || q.totalPrice === request.totalPrice);
+              list = [match ? { ...match, selected: true } : { ...list[0], selected: true }];
+            }
+          }
           return {
             itemId: it.id || `item-${idx}`,
             itemName: it.name,
             itemQuantity: it.quantity,
             itemUnit: it.unit,
-            quotes: request.quotes.map(q => ({ ...q })),
+            quotes: list,
           };
         }
         // Default initial quote
@@ -106,7 +139,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     }
 
     // Single item from request top-level fields
-    const quotesList: ProductQuote[] = (request.quotes && request.quotes.length > 0)
+    let quotesList: ProductQuote[] = (request.quotes && request.quotes.length > 0)
       ? request.quotes.map(q => ({ ...q }))
       : [{
           id: generateQuoteId(),
@@ -121,6 +154,16 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
           selected: true,
         }];
 
+    if (isApproved) {
+      const winners = quotesList.filter(q => q.selected);
+      if (winners.length > 0) {
+        quotesList = [winners[0]];
+      } else {
+        const match = quotesList.find(q => q.supplier === request.supplier || q.totalPrice === request.totalPrice);
+        quotesList = [match ? { ...match, selected: true } : { ...quotesList[0], selected: true }];
+      }
+    }
+
     return [{
       itemId: 'item-main',
       itemName: request.title,
@@ -134,7 +177,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
   const [error, setError] = useState('');
 
   const sectorColor = getSectorColor(request.sector);
-  const releaseInfo = getRequestPurchaseReleaseInfo(request);
 
   // Helper to update a quote field
   const handleQuoteChange = (
@@ -178,6 +220,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
 
   // Helper to add another quote for an item
   const handleAddQuote = (itemIndex: number) => {
+    if (isApproved) return;
     setItemsQuotes(prev => {
       return prev.map((item, iIdx) => {
         if (iIdx !== itemIndex) return item;
@@ -204,6 +247,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
 
   // Helper to remove a quote
   const handleRemoveQuote = (itemIndex: number, quoteIndex: number) => {
+    if (isApproved) return;
     setItemsQuotes(prev => {
       return prev.map((item, iIdx) => {
         if (iIdx !== itemIndex) return item;
@@ -541,13 +585,36 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-cyan-700" />
-                Cotações por Produto ({itemsQuotes.length} {itemsQuotes.length === 1 ? 'produto' : 'produtos'})
+                {isApproved
+                  ? 'Orçamento Aprovado da Solicitação'
+                  : `Cotações por Produto (${itemsQuotes.length} ${itemsQuotes.length === 1 ? 'produto' : 'produtos'})`}
               </h3>
-              <span className="text-xs text-cyan-800 font-semibold bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-cyan-600" />
-                Permite múltiplos orçamentos concorrentes
-              </span>
+              {isApproved ? (
+                <span className="text-xs text-emerald-900 font-bold bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
+                  <Award className="w-3.5 h-3.5 text-emerald-700" />
+                  Orçamento Oficial Homologado
+                </span>
+              ) : (
+                <span className="text-xs text-cyan-800 font-semibold bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-cyan-600" />
+                  Permite múltiplos orçamentos concorrentes
+                </span>
+              )}
             </div>
+
+            {isApproved && (
+              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-300 flex items-center gap-3 text-xs text-emerald-950">
+                <div className="w-8 h-8 rounded-lg bg-emerald-200 text-emerald-900 flex items-center justify-center shrink-0">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-bold block">Solicitação Aprovada na Alçada da Diretoria:</span>
+                  <p className="text-emerald-800 leading-relaxed text-[11px]">
+                    Exibindo exclusivamente o orçamento aprovado para emissão e efetivação da compra pelo comprador.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {itemsQuotes.map((item, itemIdx) => {
               // Find best price among quotes for this item
@@ -577,17 +644,19 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-700">
-                        {item.quotes.length} {item.quotes.length === 1 ? 'orçamento' : 'orçamentos cadastrados'}
+                        {isApproved ? '1 orçamento aprovado' : `${item.quotes.length} ${item.quotes.length === 1 ? 'orçamento' : 'orçamentos cadastrados'}`}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleAddQuote(itemIdx)}
-                        className="flex items-center gap-1 px-3 py-1 text-xs font-bold text-cyan-800 bg-cyan-100 hover:bg-cyan-200 border border-cyan-300 rounded-lg transition-colors cursor-pointer"
-                        title="Incluir mais um orçamento para este produto"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Adicionar Orçamento</span>
-                      </button>
+                      {!isApproved && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddQuote(itemIdx)}
+                          className="flex items-center gap-1 px-3 py-1 text-xs font-bold text-cyan-800 bg-cyan-100 hover:bg-cyan-200 border border-cyan-300 rounded-lg transition-colors cursor-pointer"
+                          title="Incluir mais um orçamento para este produto"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar Orçamento</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -610,10 +679,15 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                           <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                                Orçamento #{quoteIdx + 1}
+                                {isApproved ? 'Orçamento Aprovado' : `Orçamento #${quoteIdx + 1}`}
                               </span>
 
-                              {isWinning ? (
+                              {isApproved ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  <Award className="w-3.5 h-3.5 text-emerald-600" />
+                                  Aprovado & Homologado pela Diretoria
+                                </span>
+                              ) : isWinning ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                                   <Award className="w-3.5 h-3.5 text-emerald-600" />
                                   Orçamento Vencedor / Escolhido
@@ -629,14 +703,14 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                                 </button>
                               )}
 
-                              {isBestPrice && (
+                              {!isApproved && isBestPrice && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
                                   Menor Preço
                                 </span>
                               )}
                             </div>
 
-                            {item.quotes.length > 1 && (
+                            {!isApproved && item.quotes.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() => handleRemoveQuote(itemIdx, quoteIdx)}
@@ -852,16 +926,18 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   </div>
 
                   {/* Add Quote Button for this item */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleAddQuote(itemIdx)}
-                      className="w-full py-2 border-2 border-dashed border-cyan-300 hover:border-cyan-500 bg-cyan-50/50 hover:bg-cyan-50 text-cyan-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4 text-cyan-700" />
-                      <span>Incluir Mais um Orçamento para este Produto</span>
-                    </button>
-                  </div>
+                  {!isApproved && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuote(itemIdx)}
+                        className="w-full py-2 border-2 border-dashed border-cyan-300 hover:border-cyan-500 bg-cyan-50/50 hover:bg-cyan-50 text-cyan-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4 text-cyan-700" />
+                        <span>Incluir Mais um Orçamento para este Produto</span>
+                      </button>
+                    </div>
+                  )}
 
                 </div>
               );
