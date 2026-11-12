@@ -1,6 +1,7 @@
 import { User, UserRole, PurchaseRequest, SectorType, ProjectType, ALL_PROJECTS, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem } from './types';
-import { INITIAL_USERS, INITIAL_REQUESTS, MASTER_USER } from './mockData';
+import { INITIAL_USERS, INITIAL_REQUESTS, MASTER_USER, DEMO_USERS, DEMO_REQUESTS } from './mockData';
 import { api } from './services/api';
+import { isLocalEnvironment } from './utils';
 
 const USERS_STORAGE_KEY = 'compras_app_users_v2';
 const REQUESTS_STORAGE_KEY = 'compras_app_requests_v3';
@@ -138,6 +139,18 @@ export const storage = {
       const stored = localStorage.getItem(USERS_STORAGE_KEY);
       if (stored) {
         const users: User[] = JSON.parse(stored);
+        
+        // Em ambiente local, se só houver o usuário master ou lista vazia, preenche com usuários de demonstração
+        if (isLocalEnvironment() && users.length <= 1) {
+          const demoUsers = DEMO_USERS.map(u => ({
+            ...u,
+            password: u.password || '123456',
+            allowedProjects: normalizeAllowedProjects(u.allowedProjects, u.role)
+          }));
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(demoUsers));
+          return demoUsers;
+        }
+
         // Ensure master dev user is always present
         let needsSave = false;
         if (!users.some(u => u && (u.role === 'master' || u.id === 'user-master-dev'))) {
@@ -167,7 +180,8 @@ export const storage = {
     } catch (e) {
       console.error('Failed to load users from localStorage', e);
     }
-    const defaultUsers = INITIAL_USERS.map(u => ({ 
+    const sourceUsers = isLocalEnvironment() ? DEMO_USERS : INITIAL_USERS;
+    const defaultUsers = sourceUsers.map(u => ({ 
       ...u, 
       password: u.password || '123456',
       allowedProjects: normalizeAllowedProjects(u.allowedProjects, u.role)
@@ -220,6 +234,13 @@ export const storage = {
       const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
       if (stored) {
         const requests: PurchaseRequest[] = JSON.parse(stored);
+        
+        // Em ambiente local, se a lista estiver vazia, carrega as solicitações de exemplo completas do ciclo
+        if (isLocalEnvironment() && requests.length === 0) {
+          localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(DEMO_REQUESTS));
+          return DEMO_REQUESTS;
+        }
+
         let updated = false;
         const migrated = requests.map(r => {
           const match = r.code.match(/^SOL-\d{4}-(\d+)$/i);
@@ -242,8 +263,9 @@ export const storage = {
     } catch (e) {
       console.error('Failed to load requests from localStorage', e);
     }
-    localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(INITIAL_REQUESTS));
-    return INITIAL_REQUESTS;
+    const fallbackRequests = isLocalEnvironment() ? DEMO_REQUESTS : INITIAL_REQUESTS;
+    localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(fallbackRequests));
+    return fallbackRequests;
   },
 
   saveRequests(requests: PurchaseRequest[]) {
@@ -892,8 +914,15 @@ export const storage = {
   },
 
   resetData() {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_USERS));
-    localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(INITIAL_REQUESTS));
+    const isLocal = isLocalEnvironment();
+    const targetUsers = (isLocal ? DEMO_USERS : INITIAL_USERS).map(u => ({
+      ...u,
+      password: u.password || '123456',
+      allowedProjects: normalizeAllowedProjects(u.allowedProjects, u.role)
+    }));
+    const targetRequests = isLocal ? DEMO_REQUESTS : INITIAL_REQUESTS;
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(targetUsers));
+    localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(targetRequests));
     localStorage.setItem(VERSIONS_STORAGE_KEY, JSON.stringify(INITIAL_VERSIONS));
     window.dispatchEvent(new Event('storage-users-updated'));
     window.dispatchEvent(new Event('storage-requests-updated'));
@@ -909,7 +938,7 @@ export const storage = {
       ]);
 
       let hasChanges = false;
-      if (remoteRequests && Array.isArray(remoteRequests)) {
+      if (remoteRequests && Array.isArray(remoteRequests) && remoteRequests.length > 0) {
         localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(remoteRequests));
         window.dispatchEvent(new Event('storage-requests-updated'));
         hasChanges = true;

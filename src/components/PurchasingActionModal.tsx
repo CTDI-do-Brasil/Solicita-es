@@ -8,8 +8,6 @@ import {
   Check, 
   ExternalLink, 
   DollarSign, 
-  Calendar, 
-  Truck, 
   FileCheck2, 
   AlertCircle, 
   Package, 
@@ -132,12 +130,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     }];
   });
 
-  const [purchaseDate, setPurchaseDate] = useState(
-    request.purchaseDate || new Date().toISOString().split('T')[0]
-  );
-  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(
-    request.expectedDeliveryDate || ''
-  );
   const [purchasingNotes, setPurchasingNotes] = useState(request.purchasingNotes || '');
   const [error, setError] = useState('');
 
@@ -287,8 +279,8 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         paymentMethod: primaryPaymentMethod || undefined,
         paymentTerms: primaryPaymentTerms || undefined,
         deliveryDeadline: primaryDeliveryDeadline || undefined,
-        purchaseDate: purchaseDate || undefined,
-        expectedDeliveryDate: expectedDeliveryDate || undefined,
+        purchaseDate: request.purchaseDate || undefined,
+        expectedDeliveryDate: request.expectedDeliveryDate || undefined,
         purchasingNotes: purchasingNotes.trim(),
         quotes: allQuotes,
         items: updatedItems,
@@ -332,8 +324,8 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         paymentMethod: primaryPaymentMethod || undefined,
         paymentTerms: primaryPaymentTerms || undefined,
         deliveryDeadline: primaryDeliveryDeadline || undefined,
-        purchaseDate: purchaseDate || undefined,
-        expectedDeliveryDate: expectedDeliveryDate || undefined,
+        purchaseDate: request.purchaseDate || undefined,
+        expectedDeliveryDate: request.expectedDeliveryDate || undefined,
         purchasingNotes: purchasingNotes.trim(),
         quotes: allQuotes,
         items: updatedItems,
@@ -910,37 +902,6 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                   {formatCurrency(consolidatedTotalPrice)}
                 </span>
               </div>
-            </div>
-          </div>
-
-          {/* Operational Dates & Logistics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                Data da Compra / Faturamento
-              </label>
-              <input
-                id="buyer-purchase-date"
-                type="date"
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Truck className="w-3.5 h-3.5" />
-                Previsão de Entrega no Setor
-              </label>
-              <input
-                id="buyer-delivery-date"
-                type="date"
-                value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-hidden"
-              />
             </div>
           </div>
 

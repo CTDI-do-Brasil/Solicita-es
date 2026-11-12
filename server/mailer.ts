@@ -185,14 +185,6 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
     };
   }
 }
-        user: cfg.user,
-        error: error.message,
-        code: error.code,
-        command: error.command,
-      },
-    };
-  }
-}
 
 function htmlToPlainText(html: string): string {
   return html
