@@ -81,7 +81,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
       const payload: any = {
         enabled,
         host,
-        port: Number(port) || 25,
+        port: Number(port) || 465,
         secure: Number(port) === 465,
         user,
         from,
@@ -133,7 +133,7 @@ export const SmtpConfigModal: React.FC<SmtpConfigModalProps> = ({ isOpen, onClos
       const payload: any = {
         enabled,
         host,
-        port: Number(port) || 25,
+        port: Number(port) || 465,
         secure: Number(port) === 465,
         user,
         from,

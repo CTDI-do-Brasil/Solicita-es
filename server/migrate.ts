@@ -28,27 +28,27 @@ export async function runAutoMigrations() {
     console.log(`[PostgreSQL] Executando script DDL / Seed em ${dbName}...`);
     await pool.query(sql);
 
-    // Garantir criação e integridade da tabela de configurações SMTP
+    // Garantir criação e integridade da tabela de configurações SMTP (UOL Host)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS smtp_settings (
         id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
         enabled BOOLEAN NOT NULL DEFAULT true,
-        host VARCHAR(255) NOT NULL DEFAULT 'srv-captain--mail',
-        port INT NOT NULL DEFAULT 25,
-        secure BOOLEAN NOT NULL DEFAULT false,
-        user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdibrasil.com.br',
+        host VARCHAR(255) NOT NULL DEFAULT 'smtps.uhserver.com',
+        port INT NOT NULL DEFAULT 465,
+        secure BOOLEAN NOT NULL DEFAULT true,
+        user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdisystem.com.br',
         pass_account VARCHAR(255) NOT NULL DEFAULT '',
-        from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdibrasil.com.br>',
+        from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdisystem.com.br>',
         test_recipient VARCHAR(255) NOT NULL DEFAULT 'apongeluppi@ctdi.com',
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
-      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS host VARCHAR(255) NOT NULL DEFAULT 'srv-captain--mail';
-      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS port INT NOT NULL DEFAULT 25;
-      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS secure BOOLEAN NOT NULL DEFAULT false;
-      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdibrasil.com.br';
+      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS host VARCHAR(255) NOT NULL DEFAULT 'smtps.uhserver.com';
+      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS port INT NOT NULL DEFAULT 465;
+      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS secure BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdisystem.com.br';
       ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS pass_account VARCHAR(255) NOT NULL DEFAULT '';
-      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdibrasil.com.br>';
+      ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdisystem.com.br>';
       ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS test_recipient VARCHAR(255) NOT NULL DEFAULT 'apongeluppi@ctdi.com';
       ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
@@ -106,22 +106,25 @@ export async function runAutoMigrations() {
       [masterUser.id, masterUser.name, masterUser.email, masterUser.role, masterUser.sector, masterUser.position]
     );
 
-    // Sincronizar registro inicial com variáveis de ambiente do CapRover e corrigir seeds antigos que apontavam para mail.ctdibrasil.com.br:587
-    const envHost = process.env.SMTP_HOST || 'srv-captain--mail';
-    const envPort = parseInt(process.env.SMTP_PORT || '25', 10);
+    // Sincronizar registro com as variáveis de ambiente ou padrões da UOL Host (limpa seeds antigos do Poste.io/CapRover)
+    const envHost = process.env.SMTP_HOST || 'smtps.uhserver.com';
+    const envPort = parseInt(process.env.SMTP_PORT || '465', 10);
     const envSecure = process.env.SMTP_SECURE === 'true' || envPort === 465;
-    const envUser = process.env.SMTP_USER || 'nexus@ctdibrasil.com.br';
-    const envPass = process.env.SMTP_PASS || '';
-    const envFrom = process.env.SMTP_FROM || 'Nexus CTDI <nexus@ctdibrasil.com.br>';
+    const envUser = process.env.SMTP_USER || 'nexus@ctdisystem.com.br';
+    const envPass = process.env.SMTP_PASS || 'Ctdi@2026!';
+    const envFrom = process.env.SMTP_FROM || 'Nexus CTDI <nexus@ctdisystem.com.br>';
     const envTest = process.env.EMAIL_OVERRIDE_TO || 'apongeluppi@ctdi.com';
 
     await pool.query(
       `INSERT INTO smtp_settings (id, enabled, host, port, secure, user_account, pass_account, from_name, test_recipient, updated_at)
        VALUES ('default', true, $1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (id) DO UPDATE SET
-         host = CASE WHEN smtp_settings.host = 'mail.ctdibrasil.com.br' AND smtp_settings.port = 587 THEN EXCLUDED.host ELSE smtp_settings.host END,
-         port = CASE WHEN smtp_settings.host = 'mail.ctdibrasil.com.br' AND smtp_settings.port = 587 THEN EXCLUDED.port ELSE smtp_settings.port END,
-         pass_account = CASE WHEN smtp_settings.pass_account = '' AND EXCLUDED.pass_account <> '' THEN EXCLUDED.pass_account ELSE smtp_settings.pass_account END,
+         host = CASE WHEN smtp_settings.host = 'mail.ctdibrasil.com.br' OR smtp_settings.host = 'srv-captain--mail' OR smtp_settings.host = 'srv-captain--mailserver' THEN EXCLUDED.host ELSE smtp_settings.host END,
+         port = CASE WHEN smtp_settings.host = 'mail.ctdibrasil.com.br' OR smtp_settings.host = 'srv-captain--mail' OR smtp_settings.port = 25 THEN EXCLUDED.port ELSE smtp_settings.port END,
+         secure = CASE WHEN smtp_settings.host = 'mail.ctdibrasil.com.br' OR smtp_settings.host = 'srv-captain--mail' THEN EXCLUDED.secure ELSE smtp_settings.secure END,
+         user_account = CASE WHEN smtp_settings.user_account = 'nexus@ctdibrasil.com.br' THEN EXCLUDED.user_account ELSE smtp_settings.user_account END,
+         pass_account = CASE WHEN (smtp_settings.pass_account = '' OR smtp_settings.user_account = 'nexus@ctdibrasil.com.br') AND EXCLUDED.pass_account <> '' THEN EXCLUDED.pass_account ELSE smtp_settings.pass_account END,
+         from_name = CASE WHEN smtp_settings.from_name LIKE '%@ctdibrasil.com.br%' THEN EXCLUDED.from_name ELSE smtp_settings.from_name END,
          updated_at = NOW()`,
       [envHost, envPort, envSecure, envUser, envPass, envFrom, envTest]
     );

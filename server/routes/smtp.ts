@@ -41,12 +41,12 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       enabled = true,
-      host = 'srv-captain--mail',
-      port = 25,
-      secure = false,
-      user = '',
+      host = 'smtps.uhserver.com',
+      port = 465,
+      secure = true,
+      user = 'nexus@ctdisystem.com.br',
       pass = '',
-      from = 'Nexus CTDI <nexus@ctdibrasil.com.br>',
+      from = 'Nexus CTDI <nexus@ctdisystem.com.br>',
       testRecipient = 'apongeluppi@ctdi.com',
     } = req.body;
 
@@ -70,7 +70,7 @@ router.post('/', async (req: Request, res: Response) => {
          from_name = EXCLUDED.from_name,
          test_recipient = EXCLUDED.test_recipient,
          updated_at = NOW()`,
-      [Boolean(enabled), host, parseInt(String(port), 10) || 25, Boolean(secure), user, finalPass, from, testRecipient]
+      [Boolean(enabled), host, parseInt(String(port), 10) || 465, Boolean(secure), user, finalPass, from, testRecipient]
     );
 
     // Invalida cache de transporte do Nodemailer para usar as novas configurações
@@ -96,12 +96,12 @@ router.post('/test', async (req: Request, res: Response) => {
 
     const testConfig: SmtpConfig = {
       enabled: true,
-      host: body.host || current.host || 'srv-captain--mail',
-      port: parseInt(String(body.port || current.port || 25), 10),
+      host: body.host || current.host || 'smtps.uhserver.com',
+      port: parseInt(String(body.port || current.port || 465), 10),
       secure: body.secure !== undefined ? Boolean(body.secure) : current.secure,
       user: body.user !== undefined ? body.user : current.user,
       pass: body.pass !== undefined && body.pass !== '' ? body.pass : current.pass,
-      from: body.from || current.from || 'Nexus CTDI <nexus@ctdibrasil.com.br>',
+      from: body.from || current.from || 'Nexus CTDI <nexus@ctdisystem.com.br>',
       testRecipient: body.testRecipient || current.testRecipient || 'apongeluppi@ctdi.com',
     };
 
@@ -119,7 +119,7 @@ router.post('/test', async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Testa a conexão com o servidor SMTP (com fallback automático para porta 25 se 587 dar timeout)
+    // 1. Testa a conexão com o servidor SMTP
     const verifyResult = await verifySmtpConnection(testConfig);
     if (!verifyResult.ok) {
       return res.json({
@@ -128,10 +128,6 @@ router.post('/test', async (req: Request, res: Response) => {
         details: verifyResult.details,
       });
     }
-
-    // Se o teste detectou um container/porta ativa (ex: srv-captain--mail:25 ou mail.ctdibrasil.com.br:25), utiliza ela
-    if (verifyResult.activeHost) testConfig.host = verifyResult.activeHost;
-    if (verifyResult.activePort) testConfig.port = verifyResult.activePort;
 
     // 2. Dispara e-mail de teste (formato limpo compatível com filtros corporativos Microsoft 365 / EOP)
     const sentTimestamp = new Date().toLocaleString('pt-BR');
@@ -142,11 +138,11 @@ router.post('/test', async (req: Request, res: Response) => {
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #1E293B;">
             <h2 style="color: #2563EB;">Teste de Conexão SMTP - Nexus CTDI</h2>
-            <p>Parabéns! O serviço de e-mail do Nexus foi configurado com sucesso e está comunicando perfeitamente com o servidor de disparo no CapRover.</p>
+            <p>Parabéns! O serviço de e-mail do Nexus foi configurado com sucesso e está comunicando perfeitamente com o servidor de disparo SMTP da UOL Host.</p>
             <p style="font-size: 12px; color: #64748B;">Enviado em: ${sentTimestamp} | Porta ativa: ${testConfig.port}</p>
           </div>
         `,
-        text: `Teste de Conexão SMTP - Nexus CTDI. O serviço de e-mail foi configurado com sucesso. Enviado em: ${sentTimestamp}.`,
+        text: `Teste de Conexão SMTP - Nexus CTDI. O serviço de e-mail foi configurado com sucesso via UOL Host. Enviado em: ${sentTimestamp}.`,
       },
       testConfig
     );

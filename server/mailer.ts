@@ -44,8 +44,8 @@ export async function getActiveSmtpConfig(forceReload = false): Promise<SmtpConf
       const dbHost = row.host || SMTP_HOST;
       const dbPort = parseInt(row.port || String(SMTP_PORT), 10);
 
-      // Se o banco estava com o seed antigo e o .env está configurado com UOL Host ou outro host explícito, prioriza o host do .env
-      const isLegacySeed = dbHost === 'mail.ctdibrasil.com.br' || (dbHost === 'srv-captain--mail' && SMTP_HOST !== 'srv-captain--mail');
+      // Se o banco estava com configuração legada do Poste.io/CapRover, prioriza a configuração oficial do UOL Host
+      const isLegacySeed = dbHost === 'mail.ctdibrasil.com.br' || dbHost.includes('srv-captain');
 
       cachedConfig = {
         enabled: row.enabled ?? true,
@@ -89,24 +89,23 @@ export function resetTransporterCache() {
 }
 
 export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
-  const isPort25 = cfg.port === 25;
+  const isSslDirect = cfg.port === 465 || cfg.secure;
   const transportConfig: any = {
     pool: true,
     maxConnections: 1,
     maxMessages: 100,
-    name: 'nexus.ctdibrasil.com.br',
     host: cfg.host,
     port: cfg.port,
-    secure: !isPort25 && (cfg.secure || cfg.port === 465),
+    secure: isSslDirect,
     connectionTimeout: 20000,
     greetingTimeout: 15000,
     socketTimeout: 30000,
     tls: {
-      rejectUnauthorized: false, // Compatibilidade com certificados internos do CapRover
+      rejectUnauthorized: false,
     },
   };
 
-  if (isPort25 || process.env.SMTP_IGNORE_TLS === 'true') {
+  if (process.env.SMTP_IGNORE_TLS === 'true') {
     transportConfig.ignoreTLS = true;
   }
   
@@ -122,9 +121,9 @@ export function createTransporterForConfig(cfg: SmtpConfig): Transporter {
 
 export function isSmtpConfigured(): boolean {
   if (cachedConfig) {
-    return Boolean(cachedConfig.host && (cachedConfig.port === 25 || cachedConfig.user));
+    return Boolean(cachedConfig.host && cachedConfig.user);
   }
-  return Boolean(SMTP_HOST && (SMTP_PORT === 25 || SMTP_USER));
+  return Boolean(SMTP_HOST && SMTP_USER);
 }
 
 export function getTransporter(): Transporter | null {
@@ -171,61 +170,6 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
     };
   } catch (error: any) {
     console.error(`[Nexus Mailer] Erro ao verificar conexão SMTP (${cfg.host}:${cfg.port}):`, error.message);
-
-    // Só tenta candidatos alternativos na porta 25 se for o servidor local/CapRover
-    const isLocalCapRover = cfg.host.includes('srv-captain') || cfg.host === 'mail.ctdibrasil.com.br';
-    if (isLocalCapRover) {
-      const candidates = [
-        { host: cfg.host, port: 25 },
-        { host: 'srv-captain--mail', port: 25 },
-        { host: 'mail.ctdibrasil.com.br', port: 25 },
-        { host: 'srv-captain--mailserver', port: 25 },
-      ];
-
-      const seen = new Set<string>();
-      for (const cand of candidates) {
-        const key = `${cand.host}:${cand.port}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        try {
-          console.log(`[Nexus Mailer] Tentando rota SMTP direta em ${cand.host}:${cand.port}...`);
-          const fbTransport = nodemailer.createTransport({
-            pool: true,
-            maxConnections: 1,
-            maxMessages: 100,
-            name: 'nexus.ctdibrasil.com.br',
-            host: cand.host,
-            port: cand.port,
-            secure: false,
-            ignoreTLS: true,
-            connectionTimeout: 10000,
-            greetingTimeout: 8000,
-            socketTimeout: 15000,
-            tls: { rejectUnauthorized: false },
-          });
-          await fbTransport.verify();
-          console.log(`[Nexus Mailer] Rota SMTP ${cand.host}:${cand.port} CONECTADA COM SUCESSO!`);
-          if (!customConfig) {
-            transporter = fbTransport;
-            if (cachedConfig) {
-              cachedConfig.host = cand.host;
-              cachedConfig.port = cand.port;
-              cachedConfig.secure = false;
-            }
-          }
-          return {
-            ok: true,
-            message: `Conexão SMTP estabelecida com sucesso (${cand.host}:${cand.port})!`,
-            activeHost: cand.host,
-            activePort: cand.port,
-          };
-        } catch {
-          // Continua testando o próximo candidato
-        }
-      }
-    }
-
     return {
       ok: false,
       message: `Erro ao conectar ao SMTP (${cfg.host}:${cfg.port}): ${error.message}`,
@@ -233,6 +177,14 @@ export async function verifySmtpConnection(customConfig?: SmtpConfig): Promise<{
         host: cfg.host,
         port: cfg.port,
         secure: cfg.secure,
+        user: cfg.user,
+        error: error.message,
+        code: error.code,
+        command: error.command,
+      },
+    };
+  }
+}
         user: cfg.user,
         error: error.message,
         code: error.code,
@@ -321,25 +273,7 @@ export async function sendEmail(
     console.log(`[Nexus Mailer] E-mail enviado com sucesso! ID: ${info.messageId} | Resp: ${info.response} | Para: ${recipients.join(', ')}${isOverride ? ` (Original: ${originalRecipients.join(', ')})` : ''}`);
     return true;
   } catch (error: any) {
-    console.warn(`[Nexus Mailer] Primeira tentativa falhou (${cfg.host}:${cfg.port} - ${error.message}). Tentando rota alternativa na porta 25...`);
-    try {
-      const verifyRes = await verifySmtpConnection(customConfig);
-      if (verifyRes.ok && verifyRes.activeHost && verifyRes.activePort) {
-        const fallbackCfg: SmtpConfig = {
-          ...cfg,
-          host: verifyRes.activeHost,
-          port: verifyRes.activePort,
-          secure: false,
-        };
-        const fbClient = (!customConfig && transporter) ? transporter : createTransporterForConfig(fallbackCfg);
-        if (!customConfig) transporter = fbClient;
-        const retryInfo = await fbClient.sendMail(mailOptions);
-        console.log(`[Nexus Mailer] E-mail enviado via fallback (${fallbackCfg.host}:${fallbackCfg.port})! ID: ${retryInfo.messageId} | Para: ${recipients.join(', ')}`);
-        return true;
-      }
-    } catch (retryErr: any) {
-      console.error(`[Nexus Mailer] Falha definitiva ao enviar e-mail para ${recipients.join(', ')}:`, retryErr.message);
-    }
+    console.error(`[Nexus Mailer] Falha ao enviar e-mail via ${cfg.host}:${cfg.port}:`, error.message);
     return false;
   }
 }

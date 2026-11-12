@@ -62,7 +62,7 @@ app.post('/api/mail/test', async (req, res) => {
     html: `
       <div style="font-family: sans-serif; padding: 20px; color: #1E293B;">
         <h2 style="color: #2563EB;">Teste de Envio de E-mail - Nexus CTDI</h2>
-        <p>Parabéns! O serviço de e-mail do Nexus foi configurado com sucesso e está comunicando perfeitamente com a plataforma de envio no CapRover.</p>
+        <p>Parabéns! O serviço de e-mail do Nexus foi configurado com sucesso e está comunicando perfeitamente com o servidor SMTP (UOL Host).</p>
         <p style="font-size: 12px; color: #64748B;">Enviado em: ${new Date().toLocaleString('pt-BR')}</p>
       </div>
     `,

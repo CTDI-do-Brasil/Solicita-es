@@ -152,24 +152,24 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS smtp_settings (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
     enabled BOOLEAN NOT NULL DEFAULT true,
-    host VARCHAR(255) NOT NULL DEFAULT 'srv-captain--mail',
-    port INT NOT NULL DEFAULT 25,
-    secure BOOLEAN NOT NULL DEFAULT false,
-    user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdibrasil.com.br',
+    host VARCHAR(255) NOT NULL DEFAULT 'smtps.uhserver.com',
+    port INT NOT NULL DEFAULT 465,
+    secure BOOLEAN NOT NULL DEFAULT true,
+    user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdisystem.com.br',
     pass_account VARCHAR(255) NOT NULL DEFAULT '',
-    from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdibrasil.com.br>',
+    from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdisystem.com.br>',
     test_recipient VARCHAR(255) NOT NULL DEFAULT 'apongeluppi@ctdi.com',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Garantir colunas se a tabela já existir em bancos instanciados
 ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS host VARCHAR(255) NOT NULL DEFAULT 'srv-captain--mail';
-ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS port INT NOT NULL DEFAULT 25;
-ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS secure BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdibrasil.com.br';
+ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS host VARCHAR(255) NOT NULL DEFAULT 'smtps.uhserver.com';
+ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS port INT NOT NULL DEFAULT 465;
+ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS secure BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS user_account VARCHAR(255) NOT NULL DEFAULT 'nexus@ctdisystem.com.br';
 ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS pass_account VARCHAR(255) NOT NULL DEFAULT '';
-ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdibrasil.com.br>';
+ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS from_name VARCHAR(255) NOT NULL DEFAULT 'Nexus CTDI <nexus@ctdisystem.com.br>';
 ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS test_recipient VARCHAR(255) NOT NULL DEFAULT 'apongeluppi@ctdi.com';
 ALTER TABLE smtp_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 

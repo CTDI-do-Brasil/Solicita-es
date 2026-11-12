@@ -1062,7 +1062,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                   <span>Disparo de E-mails Automáticos (Teste de Todas as Etapas)</span>
                 </div>
                 <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full">
-                  SMTP CapRover
+                  SMTP UOL Host
                 </span>
               </div>
               <p className="text-xs text-blue-800">
