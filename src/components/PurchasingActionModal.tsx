@@ -841,7 +841,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                                 />
                                 <div className="space-y-1">
                                   <span className="text-[10px] text-slate-400 font-medium block">Opções rápidas:</span>
-                                  <div className="grid grid-cols-2 gap-1">
+                                  <div className="flex flex-wrap gap-1">
                                     {PAYMENT_METHODS.map(method => {
                                       const isSelected = quote.paymentMethod === method;
                                       return (
@@ -854,12 +854,12 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                                             if (!quote.paymentTerms) {
                                               if (method === 'Boleto faturado') {
                                                 handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', '30 dias');
-                                              } else if (method === 'Boleto à vista' || method === 'PIX' || method === 'Cartão de crédito') {
+                                              } else if (method === 'Boleto à vista' || method === 'PIX' || method === 'Cartão de crédito' || method === 'Saldo Mercado Pago') {
                                                 handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', 'À vista');
                                               }
                                             }
                                           }}
-                                          className={`text-[10px] px-2 py-1 rounded-md font-semibold border text-center transition-all cursor-pointer ${
+                                          className={`text-[10px] px-2.5 py-1 rounded-md font-semibold border text-center transition-all cursor-pointer ${
                                             isSelected
                                               ? 'bg-cyan-700 text-white border-cyan-800 shadow-2xs font-bold'
                                               : 'bg-white hover:bg-cyan-50 text-cyan-900 border-slate-200 hover:border-cyan-300'

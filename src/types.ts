@@ -103,7 +103,8 @@ export const PAYMENT_METHODS = [
   'Boleto à vista',
   'Boleto faturado',
   'PIX',
-  'Cartão de crédito'
+  'Cartão de crédito',
+  'Saldo Mercado Pago'
 ] as const;
 
 export type PaymentMethodType = typeof PAYMENT_METHODS[number];
@@ -115,7 +116,7 @@ export interface ProductQuote {
   unitPrice: number;
   shippingCost?: number;
   totalPrice: number;
-  paymentMethod?: string; // Forma de Pagamento (ex: "Boleto à vista", "Boleto faturado", "PIX", "Cartão de crédito")
+  paymentMethod?: string; // Forma de Pagamento (ex: "Boleto à vista", "Boleto faturado", "PIX", "Cartão de crédito", "Saldo Mercado Pago")
   paymentTerms?: string; // Prazo de Pagamento (ex: "30 dias", "Boleto 28 DDL", "À vista")
   deliveryDeadline?: string; // Prazo de Entrega (ex: "5 dias úteis", "15 dias corridos", "Imediato")
   notes?: string;
@@ -168,7 +169,7 @@ export interface PurchaseRequest {
   unitPrice?: number;
   totalPrice?: number; // Valor final de compra preenchido por Compras
   shippingCost?: number;
-  paymentMethod?: string; // Forma de Pagamento (Boleto à vista, Boleto faturado, PIX, Cartão de crédito)
+  paymentMethod?: string; // Forma de Pagamento (Boleto à vista, Boleto faturado, PIX, Cartão de crédito, Saldo Mercado Pago)
   paymentTerms?: string; // Prazo de Pagamento (ex: "30 dias", "Boleto 28 DDL", "À vista")
   deliveryDeadline?: string; // Prazo de Entrega do fornecedor (ex: "5 dias úteis", "15 dias corridos")
   purchaseDate?: string;
