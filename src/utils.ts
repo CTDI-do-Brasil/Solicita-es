@@ -114,6 +114,14 @@ export function getPurchaseStatusInfo(status: PurchaseOrderStatus): {
         borderClass: 'border-teal-200',
         step: 5,
       };
+    case 'pedido_em_atraso':
+      return {
+        label: 'Pedido em Atraso',
+        colorClass: 'text-rose-900',
+        bgClass: 'bg-rose-100',
+        borderClass: 'border-rose-300',
+        step: 5,
+      };
     case 'entregue':
       return {
         label: 'Entregue no Setor',
@@ -201,6 +209,12 @@ export function getLatestRequestStatusInfo(req: PurchaseRequest): {
     return {
       label: 'Entregue no Setor',
       badgeClass: 'bg-green-100 text-green-900 border-green-300 font-semibold',
+    };
+  }
+  if (req.purchaseStatus === 'pedido_em_atraso') {
+    return {
+      label: 'Pedido em Atraso',
+      badgeClass: 'bg-rose-100 text-rose-900 border-rose-300 font-bold',
     };
   }
   if (req.purchaseStatus === 'em_transito') {
@@ -548,6 +562,82 @@ export function getRequestDelayInfo(request?: {
     message: '',
     badgeClass: '',
   };
+}
+
+/**
+ * Verifica se um Pedido de Compra está em atraso na entrega:
+ * 1. Status explicitamente marcado como 'pedido_em_atraso'; OU
+ * 2. Compra realizada/emitida/em trânsito com previsão de entrega expirada; OU
+ * 3. Compra realizada com prazo de entrega do fornecedor vencido a partir da data de compra.
+ */
+export function isOrderDelayed(request?: PurchaseRequest | null): boolean {
+  if (!request) return false;
+
+  // Se entregue ou cancelado, não está em atraso
+  if (request.purchaseStatus === 'entregue' || request.purchaseStatus === 'cancelado') {
+    return false;
+  }
+
+  // 1. Status explicitamente definido como 'pedido_em_atraso'
+  if (request.purchaseStatus === 'pedido_em_atraso') {
+    return true;
+  }
+
+  // 2. Pedidos já comprados ou emitidos
+  const isPurchased =
+    request.purchaseStatus === 'compra_realizada' ||
+    request.purchaseStatus === 'pedido_emitido' ||
+    request.purchaseStatus === 'em_transito';
+
+  if (!isPurchased) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Verificação por data prevista de entrega (se informada)
+  if (request.expectedDeliveryDate) {
+    const expDate = new Date(request.expectedDeliveryDate);
+    if (!isNaN(expDate.getTime())) {
+      expDate.setHours(0, 0, 0, 0);
+      if (expDate < today) {
+        return true;
+      }
+    }
+  }
+
+  // Verificação por prazo de entrega + data da compra
+  if (request.purchaseDate && request.deliveryDeadline) {
+    const daysMatch = request.deliveryDeadline.match(/\d+/);
+    if (daysMatch) {
+      const days = parseInt(daysMatch[0], 10);
+      const isBusinessDays =
+        request.deliveryDeadline.toLowerCase().includes('úteis') ||
+        request.deliveryDeadline.toLowerCase().includes('uteis');
+      const pDate = new Date(request.purchaseDate);
+      if (!isNaN(pDate.getTime())) {
+        const targetDate = new Date(pDate);
+        if (isBusinessDays) {
+          let added = 0;
+          while (added < days) {
+            targetDate.setDate(targetDate.getDate() + 1);
+            if (targetDate.getDay() !== 0 && targetDate.getDay() !== 6) {
+              added++;
+            }
+          }
+        } else {
+          targetDate.setDate(targetDate.getDate() + days);
+        }
+        targetDate.setHours(0, 0, 0, 0);
+        if (targetDate < today) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 export function getApproverFromUser(user: User): ApproverName | null {

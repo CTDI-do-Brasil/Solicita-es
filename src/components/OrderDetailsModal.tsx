@@ -10,6 +10,7 @@ import {
   getSectorColor,
   getProjectColor,
   getRequestDelayInfo,
+  isOrderDelayed,
   getApproverFromUser,
   getRequestPurchaseReleaseInfo
 } from '../utils';
@@ -91,6 +92,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
     request.purchaseStatus === 'pedido_emitido' ||
     request.purchaseStatus === 'compra_realizada' ||
     request.purchaseStatus === 'em_transito' ||
+    request.purchaseStatus === 'pedido_em_atraso' ||
     request.purchaseStatus === 'entregue';
 
   // Permissão para selecionar cotação vencedora: Aprovadores (Fernando, Eduardo, Luiz), Gestor, Compras ou Master
@@ -1003,6 +1005,30 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     <strong>Previsão de Entrega:</strong> {formatDate(request.expectedDeliveryDate)}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Alerta de Pedido em Atraso (Pós-Compra) */}
+          {isOrderDelayed(request) && (
+            <div className="p-3.5 bg-rose-50 border-2 border-rose-300 rounded-xl space-y-1.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider">
+                      Pedido em Atraso na Entrega
+                    </h4>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 font-bold">
+                      Fornecedor Atrasado
+                    </span>
+                  </div>
+                  <p className="text-xs text-rose-800 mt-0.5">
+                    Este pedido de compra já foi emitido/realizado, mas está com a entrega atrasada pelo fornecedor.
+                  </p>
+                </div>
               </div>
             </div>
           )}

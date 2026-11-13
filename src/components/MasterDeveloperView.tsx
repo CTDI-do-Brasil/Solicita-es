@@ -8,7 +8,8 @@ import {
   getManagerApprovalInfo, 
   getSectorColor,
   getProjectColor,
-  getLatestRequestStatusInfo
+  getLatestRequestStatusInfo,
+  isOrderDelayed
 } from '../utils';
 import { 
   ShieldAlert, 
@@ -155,7 +156,10 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
   const filteredRequests = useMemo(() => {
     return allRequests.filter(r => {
       const matchSector = reqSectorFilter === 'todos' || r.sector === reqSectorFilter;
-      const matchStatus = reqStatusFilter === 'todos' || r.purchaseStatus === reqStatusFilter || (reqStatusFilter === 'pendente_gestor' && r.managerApprovalStatus === 'pendente');
+      const matchStatus = reqStatusFilter === 'todos' || 
+        r.purchaseStatus === reqStatusFilter || 
+        (reqStatusFilter === 'pendente_gestor' && r.managerApprovalStatus === 'pendente') ||
+        (reqStatusFilter === 'pedido_em_atraso' && isOrderDelayed(r));
       const matchSearch = !reqSearch.trim() ||
         r.title.toLowerCase().includes(reqSearch.toLowerCase()) ||
         r.code.toLowerCase().includes(reqSearch.toLowerCase()) ||
@@ -771,6 +775,7 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                 <option value="em_cotacao">Em Cotação</option>
                 <option value="pedido_emitido">Pedido Emitido</option>
                 <option value="compra_realizada">Compra Realizada</option>
+                <option value="pedido_em_atraso">Pedido em Atraso</option>
                 <option value="entregue">Entregue no Setor</option>
               </select>
 

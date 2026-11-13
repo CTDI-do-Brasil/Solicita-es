@@ -94,6 +94,7 @@ export type PurchaseOrderStatus =
   | 'pedido_emitido'              // PO issued
   | 'compra_realizada'            // Purchase completed / paid
   | 'em_transito'                 // Shipped
+  | 'pedido_em_atraso'            // Purchase order delayed by supplier / past delivery date
   | 'entregue'                    // Delivered to sector
   | 'reprovado_aprovadores'       // Reproved by an approver
   | 'cancelado';                  // Cancelled

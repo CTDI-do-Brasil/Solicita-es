@@ -10,7 +10,8 @@ import {
   getProjectColor,
   getRequestDelayInfo,
   getRequestPurchaseReleaseInfo,
-  isRequestWaitingQuote
+  isRequestWaitingQuote,
+  isOrderDelayed
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
 import { 
@@ -37,7 +38,8 @@ import {
   GitBranch,
   ShieldCheck,
   CheckCircle2,
-  History
+  History,
+  PackageX
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 
@@ -58,7 +60,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const [selectedSector, setSelectedSector] = useState<SectorType | 'Todos'>('Todos');
   const [mobileSectorMenuOpen, setMobileSectorMenuOpen] = useState(false);
   const [mobileNavMenuOpen, setMobileNavMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'cotacao' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'faturados' | 'dashboard' | 'versoes'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'cotacao' | 'liberadas' | 'aprovadores' | 'atrasadas' | 'pedidos_atrasados' | 'faturados' | 'dashboard' | 'versoes'>('geral');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [projectFilter, setProjectFilter] = useState<string>('todos');
@@ -78,7 +80,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   // Pedidos comprados saem desta fila e vão para o Histórico de Compras!
   const activeRequests = useMemo(() => {
     return allRequests.filter(
-      r => r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
+      r => r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado' && r.purchaseStatus !== 'pedido_em_atraso'
     );
   }, [allRequests]);
 
@@ -87,10 +89,10 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     return allRequests.filter(r => isRequestWaitingQuote(r));
   }, [allRequests]);
 
-  // Histórico de compras realizadas (concluídas e faturadas)
+  // Histórico de compras realizadas (concluídas, em atraso de entrega e faturadas)
   const historyRequests = useMemo(() => {
     return allRequests.filter(
-      r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue'
+      r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue' || r.purchaseStatus === 'pedido_em_atraso'
     );
   }, [allRequests]);
 
@@ -98,15 +100,20 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
   const releasedRequests = useMemo(() => {
     return allRequests.filter(r => {
       const rel = getRequestPurchaseReleaseInfo(r);
-      return rel.isReleased && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado';
+      return rel.isReleased && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado' && r.purchaseStatus !== 'pedido_em_atraso';
     });
   }, [allRequests]);
 
   // Solicitações com mais de 48h de recebimento sem conclusão da compra (em aberto)
   const delayedRequests = useMemo(() => {
     return allRequests.filter(
-      r => getRequestDelayInfo(r).isDelayed && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado'
+      r => getRequestDelayInfo(r).isDelayed && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado' && r.purchaseStatus !== 'pedido_em_atraso'
     );
+  }, [allRequests]);
+
+  // Pedidos de compra que estão em atraso na entrega (pós-compra)
+  const delayedOrders = useMemo(() => {
+    return allRequests.filter(r => isOrderDelayed(r));
   }, [allRequests]);
 
   const approversCount = useMemo(() => {
@@ -159,9 +166,12 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
     } else if (activeTab === 'atrasadas') {
       // Em atraso ativas
       list = list.filter(r => getRequestDelayInfo(r).isDelayed && r.purchaseStatus !== 'compra_realizada' && r.purchaseStatus !== 'entregue' && r.purchaseStatus !== 'cancelado');
+    } else if (activeTab === 'pedidos_atrasados') {
+      // Pedidos em atraso na entrega (pós-compra)
+      list = list.filter(r => isOrderDelayed(r));
     } else if (activeTab === 'faturados') {
       // HISTÓRICO DE COMPRAS: todos os pedidos cuja compra já foi realizada!
-      list = list.filter(r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue');
+      list = list.filter(r => r.purchaseStatus === 'compra_realizada' || r.purchaseStatus === 'entregue' || r.purchaseStatus === 'pedido_em_atraso');
     }
 
     // Filter by Status dropdown
@@ -181,6 +191,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
         list = list.filter(r => r.totalPrice !== undefined && r.totalPrice > 0);
       } else if (statusFilter === 'em_atraso') {
         list = list.filter(r => getRequestDelayInfo(r).isDelayed);
+      } else if (statusFilter === 'pedido_em_atraso') {
+        list = list.filter(r => isOrderDelayed(r) || r.purchaseStatus === 'pedido_em_atraso');
       } else {
         list = list.filter(r => r.purchaseStatus === statusFilter);
       }
@@ -376,6 +388,39 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 ) : (
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono shrink-0 ${
                     activeTab === 'atrasadas' ? 'bg-rose-800 text-rose-200' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    0
+                  </span>
+                )}
+              </button>
+
+              {/* Pedidos em Atraso (Pós-Compra) */}
+              <button
+                type="button"
+                id="purchasing-tab-pedidos-atrasados"
+                onClick={() => {
+                  setActiveTab('pedidos_atrasados');
+                  setMobileNavMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
+                  activeTab === 'pedidos_atrasados'
+                    ? 'bg-rose-800 text-white font-bold border-rose-800 shadow-xs'
+                    : 'text-slate-700 hover:bg-rose-50 hover:text-rose-900 border-transparent font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <PackageX className={`w-4 h-4 shrink-0 ${activeTab === 'pedidos_atrasados' ? 'text-white' : 'text-rose-600'}`} />
+                  <span className="truncate">Pedidos em Atraso</span>
+                </div>
+                {delayedOrders.length > 0 ? (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                    activeTab === 'pedidos_atrasados' ? 'bg-rose-950 text-rose-100' : 'bg-rose-600 text-white animate-pulse'
+                  }`}>
+                    {delayedOrders.length}
+                  </span>
+                ) : (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono shrink-0 ${
+                    activeTab === 'pedidos_atrasados' ? 'bg-rose-900 text-rose-200' : 'bg-slate-100 text-slate-600'
                   }`}>
                     0
                   </span>
@@ -614,6 +659,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 {activeTab === 'liberadas' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
                 {activeTab === 'aprovadores' && <ShieldCheck className="w-5 h-5 text-purple-600" />}
                 {activeTab === 'atrasadas' && <AlertTriangle className="w-5 h-5 text-rose-600" />}
+                {activeTab === 'pedidos_atrasados' && <PackageX className="w-5 h-5 text-rose-700" />}
                 {activeTab === 'faturados' && <History className="w-5 h-5 text-emerald-600" />}
                 {activeTab === 'dashboard' && <BarChart3 className="w-5 h-5 text-indigo-600" />}
                 {activeTab === 'versoes' && <GitBranch className="w-5 h-5 text-amber-500" />}
@@ -623,6 +669,7 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                   {activeTab === 'liberadas' && 'Liberadas para Compra'}
                   {activeTab === 'aprovadores' && 'Em Aprovação'}
                   {activeTab === 'atrasadas' && 'Solicitações em Atraso (+48h)'}
+                  {activeTab === 'pedidos_atrasados' && 'Pedidos de Compra em Atraso'}
                   {activeTab === 'faturados' && 'Histórico de Compras Realizadas'}
                   {activeTab === 'dashboard' && 'Dashboard Consolidado'}
                   {activeTab === 'versoes' && 'Controle de Versões & Revisores'}
@@ -647,8 +694,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
             )}
           </div>
 
-      {/* Tab Content: Requests List (Tabs 1, 2, 3, 4, 5) */}
-      {(activeTab === 'geral' || activeTab === 'cotacao' || activeTab === 'liberadas' || activeTab === 'aprovadores' || activeTab === 'atrasadas' || activeTab === 'faturados') && (
+      {/* Tab Content: Requests List (Tabs 1, 2, 3, 4, 5, 6) */}
+      {(activeTab === 'geral' || activeTab === 'cotacao' || activeTab === 'liberadas' || activeTab === 'aprovadores' || activeTab === 'atrasadas' || activeTab === 'pedidos_atrasados' || activeTab === 'faturados') && (
         <div className="space-y-4">
           
           {/* Search & Filter Toolbar */}
@@ -679,7 +726,8 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                   <option value="aguardando_cotacao">🟠 Aguardando Cotação (Pendente Compras)</option>
                   <option value="liberadas">🟢 Liberadas para Compra (Aprovação Concluída)</option>
                   <option value="aguardando_aprovacao">⏳ Aguardando Aprovação (Não Liberadas)</option>
-                  <option value="em_atraso">Solicitação em atraso (+48h)</option>
+                  <option value="em_atraso">⚠️ Solicitação em atraso (+48h)</option>
+                  <option value="pedido_em_atraso">🚨 Pedidos em Atraso (Entrega)</option>
                   <option value="recebido_em_compras">Recebido em Compras</option>
                   <option value="em_cotacao">Em Cotação com Fornecedores</option>
                   <option value="em_aprovacao">Em Aprovação Diretoria</option>
@@ -727,12 +775,15 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                 const sectorColor = getSectorColor(req.sector);
                 const hasPrice = req.totalPrice !== undefined && req.totalPrice > 0;
                 const delayInfo = getRequestDelayInfo(req);
+                const orderDelayed = isOrderDelayed(req);
 
                 return (
                   <div
                     key={req.id}
                     className={`bg-white p-5 rounded-2xl border transition-all group ${
-                      delayInfo.isDelayed
+                      orderDelayed
+                        ? 'border-rose-400 ring-2 ring-rose-100 shadow-sm'
+                        : delayInfo.isDelayed
                         ? 'border-rose-300 ring-2 ring-rose-100 shadow-sm'
                         : releaseInfo.isReleased && req.purchaseStatus !== 'compra_realizada' && req.purchaseStatus !== 'entregue'
                         ? 'border-emerald-300 hover:border-emerald-500 hover:shadow-md'
@@ -874,6 +925,24 @@ export const PurchasingView: React.FC<PurchasingViewProps> = ({
                             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                             <span>
                               <strong>Solicitação em atraso:</strong> Recebida pela Central de Compras há <strong>{delayInfo.hoursElapsed} horas</strong> (prazo operacional de 48h excedido sem conclusão da compra).
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Callout de Alerta de Pedido em atraso na entrega */}
+                        {orderDelayed && (
+                          <div 
+                            id={`callout-pedido-atraso-${req.id}`}
+                            className="p-2.5 bg-rose-50 rounded-xl border border-rose-300 text-xs text-rose-950 mt-1 flex items-center justify-between gap-2 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <PackageX className="w-4 h-4 text-rose-600 shrink-0" />
+                              <span>
+                                <strong>Pedido em Atraso:</strong> Entrega pendente além da data ou prazo prometido pelo fornecedor.
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-900 bg-rose-200/90 px-2 py-0.5 rounded border border-rose-400 shrink-0">
+                              Entrega Atrasada
                             </span>
                           </div>
                         )}

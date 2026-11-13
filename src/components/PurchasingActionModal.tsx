@@ -63,6 +63,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     request.purchaseStatus === 'pedido_emitido' ||
     request.purchaseStatus === 'compra_realizada' ||
     request.purchaseStatus === 'em_transito' ||
+    request.purchaseStatus === 'pedido_em_atraso' ||
     request.purchaseStatus === 'entregue';
 
   const [status, setStatus] = useState<PurchaseOrderStatus>(
@@ -301,8 +302,8 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
     setError('');
 
     // Trava de segurança: Solicitação precisa estar liberada para compra após aprovação
-    if (status === 'compra_realizada' && !releaseInfo.isReleased && buyer.role !== 'master') {
-      setError(`Atenção: Esta solicitação ainda não está liberada para compra (${releaseInfo.badgeLabel}). Obtenha a aprovação necessária antes de marcar como compra realizada.`);
+    if ((status === 'compra_realizada' || status === 'pedido_em_atraso') && !releaseInfo.isReleased && buyer.role !== 'master') {
+      setError(`Atenção: Esta solicitação ainda não está liberada para compra (${releaseInfo.badgeLabel}). Obtenha a aprovação necessária antes de marcar como compra realizada ou em atraso.`);
       return;
     }
 
@@ -599,6 +600,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
               <option value="pedido_emitido">Pedido de Compra Emitido (Ordem Gerada)</option>
               <option value="compra_realizada">Compra Realizada (Faturado / Pago)</option>
               <option value="em_transito">Em Trânsito / Em Transporte</option>
+              <option value="pedido_em_atraso">Pedido em Atraso (Entrega em Atraso)</option>
               <option value="entregue">Entregue no Setor Solicitante</option>
               <option value="reprovado_aprovadores">Reprovado por Aprovador</option>
               <option value="cancelado">Cancelado / Sem Fornecedor</option>

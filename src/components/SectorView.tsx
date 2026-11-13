@@ -9,7 +9,8 @@ import {
   getSectorColor,
   getProjectColor,
   getRequestDelayInfo,
-  getRequestPurchaseReleaseInfo
+  getRequestPurchaseReleaseInfo,
+  isOrderDelayed
 } from '../utils';
 import { MonthlySpendChart } from './MonthlySpendChart';
 import { 
@@ -27,6 +28,7 @@ import {
   TrendingUp,
   AlertCircle,
   AlertTriangle,
+  PackageX,
   ChevronDown,
   ChevronUp,
   Layers,
@@ -100,6 +102,8 @@ export const SectorView: React.FC<SectorViewProps> = ({
         list = list.filter(r => r.managerApprovalStatus === 'pendente');
       } else if (statusFilter === 'com_valor') {
         list = list.filter(r => r.totalPrice !== undefined && r.totalPrice > 0);
+      } else if (statusFilter === 'pedido_em_atraso') {
+        list = list.filter(r => isOrderDelayed(r) || r.purchaseStatus === 'pedido_em_atraso');
       } else {
         list = list.filter(r => r.purchaseStatus === statusFilter);
       }
@@ -494,6 +498,7 @@ export const SectorView: React.FC<SectorViewProps> = ({
                     <option value="em_cotacao">Em Cotação com Fornecedores</option>
                     <option value="pedido_emitido">Pedido de Compra Emitido</option>
                     <option value="compra_realizada">Compra Realizada</option>
+                    <option value="pedido_em_atraso">🚨 Pedidos em Atraso</option>
                     <option value="entregue">Entregue no Setor</option>
                     <option value="com_valor">Com Valor Faturado (R$)</option>
                   </select>
@@ -599,6 +604,16 @@ export const SectorView: React.FC<SectorViewProps> = ({
                             >
                               <Clock className="w-3 h-3 text-rose-600" />
                               Solicitação em atraso
+                            </span>
+                          )}
+                          {isOrderDelayed(req) && (
+                            <span 
+                              id={`sector-badge-pedido-atraso-${req.id}`}
+                              className="text-xs px-2.5 py-0.5 rounded-full border border-rose-300 bg-rose-100 text-rose-900 flex items-center gap-1 font-bold"
+                              title="Pedido de compra com atraso na entrega pelo fornecedor"
+                            >
+                              <PackageX className="w-3 h-3 text-rose-600" />
+                              Pedido em atraso
                             </span>
                           )}
                           <span className="text-[11px] text-slate-400">
