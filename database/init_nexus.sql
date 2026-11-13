@@ -79,6 +79,7 @@ ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(255
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS delivery_deadline VARCHAR(255);
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS quotes JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS project VARCHAR(100);
+ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS invoices JSONB DEFAULT '[]'::jsonb;
 
 -- 4. TABELA DE REVISORES DE RELEASE
 CREATE TABLE IF NOT EXISTS version_reviewers (

@@ -55,6 +55,7 @@ export async function runAutoMigrations() {
       -- Desacopla constraint estrita de chave estrangeira para permitir que requisições salvem mesmo se o usuário ainda não tiver sido sincronizado
       ALTER TABLE purchase_requests DROP CONSTRAINT IF EXISTS purchase_requests_requester_id_fkey;
       ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(255);
+      ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS invoices JSONB DEFAULT '[]'::jsonb;
 
       -- Tabela de controle de migrações automáticas
       CREATE TABLE IF NOT EXISTS app_migrations (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem, PAYMENT_METHODS } from '../types';
+import { User, PurchaseRequest, PurchaseOrderStatus, ProductQuote, RequestItem, PAYMENT_METHODS, InvoiceAttachment } from '../types';
 import { storage } from '../storage';
+import { api } from '../services/api';
 import { formatCurrency, formatDate, getSectorColor, getRequestPurchaseReleaseInfo } from '../utils';
 import { 
   X, 
@@ -175,8 +176,30 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
 
   const [purchasingNotes, setPurchasingNotes] = useState(request.purchasingNotes || '');
   const [error, setError] = useState('');
+  const [invoices, setInvoices] = useState<InvoiceAttachment[]>(request.invoices || []);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
 
   const sectorColor = getSectorColor(request.sector);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const uploaded = await api.uploadInvoices(request.id, files, buyer.name);
+      setInvoices(prev => [...prev, ...uploaded]);
+    } catch (err) {
+      console.error('Erro ao anexar arquivo(s):', err);
+    } finally {
+      setIsUploading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveInvoice = async (invoiceId: string, key?: string) => {
+    setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+    api.deleteInvoice(request.id, invoiceId, key).catch(() => {});
+  };
 
   // Helper to update a quote field
   const handleQuoteChange = (
@@ -328,6 +351,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         purchasingNotes: purchasingNotes.trim(),
         quotes: allQuotes,
         items: updatedItems,
+        invoices,
       });
 
       onSave();
@@ -373,6 +397,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
         purchasingNotes: purchasingNotes.trim(),
         quotes: allQuotes,
         items: updatedItems,
+        invoices,
       });
 
       onSave();
@@ -979,6 +1004,90 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* SEÇÃO: ANEXAR NOTA FISCAL (OPCIONAL, MÚLTIPLOS ARQUIVOS) */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <FileText className="w-4 h-4 text-cyan-700" />
+                <span>Anexar Nota Fiscal</span>
+                <span className="text-slate-400 font-normal normal-case text-xs">(opcional)</span>
+              </label>
+              {invoices.length > 0 && (
+                <span className="text-xs text-slate-500 font-medium">
+                  {invoices.length} {invoices.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+                </span>
+              )}
+            </div>
+
+            {/* Dropzone / Botão de Seleção de Múltiplos Arquivos */}
+            <div>
+              <input
+                type="file"
+                id="invoice-file-input"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <div
+                onClick={() => document.getElementById('invoice-file-input')?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-cyan-500 bg-white hover:bg-cyan-50/30 rounded-xl p-3.5 text-center cursor-pointer transition-all flex items-center justify-center gap-2 text-xs text-slate-600 hover:text-cyan-800"
+              >
+                <Plus className="w-4 h-4 text-cyan-600" />
+                <span className="font-bold">
+                  {isUploading ? 'Enviando arquivo(s)...' : 'Clique para adicionar arquivo(s) da Nota Fiscal'}
+                </span>
+                {!isUploading && (
+                  <span className="text-slate-400 text-xs">(selecione um ou vários arquivos de qualquer extensão)</span>
+                )}
+              </div>
+            </div>
+
+            {/* Lista dos arquivos anexados */}
+            {invoices.length > 0 && (
+              <div className="space-y-2 pt-1">
+                {invoices.map((inv) => {
+                  const ext = inv.name.split('.').pop()?.toUpperCase() || 'ARQ';
+                  return (
+                    <div
+                      key={inv.id}
+                      className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between text-xs hover:border-slate-300 transition-all"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 font-bold text-[10px] uppercase shrink-0">
+                          {ext}
+                        </span>
+                        <div className="truncate">
+                          <a
+                            href={inv.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-slate-800 hover:text-cyan-700 block truncate"
+                            title="Visualizar / Baixar"
+                          >
+                            {inv.name}
+                          </a>
+                          {inv.size ? (
+                            <span className="text-[10px] text-slate-400">
+                              {(inv.size / 1024).toFixed(1)} KB
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveInvoice(inv.id, (inv as any).key)}
+                        className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Remover arquivo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Purchasing Notes / Nota Fiscal */}

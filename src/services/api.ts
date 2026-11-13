@@ -1,4 +1,4 @@
-import { User, PurchaseRequest, AppVersionRelease, VersionReviewer } from '../types';
+import { User, PurchaseRequest, AppVersionRelease, VersionReviewer, InvoiceAttachment } from '../types';
 
 const API_BASE = '/api';
 
@@ -116,6 +116,51 @@ export const api = {
   async clearAllRequests(): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE}/requests`, { method: 'DELETE' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  // Upload de Notas Fiscais no MinIO
+  async uploadInvoices(requestId: string, files: File[], uploadedBy: string): Promise<InvoiceAttachment[]> {
+    try {
+      const formData = new FormData();
+      formData.append('uploadedBy', uploadedBy);
+      files.forEach(f => formData.append('files', f));
+
+      const res = await fetch(`${API_BASE}/requests/${requestId}/invoices`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error('Falha ao enviar arquivo(s) para o MinIO');
+      }
+      const data = await res.json();
+      return data.invoices || [];
+    } catch (err) {
+      console.warn('[API] Upload para MinIO via servidor falhou, gerando anexo local de contingência:', err);
+      // Fallback local se o servidor estiver offline
+      return files.map(file => ({
+        id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        name: file.name,
+        url: URL.createObjectURL(file),
+        size: file.size,
+        contentType: file.type || 'application/octet-stream',
+        uploadedAt: new Date().toISOString(),
+        uploadedBy,
+      }));
+    }
+  },
+
+  async deleteInvoice(requestId: string, invoiceId: string, key?: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/requests/${requestId}/invoices/${invoiceId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
       return res.ok;
     } catch {
       return false;

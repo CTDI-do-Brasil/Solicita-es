@@ -59,6 +59,7 @@ function mapRowToRequest(row: any) {
     purchasedBy: row.purchased_by,
     purchasingNotes: row.purchasing_notes,
     quotes: parseJsonSafe(row.quotes, []),
+    invoices: parseJsonSafe(row.invoices, []),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
   };
 }
@@ -265,8 +266,10 @@ router.put('/:id', async (req: Request, res: Response) => {
         quotes = COALESCE($25, quotes),
         approvals = COALESCE($26, approvals),
         project = COALESCE($27, project),
-        updated_at = $28
-      WHERE id = $29
+        invoices = COALESCE($28, invoices),
+        payment_method = COALESCE($29, payment_method),
+        updated_at = $30
+      WHERE id = $31
       RETURNING *;
     `;
 
@@ -298,6 +301,8 @@ router.put('/:id', async (req: Request, res: Response) => {
       data.quotes ? JSON.stringify(data.quotes) : null,
       data.approvals ? JSON.stringify(data.approvals) : null,
       data.project,
+      data.invoices ? JSON.stringify(data.invoices) : null,
+      data.paymentMethod || null,
       now,
       id
     ];

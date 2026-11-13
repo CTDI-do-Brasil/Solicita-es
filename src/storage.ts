@@ -1,4 +1,4 @@
-import { User, UserRole, PurchaseRequest, SectorType, ProjectType, ALL_PROJECTS, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem } from './types';
+import { User, UserRole, PurchaseRequest, SectorType, ProjectType, ALL_PROJECTS, PurchaseOrderStatus, AppVersionRelease, VersionReviewer, ApproverName, ProductQuote, RequestItem, InvoiceAttachment } from './types';
 import { INITIAL_USERS, INITIAL_REQUESTS, MASTER_USER, DEMO_USERS, DEMO_REQUESTS } from './mockData';
 import { api } from './services/api';
 import { isLocalEnvironment } from './utils';
@@ -426,6 +426,7 @@ export const storage = {
       purchasingNotes?: string;
       quotes?: ProductQuote[];
       items?: RequestItem[];
+      invoices?: InvoiceAttachment[];
     }
   ): boolean {
     const all = this.getAllRequests();
@@ -475,7 +476,42 @@ export const storage = {
       purchasingNotes: data.purchasingNotes !== undefined ? data.purchasingNotes : all[index].purchasingNotes,
       quotes: data.quotes !== undefined ? data.quotes : all[index].quotes,
       items: data.items !== undefined ? data.items : all[index].items,
+      invoices: data.invoices !== undefined ? data.invoices : all[index].invoices,
       approvals: newApprovals,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
+    return true;
+  },
+
+  addInvoicesToRequest(requestId: string, newInvoices: InvoiceAttachment[]): boolean {
+    const all = this.getAllRequests();
+    const index = all.findIndex(r => r.id === requestId);
+    if (index === -1) return false;
+
+    const current = all[index].invoices || [];
+    all[index] = {
+      ...all[index],
+      invoices: [...current, ...newInvoices],
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.saveRequests(all);
+    api.updateRequest(all[index]).catch(() => {});
+    return true;
+  },
+
+  removeInvoiceFromRequest(requestId: string, invoiceId: string): boolean {
+    const all = this.getAllRequests();
+    const index = all.findIndex(r => r.id === requestId);
+    if (index === -1) return false;
+
+    const current = all[index].invoices || [];
+    all[index] = {
+      ...all[index],
+      invoices: current.filter(inv => inv.id !== invoiceId),
       updatedAt: new Date().toISOString(),
     };
 

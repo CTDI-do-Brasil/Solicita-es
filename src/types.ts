@@ -175,7 +175,18 @@ export interface PurchaseRequest {
   purchasedBy?: string;
   purchasingNotes?: string;
   quotes?: ProductQuote[]; // Múltiplos orçamentos cadastrados pela Central de Compras
+  invoices?: InvoiceAttachment[]; // Notas Fiscais e comprovantes anexados
   updatedAt: string;
+}
+
+export interface InvoiceAttachment {
+  id: string;
+  name: string;
+  url: string;
+  size?: number;
+  contentType?: string;
+  uploadedAt: string;
+  uploadedBy?: string;
 }
 
 export interface SectorMonthlySpend {

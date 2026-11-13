@@ -937,6 +937,55 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           )}
 
           {/* Purchasing Notes and Dates (if applicable) */}
+          {/* NOTAS FISCAIS ANEXADAS */}
+          {request.invoices && request.invoices.length > 0 && (
+            <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-cyan-700" />
+                  Notas Fiscais Anexadas ({request.invoices.length})
+                </span>
+                <span className="text-[11px] text-slate-400">Anexadas por Compras</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {request.invoices.map((inv) => {
+                  const ext = inv.name.split('.').pop()?.toUpperCase() || 'ARQ';
+                  return (
+                    <div
+                      key={inv.id}
+                      className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 font-bold text-[10px] uppercase shrink-0">
+                          {ext}
+                        </span>
+                        <div className="truncate">
+                          <span className="text-xs font-semibold text-slate-800 truncate block" title={inv.name}>
+                            {inv.name}
+                          </span>
+                          {inv.size ? (
+                            <span className="text-[10px] text-slate-400">
+                              {(inv.size / 1024).toFixed(1)} KB
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <a
+                        href={inv.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-cyan-800 border border-slate-300 text-xs font-bold rounded-lg flex items-center gap-1 shrink-0 transition-colors shadow-2xs"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Visualizar / Baixar</span>
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {(request.purchaseDate || request.expectedDeliveryDate) && (
             <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/40 space-y-2">
               <div className="text-xs font-bold text-cyan-950 uppercase tracking-wider flex items-center gap-1.5">
