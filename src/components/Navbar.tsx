@@ -16,6 +16,7 @@ import {
   Lock
 } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { NotificationCenter } from './NotificationCenter';
 
 interface NavbarProps {
   currentUser: User;
@@ -418,6 +419,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
             )}
+
+            {/* Central de Notificações (Sininho + Web Push) */}
+            <NotificationCenter />
 
             {/* Current User Profile Menu & Actions */}
             <div className="relative flex items-center gap-2 pl-2 sm:pl-3 sm:border-l border-slate-200">

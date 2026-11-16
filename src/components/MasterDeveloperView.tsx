@@ -39,11 +39,15 @@ import {
   KeyRound,
   Mail,
   Send,
-  Check
+  Check,
+  Bell,
+  Laptop,
+  Volume2
 } from 'lucide-react';
 import { VersionControlPanel } from './VersionControlPanel';
 import { ApproversView } from './ApproversView';
 import { SmtpConfigModal } from './SmtpConfigModal';
+import { playNotificationSound, sendDesktopNotification } from './NotificationCenter';
 
 interface MasterDeveloperViewProps {
   currentUser: User;
@@ -1095,6 +1099,50 @@ export const MasterDeveloperView: React.FC<MasterDeveloperViewProps> = ({
                   {emailTestFeedback.message}
                 </div>
               )}
+            </div>
+
+            {/* Teste de Notificações do Navegador / Web Push */}
+            <div className="p-4 bg-indigo-50/70 rounded-xl border border-indigo-200 space-y-3 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-indigo-950 font-bold text-sm">
+                  <Bell className="w-4 h-4 text-indigo-600" />
+                  <span>Notificações em Tempo Real (Navegador & Desktop Windows)</span>
+                </div>
+                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                  Web Push & In-App
+                </span>
+              </div>
+              <p className="text-xs text-indigo-800">
+                Alternativa moderna ao e-mail. Dispara alertas sonoros instantâneos e pop-ups nativos do Windows/Mac, além de atualizar o Sininho no topo da tela em tempo real.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={async () => {
+                    playNotificationSound();
+                    const res = await sendDesktopNotification("⚡ Nexus CTDI: Nova Solicitação!", {
+                      body: "S00012: Roberto Albuquerque (TI) solicitou Servidor Dell PowerEdge R660xs.",
+                    });
+                    if (!res.ok) {
+                      alert(res.error || "Permissão de notificação não concedida no navegador.");
+                    }
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Laptop className="w-3.5 h-3.5" />
+                  Testar Alerta no Desktop (Windows)
+                </button>
+                <button
+                  onClick={() => {
+                    playNotificationSound();
+                    const notifBtn = document.getElementById('navbar-notifications-btn');
+                    if (notifBtn) notifBtn.click();
+                  }}
+                  className="px-4 py-2 bg-white hover:bg-indigo-50 text-indigo-950 border border-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Bell className="w-3.5 h-3.5 text-indigo-600" />
+                  Abrir Sininho de Notificações
+                </button>
+              </div>
             </div>
 
           </div>
