@@ -53,9 +53,12 @@ export function playNotificationSound() {
   }
 }
 
-// Dispara a Notificação Nativa do Navegador (Windows / MacOS / Linux Desktop)
-export async function sendDesktopNotification(title: string, options?: NotificationOptions) {
-  if (!('Notification' in window)) {
+// Dispara a Notificação Nativa do Navegador (Toast do Windows 11 / Chrome via Service Worker)
+export async function sendDesktopNotification(
+  title: string, 
+  options?: NotificationOptions & { actions?: Array<{ action: string; title: string }> }
+) {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
     return { ok: false, error: 'Este navegador não suporta notificações de desktop.' };
   }
 
@@ -65,21 +68,41 @@ export async function sendDesktopNotification(title: string, options?: Notificat
   }
 
   if (perm !== 'granted') {
-    return { ok: false, error: 'Permissão de notificação negada no navegador.' };
+    return { ok: false, error: 'Permissão de notificação negada no navegador. Habilite nas permissões do site.' };
   }
 
-  try {
-    const notif = new Notification(title, {
-      icon: '/nexus-logo.png',
-      badge: '/nexus-logo.png',
-      ...options,
-    });
+  const defaultOptions: any = {
+    icon: '/nexus-logo.png',
+    badge: '/nexus-logo.png',
+    requireInteraction: true, // Mantém o balão do Windows 11 fixo até o usuário clicar ou fechar
+    vibrate: [200, 100, 200],
+    actions: [
+      { action: 'open', title: '🔍 Abrir no Nexus' },
+      { action: 'close', title: 'Dispensar' },
+    ],
+    ...options,
+  };
 
+  // 1. Tentar via Service Worker (Formato nativo do Windows 11 no Chrome com botões de ação)
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, defaultOptions);
+        return { ok: true };
+      }
+    } catch (swErr) {
+      console.warn('[SW showNotification fallback]', swErr);
+    }
+  }
+
+  // 2. Fallback direto se o Service Worker não estiver pronto
+  try {
+    const notif = new Notification(title, defaultOptions);
     notif.onclick = () => {
       window.focus();
       notif.close();
     };
-
     return { ok: true };
   } catch (err: any) {
     return { ok: false, error: err.message };
@@ -140,6 +163,15 @@ export const NotificationCenter: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  // Registrar Service Worker no carregamento para habilitar Toast Nativo do Windows 11
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.warn('[SW Registration Error]', err);
+      });
+    }
+  }, []);
+
   // Atualizar permissão atual
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
@@ -176,7 +208,7 @@ export const NotificationCenter: React.FC = () => {
     }
   };
 
-  // Função para disparar uma notificação de teste completa (Sininho + Toast + Desktop)
+  // Função para disparar uma notificação de teste completa (Sininho + Toast + Desktop Windows)
   const triggerTestNotification = (type: 'request' | 'approval' | 'purchasing') => {
     playNotificationSound();
 
@@ -225,8 +257,8 @@ export const NotificationCenter: React.FC = () => {
       setActiveToast(current => (current?.id === newNotif.id ? null : current));
     }, 6000);
 
-    // 3. Dispara a notificação de desktop do Windows
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    // 3. Dispara a notificação de desktop nativa do Windows (Toast do Windows 11)
+    if (typeof Notification !== 'undefined') {
       sendDesktopNotification(`Nexus CTDI: ${newNotif.title}`, {
         body: newNotif.message,
         tag: newNotif.id,
