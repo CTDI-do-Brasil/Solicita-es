@@ -10,8 +10,6 @@ import {
   CheckCircle2, 
   ShoppingBag, 
   FileText, 
-  X, 
-  Volume2,
   Laptop
 } from 'lucide-react';
 
@@ -53,13 +51,14 @@ export function playNotificationSound() {
   }
 }
 
-// Dispara a Notificação Nativa do Navegador (Toast do Windows 11 / Chrome via Service Worker)
+// Dispara a Notificação Nativa do Navegador (Toast do Windows 11 / Google Chrome)
 export async function sendDesktopNotification(
   title: string, 
-  options?: NotificationOptions & { actions?: Array<{ action: string; title: string }> }
-) {
+  options?: { body?: string; tag?: string; icon?: string }
+): Promise<{ ok: boolean; error?: string }> {
   if (typeof window === 'undefined' || !('Notification' in window)) {
-    return { ok: false, error: 'Este navegador não suporta notificações de desktop.' };
+    console.warn('[Desktop Notification] API Notification não suportada pelo navegador.');
+    return { ok: false, error: 'Este navegador não oferece suporte a notificações nativas de desktop.' };
   }
 
   let perm = Notification.permission;
@@ -68,45 +67,56 @@ export async function sendDesktopNotification(
   }
 
   if (perm !== 'granted') {
-    return { ok: false, error: 'Permissão de notificação negada no navegador. Habilite nas permissões do site.' };
+    console.warn('[Desktop Notification] Permissão negada ou não concedida:', perm);
+    return { ok: false, error: 'Permissão de notificação negada no navegador. Habilite nas permissões do site (ícone ao lado da URL).' };
   }
 
-  const defaultOptions: any = {
-    icon: '/nexus-logo.png',
-    badge: '/nexus-logo.png',
-    requireInteraction: true, // Mantém o balão do Windows 11 fixo até o usuário clicar ou fechar
-    vibrate: [200, 100, 200],
-    actions: [
-      { action: 'open', title: '🔍 Abrir no Nexus' },
-      { action: 'close', title: 'Dispensar' },
-    ],
-    ...options,
-  };
+  const iconUrl = options?.icon || `${window.location.origin}/ctdi-logo.png`;
+  const bodyText = options?.body || '';
+  const notifTag = options?.tag || `nexus-${Date.now()}`;
 
-  // 1. Tentar via Service Worker (Formato nativo do Windows 11 no Chrome com botões de ação)
+  let triggered = false;
+
+  // 1. DISPARO NATIVO DIRETO: new Notification()
+  // No Google Chrome Desktop (Windows 10/11), o construtor Notification() dispara
+  // INSTANTANEAMENTE o pop-up nativo do Windows no canto inferior direito da tela.
+  // IMPORTANTE: NÃO PODE conter a propriedade 'actions' no objeto, pois no Chrome lança TypeError!
+  try {
+    const directNotif = new Notification(title, {
+      body: bodyText,
+      icon: iconUrl,
+      tag: notifTag,
+    });
+    directNotif.onclick = () => {
+      window.focus();
+      try { directNotif.close(); } catch {}
+    };
+    triggered = true;
+    console.log('[Desktop Notification] Sucesso via new Notification() nativo do Chrome.');
+  } catch (err: any) {
+    console.warn('[Desktop Notification] Falha ao instanciar new Notification():', err);
+  }
+
+  // 2. Se houver Service Worker ativo, dispara também via showNotification (persistente)
   if ('serviceWorker' in navigator) {
     try {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg && reg.showNotification) {
-        await reg.showNotification(title, defaultOptions);
-        return { ok: true };
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg && reg.active && reg.showNotification) {
+        await reg.showNotification(title, {
+          body: bodyText,
+          icon: iconUrl,
+          badge: iconUrl,
+          tag: notifTag,
+        });
+        triggered = true;
+        console.log('[Desktop Notification] Sucesso via ServiceWorkerRegistration.showNotification().');
       }
     } catch (swErr) {
-      console.warn('[SW showNotification fallback]', swErr);
+      console.warn('[Desktop Notification] Falha no Service Worker:', swErr);
     }
   }
 
-  // 2. Fallback direto se o Service Worker não estiver pronto
-  try {
-    const notif = new Notification(title, defaultOptions);
-    notif.onclick = () => {
-      window.focus();
-      notif.close();
-    };
-    return { ok: true };
-  } catch (err: any) {
-    return { ok: false, error: err.message };
-  }
+  return { ok: triggered, error: triggered ? undefined : 'Não foi possível exibir a notificação nativa.' };
 }
 
 export const NotificationCenter: React.FC = () => {
@@ -114,7 +124,6 @@ export const NotificationCenter: React.FC = () => {
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
-  const [activeToast, setActiveToast] = useState<SystemNotification | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Lista inicial de notificações de exemplo
@@ -251,19 +260,11 @@ export const NotificationCenter: React.FC = () => {
     // 1. Adiciona na lista do sininho
     setNotifications(prev => [newNotif, ...prev]);
 
-    // 2. Mostra toast animado na tela
-    setActiveToast(newNotif);
-    setTimeout(() => {
-      setActiveToast(current => (current?.id === newNotif.id ? null : current));
-    }, 6000);
-
-    // 3. Dispara a notificação de desktop nativa do Windows (Toast do Windows 11)
-    if (typeof Notification !== 'undefined') {
-      sendDesktopNotification(`Nexus CTDI: ${newNotif.title}`, {
-        body: newNotif.message,
-        tag: newNotif.id,
-      });
-    }
+    // 2. Dispara a notificação de desktop nativa do Windows (Toast do Chrome)
+    sendDesktopNotification(newNotif.title, {
+      body: newNotif.message,
+      tag: newNotif.id,
+    });
   };
 
   const markAllAsRead = () => {
@@ -291,39 +292,6 @@ export const NotificationCenter: React.FC = () => {
 
   return (
     <>
-      {/* Toast Flutuante no Canto Superior Direito */}
-      {activeToast && (
-        <div className="fixed top-5 right-5 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 animate-in slide-in-from-top-4 fade-in duration-200">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
-              {getIcon(activeToast.type)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-1">
-                <h4 className="text-xs font-bold text-slate-900 truncate">
-                  {activeToast.title}
-                </h4>
-                <button
-                  onClick={() => setActiveToast(null)}
-                  className="text-slate-400 hover:text-slate-600 p-1 -m-1 rounded cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                {activeToast.message}
-              </p>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400">
-                <span className="flex items-center gap-1 font-medium text-indigo-600">
-                  <Volume2 className="w-3 h-3" /> Alerta Nexus
-                </span>
-                <span>{activeToast.time}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Botão do Sininho no Navbar */}
       <div className="relative" ref={dropdownRef}>
         <button
