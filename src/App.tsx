@@ -12,6 +12,7 @@ import { PurchasingActionModal } from './components/PurchasingActionModal';
 import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { ApproversView } from './components/ApproversView';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { sendDesktopNotification, playNotificationSound } from './components/NotificationCenter';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function App() {
@@ -62,6 +63,63 @@ export default function App() {
       window.removeEventListener('storage-auth-updated', handleAuthUpdate);
     };
   }, []);
+
+  // Sincronização periódica em background para receber novas solicitações e disparar alertas no Chrome
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const interval = setInterval(async () => {
+      const prevRequests = storage.getAllRequests();
+      const hasChanges = await storage.syncWithBackend();
+      if (hasChanges) {
+        const newRequests = storage.getAllRequests();
+        const prevMap = new Map(prevRequests.map(r => [r.id, r]));
+
+        for (const req of newRequests) {
+          const prev = prevMap.get(req.id);
+
+          // 1. Nova solicitação detectada
+          if (!prev) {
+            if (currentUser.role === 'master' || (currentUser.role === 'gestor' && currentUser.sector === req.sector)) {
+              sendDesktopNotification(`⚡ Nova Solicitação: ${req.code}`, {
+                body: `${req.requesterName} solicitou ${req.title} (${req.sector}).`,
+                tag: `new-req-${req.id}`,
+              });
+              playNotificationSound();
+            }
+            continue;
+          }
+
+          // 2. Aprovado pelo Gestor -> Avisar Compras e Master
+          if (prev.managerApprovalStatus === 'pendente' && req.managerApprovalStatus === 'aprovado') {
+            if (currentUser.role === 'compras' || currentUser.role === 'master') {
+              sendDesktopNotification(`📦 Solicitação Aprovada pelo Gestor: ${req.code}`, {
+                body: `${req.title} foi aprovada e aguarda cotação comercial.`,
+                tag: `mgr-appr-${req.id}`,
+              });
+              playNotificationSound();
+            }
+          }
+
+          // 3. 100% Aprovado pela Diretoria -> Avisar Solicitante, Compras e Master
+          const isNowDone = req.purchaseStatus === 'compra_liberada' || (req.managerApprovalStatus === 'aprovado' && req.approvals?.luiz?.status === 'aprovado');
+          const wasDone = prev.purchaseStatus === 'compra_liberada' || (prev.managerApprovalStatus === 'aprovado' && prev.approvals?.luiz?.status === 'aprovado');
+
+          if (!wasDone && isNowDone) {
+            if (currentUser.role === 'compras' || currentUser.role === 'master' || currentUser.id === req.requesterId) {
+              sendDesktopNotification(`✅ Pedido 100% Aprovado: ${req.code}`, {
+                body: `${req.title} foi aprovado pela Diretoria e liberado para compra!`,
+                tag: `full-appr-${req.id}`,
+              });
+              playNotificationSound();
+            }
+          }
+        }
+      }
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   const handleLogin = (user: User) => {
     storage.setCurrentUser(user);
