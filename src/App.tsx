@@ -13,6 +13,7 @@ import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { ApproversView } from './components/ApproversView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { sendDesktopNotification, playNotificationSound } from './components/NotificationCenter';
+import { getRequestPurchaseReleaseInfo } from './utils';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function App() {
@@ -102,8 +103,8 @@ export default function App() {
           }
 
           // 3. 100% Aprovado pela Diretoria -> Avisar Solicitante, Compras e Master
-          const isNowDone = req.purchaseStatus === 'compra_liberada' || (req.managerApprovalStatus === 'aprovado' && req.approvals?.luiz?.status === 'aprovado');
-          const wasDone = prev.purchaseStatus === 'compra_liberada' || (prev.managerApprovalStatus === 'aprovado' && prev.approvals?.luiz?.status === 'aprovado');
+          const isNowDone = getRequestPurchaseReleaseInfo(req).isReleased;
+          const wasDone = getRequestPurchaseReleaseInfo(prev).isReleased;
 
           if (!wasDone && isNowDone) {
             if (currentUser.role === 'compras' || currentUser.role === 'master' || currentUser.id === req.requesterId) {
