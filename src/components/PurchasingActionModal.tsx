@@ -42,7 +42,7 @@ interface ItemQuotesState {
   quotes: ProductQuote[];
 }
 
-const QUICK_PAYMENT_TERMS = ['À vista', '15 dias', '28 DDL', '30 dias'];
+const QUICK_PAYMENT_TERMS = ['À vista', '15 dias', '30 dias'];
 const QUICK_DELIVERY_TERMS = ['Pronta entrega', '2 a 3 dias úteis', '5 dias úteis', '10 dias úteis', '15 dias corridos'];
 
 const generateQuoteId = () => `quote-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -883,7 +883,7 @@ export const PurchasingActionModal: React.FC<PurchasingActionModalProps> = ({
                                   type="text"
                                   value={quote.paymentTerms || ''}
                                   onChange={(e) => handleQuoteChange(itemIdx, quoteIdx, 'paymentTerms', e.target.value)}
-                                  placeholder="ex: À vista, 30 dias, 28 DDL..."
+                                  placeholder="ex: À vista, 15 dias, 30 dias..."
                                   className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-cyan-500 outline-hidden"
                                 />
                                 <div className="space-y-1">
