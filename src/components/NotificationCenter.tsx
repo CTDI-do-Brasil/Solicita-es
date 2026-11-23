@@ -357,7 +357,7 @@ export const NotificationCenter: React.FC = () => {
                   <Bell className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                  <h3 className="text-sm font-bold text-slate-900 leading-tight" translate="no">
                     Notificações
                   </h3>
                   <span className="text-[11px] text-slate-500">
