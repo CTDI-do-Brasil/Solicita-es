@@ -405,7 +405,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               ) : (
                 <div className="text-xs font-semibold px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg border border-amber-300 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  Aguardando cotação / inserção de valor por Compras
+                  Aguardando Cotação
                 </div>
               )}
             </div>

@@ -1121,6 +1121,7 @@ export const storage = {
       quantity: sample.items.reduce((acc, it) => acc + it.quantity, 0),
       unit: 'itens',
       priority: 'alta',
+      linkUrl: '',
       project: 'Manutenção/Engenharia',
       items: sample.items,
       requesterId: `user-colab-${sector.toLowerCase()}-test`,
