@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, PurchaseRequest, SectorType } from './types';
 import { storage } from './storage';
 import { Navbar } from './components/Navbar';
@@ -14,7 +14,7 @@ import { ApproversView } from './components/ApproversView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { sendDesktopNotification, playNotificationSound } from './components/NotificationCenter';
 import { getRequestPurchaseReleaseInfo } from './utils';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -174,6 +174,28 @@ export default function App() {
     }
   };
 
+  const pendingInSimulatedSector = useMemo(() => {
+    const all = storage.getAllRequests();
+    return all.filter(r => r.sector === simulatedSector && r.managerApprovalStatus === 'pendente');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simulatedSector, requestsVersion]);
+
+  const handleGenerateTestRequest = () => {
+    storage.createPendingTestRequest(simulatedSector);
+    setRequestsVersion(v => v + 1);
+  };
+
+  const handleApproveFirstPending = () => {
+    if (pendingInSimulatedSector.length > 0) {
+      storage.approveRequestByManager(pendingInSimulatedSector[0].id, {
+        ...currentUser!,
+        sector: simulatedSector,
+        role: 'gestor'
+      });
+      setRequestsVersion(v => v + 1);
+    }
+  };
+
   // If user is not logged in, render the login screen
   if (!currentUser) {
     return <LoginScreen onLogin={handleLogin} />;
@@ -263,19 +285,66 @@ export default function App() {
 
             {masterViewMode === 'setor' && (
               <div>
-                <div className="mb-4 p-3 bg-indigo-900 text-white rounded-xl shadow-xs flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs">
-                    <ShieldAlert className="w-4 h-4 text-amber-400" />
-                    <span>Modo de Visualização Master: Gestor do Setor <strong>{simulatedSector}</strong></span>
+                <div className="mb-4 p-4 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 text-white rounded-2xl shadow-sm border border-indigo-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+                      DEV
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                          Modo Master • Simulando Gestor de {simulatedSector}
+                        </span>
+                        {pendingInSimulatedSector.length > 0 ? (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 animate-pulse">
+                            {pendingInSimulatedSector.length} {pendingInSimulatedSector.length === 1 ? 'solicitação aguardando aprovação' : 'solicitações aguardando aprovação'}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                            0 pendentes no setor
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="text-base font-bold text-white mt-0.5">
+                        Painel de Teste: Aprovação Gerencial ({simulatedSector})
+                      </h2>
+                      <p className="text-xs text-slate-300">
+                        Como gestor de {simulatedSector}, avalie e aprove solicitações para liberação e encaminhamento à Central de Compras.
+                      </p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setMasterViewMode('console')}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Voltar ao Console Master</span>
-                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={handleGenerateTestRequest}
+                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="Gera instantaneamente uma solicitação pendente para testar a aprovação do gestor"
+                    >
+                      <Sparkles className="w-4 h-4 text-slate-950" />
+                      <span>+ Gerar Solicitação Pendente (Teste DEV)</span>
+                    </button>
+
+                    {pendingInSimulatedSector.length > 0 && (
+                      <button
+                        onClick={handleApproveFirstPending}
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        title="Aprovar a primeira solicitação pendente e enviá-la para Compras"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Aprovar ({pendingInSimulatedSector[0].code})</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setMasterViewMode('console')}
+                      className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Voltar ao Console Master</span>
+                    </button>
+                  </div>
                 </div>
+
                 <SectorView
                   currentUser={{ ...currentUser, sector: simulatedSector, role: 'gestor' }}
                   onOpenNewRequest={() => setShowRequestModal(true)}

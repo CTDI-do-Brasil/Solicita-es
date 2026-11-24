@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, SectorType, ALL_SECTORS } from '../types';
 import { storage } from '../storage';
 import { getSectorColor, isLocalEnvironment } from '../utils';
@@ -49,6 +49,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isMaster = currentUser.role === 'master';
   const displaySector = isMaster && masterViewMode === 'setor' ? simulatedSector : currentUser.sector;
   const sectorColor = getSectorColor(displaySector);
+
+  const pendingCountInSimulatedSector = useMemo(() => {
+    if (!isMaster || !simulatedSector) return 0;
+    try {
+      const all = storage.getAllRequests();
+      return all.filter(r => r.sector === simulatedSector && r.managerApprovalStatus === 'pendente').length;
+    } catch {
+      return 0;
+    }
+  }, [isMaster, simulatedSector, masterViewMode]);
 
   const handleResetData = () => {
     if (confirm('Deseja restaurar os dados originais de demonstração com pedidos e setores de exemplo?')) {
@@ -134,15 +144,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>Setor:</span>
                 </button>
                 {masterViewMode === 'setor' && onSelectSimulatedSector && (
-                  <select
-                    value={simulatedSector}
-                    onChange={(e) => onSelectSimulatedSector(e.target.value as SectorType)}
-                    className="ml-1 bg-white text-slate-900 font-bold border border-slate-300 rounded px-2 py-1 text-xs outline-hidden"
-                  >
-                    {ALL_SECTORS.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center">
+                    <select
+                      value={simulatedSector}
+                      onChange={(e) => onSelectSimulatedSector(e.target.value as SectorType)}
+                      className="ml-1 bg-white text-slate-900 font-bold border border-slate-300 rounded px-2 py-1 text-xs outline-hidden"
+                    >
+                      {ALL_SECTORS.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+
+                    {pendingCountInSimulatedSector > 0 ? (
+                      <span
+                        className="ml-1.5 px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 font-black text-[10px] animate-pulse flex items-center gap-1 shadow-2xs"
+                        title={`${pendingCountInSimulatedSector} solicitação(ões) pendente(s) de aprovação do gestor de ${simulatedSector}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-700" />
+                        {pendingCountInSimulatedSector} pendente{pendingCountInSimulatedSector > 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span
+                        className="ml-1.5 px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-semibold text-[10px]"
+                        title="Nenhuma solicitação pendente no momento neste setor"
+                      >
+                        0 pend.
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

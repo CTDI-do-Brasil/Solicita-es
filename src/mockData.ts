@@ -566,6 +566,31 @@ export const DEMO_REQUESTS: PurchaseRequest[] = [
     updatedAt: '2026-09-10T15:00:00Z',
   },
 
+  // 7B. Manutenção - Aguardando Aprovação do Gestor (TESTE DO GESTOR NO MODO DEV)
+  {
+    id: 'req-007-manut-pendente',
+    code: 'S00023',
+    title: 'Kit de Chaves Isoladas VDE 1000V e Multímetro Fluke 179 True-RMS',
+    description: 'Conjunto de chaves de fenda e phillips com isolamento 1000V conforme norma NR-10 e multímetro digital True-RMS com calibração RBC para manutenção elétrica da subestação.',
+    reason: 'Substituição das ferramentas elétricas manuais desgastadas e atendimento obrigatório às normas de segurança NR-10 nos quadros e painéis de força.',
+    linkUrl: 'https://www.fluke.com/pt-br/produto/teste-eletrico/multimetros-digitais/fluke-179',
+    quantity: 2,
+    unit: 'kits',
+    priority: 'alta',
+    project: 'Manutenção/Engenharia',
+    requesterId: 'user-colab-manut-1',
+    requesterName: 'Felipe Santana',
+    sector: 'Manutenção',
+    createdAt: '2026-11-20T10:15:00Z',
+    managerApprovalStatus: 'pendente',
+    purchaseStatus: 'aguardando_aprovacao_gestor',
+    items: [
+      { id: 'item-manut-1', name: 'Multímetro Digital Fluke 179 True-RMS', description: 'Multímetro com pontas de prova e termopar', quantity: 2, unit: 'unidades' },
+      { id: 'item-manut-2', name: 'Jogo de Chaves Isoladas VDE 1000V Gedore', description: 'Fenda e Phillips isoladas até 1000V conforme NR-10', quantity: 2, unit: 'jogos' }
+    ],
+    updatedAt: '2026-11-20T10:15:00Z',
+  },
+
   // 8. Financeiro - Compra Concluída
   {
     id: 'req-008',

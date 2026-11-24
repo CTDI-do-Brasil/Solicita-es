@@ -11,7 +11,8 @@ import {
   Plus, 
   Trash2, 
   Package,
-  FolderKanban
+  FolderKanban,
+  Sparkles
 } from 'lucide-react';
 
 interface RequestModalProps {
@@ -67,6 +68,7 @@ export const RequestModal: React.FC<RequestModalProps> = ({
     },
   ]);
   const [error, setError] = useState('');
+  const [simulateCollaborator, setSimulateCollaborator] = useState(false);
 
   const handleAddItem = () => {
     setItems(prev => [
@@ -154,6 +156,14 @@ export const RequestModal: React.FC<RequestModalProps> = ({
     const primaryLink = processedItems.find(it => it.linkUrl)?.linkUrl || '';
 
     try {
+      const actingUser: User = simulateCollaborator
+        ? {
+            ...currentUser,
+            role: 'colaborador',
+            name: currentUser.role === 'master' ? `Colaborador de Teste (${currentUser.sector})` : currentUser.name
+          }
+        : currentUser;
+
       const created = storage.createRequest(
         {
           title: primaryTitle,
@@ -164,12 +174,12 @@ export const RequestModal: React.FC<RequestModalProps> = ({
           unit: primaryUnit,
           priority,
           items: processedItems,
-          requesterId: currentUser.id,
-          requesterName: currentUser.name,
+          requesterId: actingUser.id,
+          requesterName: actingUser.name,
           sector: currentUser.sector,
           project,
         },
-        currentUser
+        actingUser
       );
 
       onRequestCreated(created);
@@ -240,6 +250,37 @@ export const RequestModal: React.FC<RequestModalProps> = ({
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {/* DEV Test Option: Simulate Collaborator to Require Manager Approval */}
+          {(currentUser.role === 'master' || currentUser.role === 'gestor') && (
+            <div className="p-3.5 bg-amber-50/90 border-2 border-amber-300 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-950">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span>Modo de Teste DEV: Criar como Colaborador</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 border border-amber-400 font-black">
+                      Exige Gestor
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800">
+                    Se ativado, esta solicitação ficará como <strong>"Aguardando Aprovação do Gestor"</strong> para você testar a aprovação/reprovação.
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={simulateCollaborator}
+                  onChange={(e) => setSimulateCollaborator(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-6 bg-slate-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
             </div>
           )}
 

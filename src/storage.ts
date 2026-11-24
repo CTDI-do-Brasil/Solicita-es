@@ -241,6 +241,18 @@ export const storage = {
           return DEMO_REQUESTS;
         }
 
+        // Se estiver em ambiente local e a solicitação de teste de aprovação de Manutenção não estiver presente, adiciona para facilitar testes do gestor no modo DEV
+        if (isLocalEnvironment() && requests.length > 0) {
+          const hasPendingManut = requests.some(r => r.sector === 'Manutenção' && r.managerApprovalStatus === 'pendente');
+          if (!hasPendingManut && !requests.some(r => r.id === 'req-007-manut-pendente')) {
+            const manutPendingDemo = DEMO_REQUESTS.find(r => r.id === 'req-007-manut-pendente');
+            if (manutPendingDemo) {
+              requests.unshift(manutPendingDemo);
+              localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(requests));
+            }
+          }
+        }
+
         let updated = false;
         const migrated = requests.map(r => {
           const match = r.code.match(/^SOL-\d{4}-(\d+)$/i);
@@ -1041,6 +1053,89 @@ export const storage = {
     versions.unshift(newVersion);
     this.saveVersions(versions);
     return newVersion;
+  },
+
+  createPendingTestRequest(sector: SectorType = 'Manutenção'): PurchaseRequest {
+    const all = this.getAllRequests();
+    let nextNum = 1;
+    const numbers = all
+      .map(r => {
+        const match = r.code.match(/^S(\d+)$/i);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n) && n > 0);
+
+    if (numbers.length > 0) {
+      nextNum = Math.max(...numbers) + 1;
+    }
+    const code = `S${String(nextNum).padStart(5, '0')}`;
+    const now = new Date().toISOString();
+
+    const sampleBySector: Record<string, { title: string; desc: string; reason: string; requester: string; items: RequestItem[] }> = {
+      'Manutenção': {
+        title: 'Kit de Chaves Isoladas VDE 1000V e Multímetro Fluke 179 True-RMS',
+        desc: 'Conjunto de chaves de fenda e phillips com isolamento 1000V conforme norma NR-10 e multímetro digital True-RMS com calibração RBC para manutenção elétrica da subestação.',
+        reason: 'Substituição das ferramentas elétricas manuais desgastadas e atendimento obrigatório às normas de segurança NR-10 nos quadros e painéis de força.',
+        requester: 'Felipe Santana',
+        items: [
+          { id: `it-m-${Date.now()}-1`, name: 'Multímetro Digital Fluke 179 True-RMS', description: 'Multímetro com pontas de prova e termopar', quantity: 2, unit: 'unidades' },
+          { id: `it-m-${Date.now()}-2`, name: 'Jogo de Chaves Isoladas VDE 1000V Gedore', description: 'Fenda e Phillips isoladas até 1000V conforme NR-10', quantity: 2, unit: 'jogos' }
+        ]
+      },
+      'Produção': {
+        title: 'Lote de Sensores Fotoelétricos Industriais 24V',
+        desc: 'Sensores reflexivos industriais para detecção de passagem de peças na esteira da linha 3.',
+        reason: 'Substituição de sensores com desgaste e intermitência de sinal na esteira principal.',
+        requester: 'João Pedro Neves',
+        items: [
+          { id: `it-p-${Date.now()}-1`, name: 'Sensor Fotoelétrico 24V PNP', description: 'Sensor óptico com alcance de 2 metros', quantity: 6, unit: 'peças' }
+        ]
+      },
+      'TI': {
+        title: 'Cabos Patch Cord Cat6 2.5m e Conectores RJ45 Blindados',
+        desc: 'Pacote com 50 patch cords azuis e 100 conectores para reorganização do rack da sala técnica.',
+        reason: 'Reestruturação de cabeamento da sala técnica.',
+        requester: 'Guilherme Santos',
+        items: [
+          { id: `it-t-${Date.now()}-1`, name: 'Patch Cord Cat6 2.5m', description: 'Cabo de rede conectorizado', quantity: 50, unit: 'unidades' }
+        ]
+      }
+    };
+
+    const sample = sampleBySector[sector] || {
+      title: `Solicitação Operacional de Materiais - ${sector}`,
+      desc: `Itens de reposição e ferramentas necessários para a rotina operacional do setor de ${sector}.`,
+      reason: `Necessidade operacional imediata reportada pela equipe de ${sector}.`,
+      requester: `Colaborador de ${sector}`,
+      items: [
+        { id: `it-gen-${Date.now()}-1`, name: `Material Operacional de ${sector}`, description: `Insumos padrão para o setor de ${sector}`, quantity: 5, unit: 'unidades' }
+      ]
+    };
+
+    const newRequest: PurchaseRequest = {
+      id: `req-test-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      code,
+      title: sample.title,
+      description: sample.desc,
+      reason: sample.reason,
+      quantity: sample.items.reduce((acc, it) => acc + it.quantity, 0),
+      unit: 'itens',
+      priority: 'alta',
+      project: 'Manutenção/Engenharia',
+      items: sample.items,
+      requesterId: `user-colab-${sector.toLowerCase()}-test`,
+      requesterName: sample.requester,
+      sector,
+      createdAt: now,
+      updatedAt: now,
+      managerApprovalStatus: 'pendente',
+      purchaseStatus: 'aguardando_aprovacao_gestor',
+    };
+
+    const updated = [newRequest, ...all];
+    this.saveRequests(updated);
+    api.createRequest(newRequest).catch(() => {});
+    return newRequest;
   },
 
   resetData() {
